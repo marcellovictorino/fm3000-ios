@@ -86,6 +86,12 @@ public final class AppModel: ObservableObject {
     /// Connects, and keeps reconnecting with a growing delay until stopped or unpaired.
     public func start() {
         guard grants.load() != nil else { phase = .unpaired; return }
+        if loop != nil {
+            switch phase {
+            case .connecting, .connected: return  // already on it
+            default: break
+            }
+        }
         loop?.cancel()
         loop = Task { [weak self] in await self?.run() }
     }
