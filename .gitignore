@@ -1,0 +1,11 @@
+node_modules/
+.build/
+.swiftpm/
+build/
+*.xcodeproj/
+DerivedData/
+.state/
+*.p12
+*.mobileprovision
+ExportOptions.local.plist
+.DS_Store
