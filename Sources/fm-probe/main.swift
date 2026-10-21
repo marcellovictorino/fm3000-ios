@@ -1,5 +1,5 @@
 import FM3000Core
-import FM3000UI
+import FM3000Model
 import Foundation
 
 // fm-probe: the app's own model, driven from the command line.

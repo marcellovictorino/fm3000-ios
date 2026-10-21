@@ -38,7 +38,7 @@ export function homeIdentity(stateDir) {
   const certPath = join(stateDir, "home-cert.pem");
   if (!existsSync(keyPath) || !existsSync(certPath)) {
     execFileSync("openssl", [
-      "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1", "-nodes",
+      "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1", "-pkeyopt", "ec_param_enc:named_curve", "-nodes",
       "-keyout", keyPath, "-out", certPath, "-days", "3650", "-subj", "/CN=fake-firstmate-home",
     ], { stdio: "ignore" });
   }
