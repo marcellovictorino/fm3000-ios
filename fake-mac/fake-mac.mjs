@@ -272,6 +272,7 @@ export async function startFakeMac(options = {}) {
     "fm:cards:list": () => state.cards,
     "fm:tasks:board": () => state.board,
     "fm:feed:recent": () => state.feed,
+    "fm:cards:thread": ([cardId]) => ({ cardId, messages: [...(state.threads.get(cardId) ?? [])] }),
     "fm:cards:act": ([cardId, actionId]) => {
       const card = state.cards.find((c) => c.id === cardId);
       if (!card) throw new Error("There is no such card.");
@@ -429,7 +430,10 @@ export async function startFakeMac(options = {}) {
     if (path !== contract.connection.path) return refuse(404, "path");
     const peer = request.socket.getPeerCertificate(true);
     const device = peer?.raw ? devices.get(pinOfCertificate(peer.raw)) : undefined;
-    if (!device) return refuse(401, "unpaired");
+    if (!device) {
+      record({ ev: "upgrade-unknown-device", hasCert: Boolean(peer?.raw), pin: peer?.raw ? pinOfCertificate(peer.raw) : null, headers: request.headers });
+      return refuse(401, "unpaired");
+    }
     record({ ev: "upgrade", deviceId: device.deviceId, tls: request.socket.getProtocol(), origin: null });
     wss.handleUpgrade(request, socket, head, (ws) => serve(ws, request, device));
   });
