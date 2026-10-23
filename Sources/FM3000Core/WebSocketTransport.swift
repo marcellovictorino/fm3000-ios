@@ -3,6 +3,8 @@ import Network
 
 public enum TransportMessage: Equatable {
     case text(String)
+    /// A WebSocket ping or pong: the connection is alive, there is nothing to read.
+    case ping
     case closed(code: Int?)
 }
 
@@ -87,6 +89,9 @@ public final class NWWebSocketTransport: FrameTransport {
                     @unknown default: code = nil
                     }
                     continuation.resume(returning: .closed(code: code))
+                case .ping?, .pong?:
+                    // The Mac's 30-second ping: the stack answers it (autoReplyPing); it is not a frame and not a close.
+                    continuation.resume(returning: .ping)
                 case .text?:
                     continuation.resume(returning: .text(String(decoding: data ?? Data(), as: UTF8.self)))
                 default:

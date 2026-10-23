@@ -13,6 +13,7 @@ const { values } = parseArgs({
     port: { type: "string", default: "0" },
     invites: { type: "string", default: "1" },
     contract: { type: "string" },
+    "heartbeat-ms": { type: "string" },
   },
 });
 if (!values.state) {
@@ -24,6 +25,7 @@ const mac = await startFakeMac({
   host: values.host,
   port: Number(values.port),
   stateDir: values.state,
+  ...(values["heartbeat-ms"] ? { heartbeatMs: Number(values["heartbeat-ms"]) } : {}),
   ...(values.contract ? { contractPath: values.contract } : {}),
   log: (event) => out(event),
 });

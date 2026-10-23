@@ -12,7 +12,7 @@ WORK="$(mktemp -d)"
 trap 'rc=$?; if [ $rc -ne 0 ]; then echo "--- fake Mac log (tail) ---"; tail -8 "$WORK/fake.log" | cut -c1-300; fi; kill "${FAKE_PID:-0}" 2>/dev/null || true; rm -rf "$WORK"' EXIT
 export HOME="$WORK/home"; mkdir -p "$HOME"
 LOG="$WORK/fake.log"
-node fake-mac/server.mjs --state "$WORK/fake-state" --invites 4 >"$LOG" &
+node fake-mac/server.mjs --state "$WORK/fake-state" --invites 4 --heartbeat-ms 400 >"$LOG" &
 FAKE_PID=$!
 for _ in $(seq 1 100); do grep -q '"ev":"link","index":3' "$LOG" 2>/dev/null && break; sleep 0.1; done
 link() { grep '"ev":"link","index":'"$1" "$LOG" | node -e 'process.stdin.on("data",d=>process.stdout.write(JSON.parse(d).link))'; }

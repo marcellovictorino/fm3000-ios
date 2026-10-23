@@ -1,3 +1,4 @@
+import Combine
 import FM3000Core
 import FM3000Model
 import Foundation
@@ -81,6 +82,14 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         await model.refreshFeed()
         guard model.feed.contains(where: { $0.text == "You chose Merge." }) else { fail("feed missing the choice") }
         step("feed read")
+
+        // The fake Mac pings every 0.4 s here (30 s on a real one): a live connection answers and is never dropped.
+        var phases: [ConnectionPhase] = []
+        let watch = model.$phase.dropFirst().sink { phases.append($0) }
+        try? await Task.sleep(nanoseconds: 2_500_000_000)
+        watch.cancel()
+        guard phases.isEmpty else { fail("the connection flapped while the Mac pinged: \(phases)") }
+        step("stayed connected across the Mac's pings")
 
         if let fakePid {
             kill(fakePid, SIGUSR1)

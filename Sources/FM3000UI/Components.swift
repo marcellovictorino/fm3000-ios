@@ -24,22 +24,37 @@ extension View {
 /// Says where the connection stands, and the Mac's last refusal, above every screen.
 struct StatusBanner: View {
     @ObservedObject var model: AppModel
+    /// A dropped socket usually comes back within a second or two: the banner waits for a sustained outage.
+    @State private var outageShown = false
+    private static let outageGrace: UInt64 = 10_000_000_000
+
+    private var isDown: Bool {
+        switch model.phase { case .connecting, .offline: true; default: false }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             switch model.phase {
-            case .connecting:
+            case .connecting where outageShown:
                 banner("Connecting to your Mac…", tint: Theme.warn)
-            case .offline(let reason):
+            case .connecting:
+                EmptyView()
+            case .offline(let reason) where outageShown:
                 banner(reason, tint: Theme.danger) { Button("Retry") { model.start() }.buttonStyle(.bordered) }
             case .connected(_, .read):
                 banner("This app is older than your Mac's Infinitary. You can read, not change.", tint: Theme.warn)
-            case .connected, .unpaired:
+            case .connected, .unpaired, .offline:
                 EmptyView()
             }
             if let notice = model.notice {
                 banner(notice, tint: Theme.accent) { Button("OK") { model.notice = nil }.buttonStyle(.bordered) }
             }
+        }
+        .task(id: isDown) {
+            // Keyed on down or up, not the phase: retries flip connecting and offline, and must not restart the wait.
+            guard isDown else { outageShown = false; return }
+            try? await Task.sleep(nanoseconds: Self.outageGrace)
+            if !Task.isCancelled { outageShown = true }
         }
     }
 

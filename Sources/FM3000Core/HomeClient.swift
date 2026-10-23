@@ -48,6 +48,7 @@ public actor HomeClient {
                 let first = try await Self.within(helloTimeout) { try await transport.receive() }
                 switch first {
                 case .closed(let code): throw Self.closeError(code)
+                case .ping: throw WireError.notAFrame
                 case .text(let text):
                     guard case .welcome(let welcome) = try HomeFrame.parse(text) else { throw WireError.notAFrame }
                     self.transport = transport
@@ -114,6 +115,8 @@ public actor HomeClient {
                 case .closed(let code):
                     finish(Self.closeWire(code))
                     return
+                case .ping:
+                    continue
                 case .text(let text):
                     switch try HomeFrame.parse(text) {
                     case .result(let id, let value, let error):
