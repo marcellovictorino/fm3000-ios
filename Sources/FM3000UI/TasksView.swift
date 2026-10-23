@@ -9,6 +9,7 @@ struct BoardView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var picked: TasksLayout?
     @State private var path: [BoardTask] = []
+    @State private var projectId: String?
 
     private var layout: TasksLayout { tasksLayout(picked: picked ?? DebugLaunch.layout, landscape: verticalSizeClass == .compact) }
 
@@ -16,7 +17,11 @@ struct BoardView: View {
         NavigationStack(path: $path) {
             Group {
                 if let board = model.board {
-                    if layout == .board { KanbanView(board: board) } else { TaskListView(board: board) }
+                    VStack(spacing: 0) {
+                        ProjectPills(board: board, selected: $projectId)
+                        let shown = board.filtered(by: projectId)
+                        if layout == .board { KanbanView(board: shown) } else { TaskListView(board: shown) }
+                    }
                 } else {
                     Text("Loading the task board…").foregroundStyle(Theme.fg2).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -42,6 +47,41 @@ struct BoardView: View {
                 if DebugLaunch.has("-openTask"), path.isEmpty, let first = model.board?.tasks.first { path = [first] }
             }
         }
+    }
+}
+
+/// One pill per project with its task count beside it, plus All. Tapping one filters both the list and the board.
+private struct ProjectPills: View {
+    let board: Board
+    @Binding var selected: String?
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                pill("All", count: board.tasks.count, isOn: selected == nil) { selected = nil }
+                ForEach(board.projectPills, id: \.project.id) { entry in
+                    pill(entry.project.name, count: entry.count, isOn: selected == entry.project.id) { selected = entry.project.id }
+                }
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8)
+        }
+    }
+
+    private func pill(_ title: String, count: Int, isOn: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(title).font(.subheadline.weight(.medium)).lineLimit(1)
+                Text("\(count)").font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 6).padding(.vertical, 1)
+                    .background((isOn ? Theme.bg0 : Theme.fg3).opacity(isOn ? 0.25 : 0.2), in: Capsule())
+            }
+            .foregroundStyle(isOn ? Theme.bg0 : Theme.fg1)
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(isOn ? Theme.accent : Theme.bg2, in: Capsule())
+            .overlay(Capsule().stroke(isOn ? Color.clear : Theme.line.opacity(0.6), lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title), \(count) tasks")
     }
 }
 

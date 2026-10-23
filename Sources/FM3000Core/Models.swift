@@ -83,6 +83,7 @@ public struct BoardProject: Codable, Equatable, Identifiable {
 }
 
 public struct Board: Codable, Equatable {
+    public init(projects: [BoardProject], tasks: [BoardTask]) { self.projects = projects; self.tasks = tasks }
     public let projects: [BoardProject]
     public let tasks: [BoardTask]
 }
@@ -181,3 +182,16 @@ public extension CrewLine {
 }
 
 public struct SteerResult: Codable, Equatable { public let ok: Bool; public let text: String? }
+
+public extension Board {
+    /// The projects worth a pill (not archived), each with how many tasks it has on the board.
+    var projectPills: [(project: BoardProject, count: Int)] {
+        projects.filter { !$0.archived }.map { project in (project, tasks.filter { $0.projectId == project.id }.count) }
+    }
+
+    /// Only one project's tasks, or everything when none is picked. A picked project that is gone shows everything.
+    func filtered(by projectId: String?) -> Board {
+        guard let projectId, projects.contains(where: { $0.id == projectId }) else { return self }
+        return Board(projects: projects.filter { $0.id == projectId }, tasks: tasks.filter { $0.projectId == projectId })
+    }
+}

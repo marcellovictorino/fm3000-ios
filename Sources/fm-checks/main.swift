@@ -201,6 +201,18 @@ await check("chat: oldest first whatever order they arrive in, captain on the ri
     let message = try JSONDecoder().decode(ThreadMessage.self, from: Data(#"{"id":5,"cardId":"c","who":"firstmate","text":"hi","at":9,"answers":[]}"#.utf8))
     try expectEqual(message.chatItem.who, "firstmate")
 }
+await check("tasks: a project pill counts its tasks, and picking one filters the board, an unknown or no pick shows all") {
+    func task(_ id: String, _ project: String) -> BoardTask {
+        BoardTask(id: id, key: id, projectId: project, title: id, kind: "work", status: "open", activity: nil, assignee: nil, model: nil, waitingCardId: nil, updatedAt: 1)
+    }
+    func project(_ id: String, archived: Bool = false) throws -> BoardProject {
+        try JSONDecoder().decode(BoardProject.self, from: Data(#"{"id":"\#(id)","key":"K","name":"P\#(id)","archived":\#(archived),"counts":{"needsYou":0,"open":0,"active":0}}"#.utf8))
+    }
+    let board = Board(projects: [try project("a"), try project("b"), try project("old", archived: true)], tasks: [task("1", "a"), task("2", "a"), task("3", "b")])
+    try expectEqual(board.projectPills.map { "\($0.project.id):\($0.count)" }, ["a:2", "b:1"])
+    try expectEqual(board.filtered(by: "a").tasks.map(\.id), ["1", "2"])
+    try expectEqual(board.filtered(by: nil).tasks.count, 3); try expectEqual(board.filtered(by: "gone").tasks.count, 3)
+}
 await check("wire: hello says protocol 11.0.0, view, ios, arm64, and carries a cursor when it has one") {
     let hello = try JSONDecoder().decode(JSONValue.self, from: Data(HomeFrame.hello(cursor: Cursor(epoch: "e1", seq: 7)).utf8))
     guard case .object(let o) = hello else { throw Failed(description: "not an object") }
