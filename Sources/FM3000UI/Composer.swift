@@ -41,7 +41,10 @@ struct Composer: View {
                     .font(.body)
                     .padding(.horizontal, 14).padding(.vertical, 9)
                     .background(Theme.bg2, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Theme.line.opacity(0.6), lineWidth: 0.5))
+                    // The desktop's focus ring: a hairline and a soft accent glow, faint at rest and lit while typing.
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(focused ? Theme.accent.opacity(0.6) : Theme.accent.opacity(0.28), lineWidth: focused ? 1 : 0.75))
+                    .shadow(color: Theme.accent.opacity(focused ? 0.4 : 0.16), radius: focused ? 10 : 6)
+                    .animation(.easeOut(duration: 0.16), value: focused)
                 if hasContent {
                     Button(action: { focused = false; problem = nil; onSend() }) {
                         Image(systemName: sending ? "ellipsis" : "arrow.up")

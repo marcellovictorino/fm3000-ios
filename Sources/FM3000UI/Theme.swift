@@ -4,11 +4,11 @@ import SwiftUI
 /// The desktop app's dark look, from its design tokens (`--bg-0..3`, `--fg-1..3`, `--accent`, `--warn`, `--danger`
 /// in Infinitary's `design/tokens/colors.css`), so the phone has the same visual identity.
 enum Theme {
-    static let bg0 = Color(hex: 0x05070D)      // void: screen background
-    static let bg1 = Color(hex: 0x0A0E18)      // surface: bars, inputs
-    static let bg2 = Color(hex: 0x0F1424)      // raised: rows and cards
-    static let bg3 = Color(hex: 0x161C30)      // hover / selected
-    static let line = Color(red: 150 / 255, green: 180 / 255, blue: 1).opacity(0.2)
+    static let bg0 = Color(hex: 0x0B110F)      // void: screen background, the desktop's glass seen as dark grey with a green cast
+    static let bg1 = Color(hex: 0x121A17)      // surface: bars, inputs
+    static let bg2 = Color(hex: 0x18221E)      // raised: rows and cards
+    static let bg3 = Color(hex: 0x202C27)      // hover / selected
+    static let line = Color(red: 170 / 255, green: 215 / 255, blue: 195 / 255).opacity(0.2)
     static let fg1 = Color(hex: 0xE9EEF8)      // primary text
     static let fg2 = Color(hex: 0x98A4BD)      // secondary text
     static let fg3 = Color(hex: 0x7A86A0)      // tertiary text
