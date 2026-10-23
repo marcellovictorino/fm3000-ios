@@ -4,9 +4,10 @@ import SwiftUI
 
 struct CardsView: View {
     @ObservedObject var model: AppModel
+    @State private var path: [String] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if model.cards.isEmpty {
                     VStack(spacing: 8) {
@@ -30,6 +31,9 @@ struct CardsView: View {
             }
             .safeAreaInset(edge: .top, spacing: 0) { StatusBanner(model: model) }
             .navigationTitle("Cards").iOSInlineTitle()
+            .onChange(of: model.cards.count) { _ in
+                if DebugLaunch.has("-openCard"), path.isEmpty, let first = model.cards.first { path = [first.id] }
+            }
             .navigationDestination(for: String.self) { id in
                 if let card = model.cards.first(where: { $0.id == id }) { CardDetailView(model: model, card: card) }
                 else { Text("This card was answered.").foregroundStyle(Theme.fg2) }
@@ -38,11 +42,11 @@ struct CardsView: View {
     }
 }
 
+/// The card on its own: its message and actions, then one row that opens the thread. The thread has its own screen.
 struct CardDetailView: View {
     @ObservedObject var model: AppModel
     let card: Card
-    @State private var reply = ""
-    @State private var sending = false
+    @State private var showThread = DebugLaunch.has("-openThread")
 
     var body: some View {
         ScrollView {
@@ -62,32 +66,51 @@ struct CardDetailView: View {
                         }
                     }
                 }
-                Divider()
-                ForEach(model.threads[card.id] ?? []) { message in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(message.who == "captain" ? "You" : message.who.capitalized).font(.caption).foregroundStyle(Theme.fg2)
-                        Text(message.text)
+                NavigationLink {
+                    CardThreadView(model: model, card: card)
+                } label: {
+                    HStack {
+                        Image(systemName: "bubble.left.and.bubble.right")
+                        Text(repliesLabel((model.threads[card.id] ?? []).count))
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(Theme.fg3)
                     }
-                    .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(message.who == "captain" ? Theme.accent.opacity(0.14) : Theme.bg2, in: RoundedRectangle(cornerRadius: 10))
+                    .padding(14)
+                    .background(Theme.bg2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
-                HStack(alignment: .bottom) {
-                    TextField("Reply", text: $reply, axis: .vertical).lineLimit(1...5).textFieldStyle(.roundedBorder)
-                    Button("Send") {
-                        sending = true
-                        Task {
-                            if await model.reply(reply, to: card) { reply = "" }
-                            sending = false
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending || !model.canChange)
-                }
+                .buttonStyle(.plain)
             }
             .padding()
         }
         .background(Theme.bg0.ignoresSafeArea())
         .navigationTitle(card.title)
+        .iOSInlineTitle()
+        .navigationDestination(isPresented: $showThread) { CardThreadView(model: model, card: card) }
+        .task { await model.loadThread(of: card) }
+    }
+}
+
+/// A card's thread as a chat: history scrolls up and down, the newest at the bottom, the composer pinned below.
+struct CardThreadView: View {
+    @ObservedObject var model: AppModel
+    let card: Card
+    @State private var reply = ""
+    @State private var sending = false
+    @State private var attachments: [Attachment] = []
+
+    var body: some View {
+        ChatList(items: (model.threads[card.id] ?? []).map(\.chatItem), empty: "No replies yet. Write the first one below.")
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Composer(placeholder: "Reply", text: $reply, attachments: $attachments, enabled: model.canChange, sending: sending) {
+                let words = reply, files = attachments
+                sending = true
+                Task {
+                    if await model.reply(words, to: card, attachments: files) { reply = ""; attachments = [] }
+                    sending = false
+                }
+            }
+        }
+        .navigationTitle("Thread")
         .iOSInlineTitle()
         .task { await model.loadThread(of: card) }
     }

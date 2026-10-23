@@ -1,3 +1,4 @@
+import FM3000Core
 import SwiftUI
 
 /// The desktop app's dark look, from its design tokens (`--bg-0..3`, `--fg-1..3`, `--accent`, `--warn`, `--danger`
@@ -62,5 +63,35 @@ extension Theme {
         UITabBar.appearance().standardAppearance = tab
         UITabBar.appearance().scrollEdgeAppearance = tab
         #endif
+    }
+}
+
+/// Simulator runs only: launch arguments that open a screen so a script can photograph it (`-startTab 1`,
+/// `-openCard`, `-openThread`). A release build ignores them.
+enum DebugLaunch {
+    static func has(_ flag: String) -> Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains(flag)
+        #else
+        return false
+        #endif
+    }
+    static var tab: Int {
+        #if DEBUG
+        let a = ProcessInfo.processInfo.arguments
+        if let i = a.firstIndex(of: "-startTab"), i + 1 < a.count, let n = Int(a[i + 1]) { return n }
+        #endif
+        return 0
+    }
+}
+
+extension DebugLaunch {
+    /// `-layout board` opens Tasks as the board without rotating the simulator.
+    static var layout: TasksLayout? {
+        #if DEBUG
+        let a = ProcessInfo.processInfo.arguments
+        if let i = a.firstIndex(of: "-layout"), i + 1 < a.count { return a[i + 1] == "board" ? .board : .list }
+        #endif
+        return nil
     }
 }

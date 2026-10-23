@@ -6,68 +6,27 @@ import SwiftUI
 struct MessageView: View {
     @ObservedObject var model: AppModel
     @State private var text = ""
-    @State private var sent: [String] = []
     @State private var sending = false
+    @State private var attachments: [Attachment] = []
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 StatusBanner(model: model)
-                List {
-                    if sent.isEmpty {
-                        Text("Say something to Firstmate. Its answer arrives as a card.").foregroundStyle(Theme.fg2).listRowBackground(Color.clear)
+                ChatList(items: model.chat, empty: "Say something to Firstmate. Its answer shows here.")
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Composer(placeholder: "Message Firstmate", text: $text, attachments: $attachments, enabled: model.canChange, sending: sending) {
+                    let words = text, files = attachments
+                    sending = true
+                    Task {
+                        if await model.send(words, attachments: files) { text = ""; attachments = [] }
+                        sending = false
                     }
-                    ForEach(Array(sent.enumerated()), id: \.offset) { _, line in Label(line, systemImage: "paperplane").listRowBackground(Theme.bg2) }
                 }
-                .infinitaryScreen()
-                HStack(alignment: .bottom) {
-                    TextField("Message Firstmate", text: $text, axis: .vertical).lineLimit(1...6).textFieldStyle(.roundedBorder)
-                    Button("Send") {
-                        let words = text
-                        sending = true
-                        Task {
-                            if await model.send(words) { sent.insert(words, at: 0); text = "" }
-                            sending = false
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending || !model.canChange)
-                }
-                .padding()
             }
             .navigationTitle("Message")
             .iOSInlineTitle()
-        }
-    }
-}
-
-struct BoardView: View {
-    @ObservedObject var model: AppModel
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if let board = model.board {
-                    ForEach(board.projects.filter { !$0.archived }) { project in
-                        Section("\(project.name) · \(project.counts.needsYou) need you") {
-                            ForEach(board.tasks.filter { $0.projectId == project.id && ($0.status == "open" || $0.status == "active") }) { task in
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("\(task.key)  \(task.title)").font(.headline)
-                                    Text([task.status, task.activity, task.assignee].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(Theme.fg2)
-                                }
-                                .infinitaryRow()
-                            }
-                        }
-                    }
-                } else {
-                    Text("Loading the task board…").foregroundStyle(Theme.fg2).listRowBackground(Color.clear)
-                }
-            }
-            .infinitaryScreen()
-            .safeAreaInset(edge: .top, spacing: 0) { StatusBanner(model: model) }
-            .navigationTitle("Tasks").iOSInlineTitle()
-            .refreshable { await model.refreshBoard() }
-            .task { await model.refreshBoard() }
         }
     }
 }
@@ -88,6 +47,9 @@ struct FeedView: View {
             .safeAreaInset(edge: .top, spacing: 0) { StatusBanner(model: model) }
             .navigationTitle("Feed").iOSInlineTitle()
             .refreshable { await model.refreshFeed() }
+            .onChange(of: model.phase) { phase in
+                if case .connected = phase { Task { await model.refreshFeed() } }
+            }
             .task { await model.refreshFeed() }
         }
     }
@@ -129,20 +91,22 @@ struct MacView: View {
 
 public struct RootView: View {
     @ObservedObject var model: AppModel
+    @State private var tab = DebugLaunch.tab
     public init(model: AppModel) { self.model = model; Theme.applyBars() }
 
     public var body: some View {
         if model.phase == .unpaired {
             PairView(model: model).infinitaryRoot()
         } else {
-            TabView {
-                CardsView(model: model).tabItem { Label("Cards", systemImage: "rectangle.stack") }.badge(model.cards.count)
-                MessageView(model: model).tabItem { Label("Message", systemImage: "bubble.left") }
-                BoardView(model: model).tabItem { Label("Tasks", systemImage: "checklist") }
-                FeedView(model: model).tabItem { Label("Feed", systemImage: "list.bullet") }
-                MacView(model: model).tabItem { Label("Mac", systemImage: "desktopcomputer") }
+            TabView(selection: $tab) {
+                CardsView(model: model).tag(0).tabItem { Label("Cards", systemImage: "rectangle.stack") }.badge(model.cards.count)
+                MessageView(model: model).tag(1).tabItem { Label("Message", systemImage: "bubble.left") }
+                BoardView(model: model).tag(2).tabItem { Label("Tasks", systemImage: "checklist") }
+                FeedView(model: model).tag(3).tabItem { Label("Feed", systemImage: "list.bullet") }
+                MacView(model: model).tag(4).tabItem { Label("Mac", systemImage: "desktopcomputer") }
             }
             .infinitaryRoot()
+            .onChange(of: tab) { _ in dismissKeyboard() }
         }
     }
 }
