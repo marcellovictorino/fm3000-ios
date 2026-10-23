@@ -17,11 +17,11 @@ struct PairView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("On your Mac, open Firstmate 3000 > Settings > Devices, choose A phone (or make a link for another computer), copy it, then paste it here. The link works once, for ten minutes. Tailscale must be on, on this phone and on the Mac.")
+                    Text("On your Mac, open Infinitary > Settings > Devices, choose A phone (or make a link for another computer), copy it, then paste it here. The link works once, for ten minutes. Tailscale must be on, on this phone and on the Mac.")
                         .font(.callout)
                 }
                 Section("Link") {
-                    TextField("firstmate3000://join?…", text: $text, axis: .vertical).lineLimit(3...6).plainTextInput()
+                    TextField("infinitary://join?…", text: $text, axis: .vertical).lineLimit(3...6).plainTextInput()
                     #if canImport(UIKit)
                     Button("Paste from clipboard") { text = UIPasteboard.general.string ?? text }
                     #endif
