@@ -12,7 +12,7 @@ if xcrun simctl list runtimes 2>/dev/null | grep -q "iOS"; then ok "an iOS simul
 if command -v xcodegen >/dev/null 2>&1; then ok "xcodegen is installed"; else no "brew install xcodegen"; fi
 command -v node >/dev/null 2>&1 && ok "node is installed (for the fake Mac)" || no "Install node (the fake Mac and its tests need it)"
 echo "Phone"
-if xcrun devicectl list devices 2>/dev/null | grep -qi "connected\|available"; then ok "an iPhone is connected"; else no "Connect your iPhone by cable, unlock it and tap Trust (Developer Mode: Settings > Privacy & Security)"; fi
+if xcrun devicectl list devices 2>/dev/null | grep -i "physical" | grep -qi "connected\|available"; then ok "an iPhone is connected"; else no "Connect your iPhone by cable, unlock it and tap Trust (Developer Mode: Settings > Privacy & Security)"; fi
 echo "Tailscale"
 if command -v tailscale >/dev/null 2>&1 && tailscale status >/dev/null 2>&1; then ok "Tailscale is running on this Mac: $(tailscale ip -4 2>/dev/null | head -1)"; else no "Start Tailscale on this Mac"; fi
 exit $todo
