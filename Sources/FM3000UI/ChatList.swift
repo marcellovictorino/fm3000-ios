@@ -16,22 +16,34 @@ struct ChatList: View {
             ScrollView {
                 LazyVStack(spacing: 10) {
                     if items.isEmpty { Text(empty).font(.footnote).foregroundStyle(Theme.fg2).padding(.top, 24) }
-                    ForEach(ordered) { item in bubble(item).id(item.id) }
+                    ForEach(ordered) { item in bubble(item) }
+                    Color.clear.frame(height: 1).id(Self.end)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 10)
             }
             .scrollDismissesKeyboard(.interactively)
             .dismissKeyboardOnTap()
             .onChange(of: ordered.last?.id) { _ in scrollToEnd(proxy, animated: true) }
+            .onChange(of: ordered.count) { _ in scrollToEnd(proxy, animated: true) }
+            #if os(iOS)
+            // The keyboard shrinks the list: keep the newest message in view as it opens.
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in scrollToEnd(proxy, animated: true) }
+            #endif
             .onAppear { scrollToEnd(proxy, animated: false) }
         }
         .background(Theme.bg0.ignoresSafeArea())
     }
 
+    private static let end = "chat-end"
+
+    /// Scrolls once now and once after the new row has been laid out, which a lazy stack needs.
     private func scrollToEnd(_ proxy: ScrollViewProxy, animated: Bool) {
-        guard let last = ordered.last else { return }
-        if animated { withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(last.id, anchor: .bottom) } }
-        else { proxy.scrollTo(last.id, anchor: .bottom) }
+        func go() {
+            if animated { withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(Self.end, anchor: .bottom) } }
+            else { proxy.scrollTo(Self.end, anchor: .bottom) }
+        }
+        go()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { go() }
     }
 
     private func bubble(_ item: ChatItem) -> some View {
