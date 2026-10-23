@@ -210,7 +210,7 @@ struct TaskDetailView: View {
         section("Waiting on you") {
             VStack(alignment: .leading, spacing: 10) {
                 Text(card.title).font(.headline)
-                Text(HTMLText.plain(card.body)).textSelection(.enabled)
+                CardBody(html: card.body)
                 ForEach(card.actions) { action in
                     Button { Task { await model.choose(action, on: card) } } label: { Text(action.label).frame(maxWidth: .infinity) }
                         .buttonStyle(.borderedProminent)

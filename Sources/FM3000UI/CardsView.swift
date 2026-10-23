@@ -52,7 +52,7 @@ struct CardDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text(card.meta).font(.caption).foregroundStyle(Theme.fg2)
-                Text(HTMLText.plain(card.body)).textSelection(.enabled)
+                CardBody(html: card.body)
                 if card.status == "streaming" { ProgressView("Still being written…") }
                 if !card.actions.isEmpty {
                     VStack(spacing: 8) {

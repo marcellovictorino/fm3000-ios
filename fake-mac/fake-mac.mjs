@@ -57,7 +57,7 @@ function fixtureCards(now) {
     base(
       "card-merge-1",
       "Merge the settings page change?",
-      "<p>The <strong>settings page</strong> change is green and ready.</p><p>It touches <code>src/settings.ts</code> only.</p><ul><li>Checks passed</li><li>Risk: low</li></ul>",
+      "<p>The <strong>settings page</strong> change is green and ready.</p><p>It touches <code>src/settings.ts</code> only.</p><ul><li>Checks passed</li><li>Risk: low</li></ul><h2>What changed</h2><p>One screen, <mark>no new dependency</mark>.</p><figure aria-label=\"flow\"><svg viewBox=\"0 0 300 60\" width=\"100%\"><rect x=\"4\" y=\"14\" width=\"80\" height=\"32\" rx=\"8\" fill=\"none\" stroke=\"var(--line-2)\"/><text x=\"44\" y=\"34\" text-anchor=\"middle\">Branch</text><path d=\"M84 30h50\" stroke=\"var(--accent)\" stroke-width=\"2\"/><rect x=\"134\" y=\"14\" width=\"80\" height=\"32\" rx=\"8\" fill=\"var(--accent-dim)\" stroke=\"var(--accent)\"/><text x=\"174\" y=\"34\" text-anchor=\"middle\" fill=\"var(--fg-1)\">Checks</text><path d=\"M214 30h40\" stroke=\"var(--ok)\" stroke-width=\"2\"/><circle cx=\"270\" cy=\"30\" r=\"12\" fill=\"var(--ok-dim)\" stroke=\"var(--ok)\"/></svg><figcaption>Where it stands</figcaption></figure><table><tr><th>Check</th><th>Result</th></tr><tr><td>Tests</td><td>Passed</td></tr></table>",
       [
         { id: "merge", label: "Merge", variant: "primary", default: true, effect: { kind: "settle", mode: "merge" } },
         { id: "later", label: "Not now", variant: "ghost" },
