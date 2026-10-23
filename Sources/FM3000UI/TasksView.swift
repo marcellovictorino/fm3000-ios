@@ -26,7 +26,7 @@ struct BoardView: View {
                     Text("Loading the task board…").foregroundStyle(Theme.fg2).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .background(Theme.bg0.ignoresSafeArea())
+            .background(Theme.backdrop)
             .safeAreaInset(edge: .top, spacing: 0) { StatusBanner(model: model) }
             .navigationTitle("Tasks").iOSInlineTitle()
             .toolbar {
@@ -186,7 +186,7 @@ struct TaskDetailView: View {
             }
             .padding()
         }
-        .background(Theme.bg0.ignoresSafeArea())
+        .background(Theme.backdrop)
         .navigationTitle(task.key).iOSInlineTitle()
         .refreshable { await load() }
         .task { await load() }

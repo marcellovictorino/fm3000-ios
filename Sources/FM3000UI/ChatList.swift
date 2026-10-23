@@ -35,7 +35,7 @@ struct ChatList: View {
             #endif
             .onAppear { scrollToEnd(proxy, animated: false) }
         }
-        .background(Theme.bg0.ignoresSafeArea())
+        .background(Theme.backdrop)
     }
 
     private static let end = "chat-end"

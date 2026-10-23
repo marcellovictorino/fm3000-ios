@@ -4,14 +4,23 @@ import SwiftUI
 /// The desktop app's dark look, from its design tokens (`--bg-0..3`, `--fg-1..3`, `--accent`, `--warn`, `--danger`
 /// in Infinitary's `design/tokens/colors.css`), so the phone has the same visual identity.
 enum Theme {
-    static let bg0 = Color(hex: 0x0B110F)      // void: screen background, the desktop's glass seen as dark grey with a green cast
-    static let bg1 = Color(hex: 0x121A17)      // surface: bars, inputs
-    static let bg2 = Color(hex: 0x18221E)      // raised: rows and cards
-    static let bg3 = Color(hex: 0x202C27)      // hover / selected
-    static let line = Color(red: 170 / 255, green: 215 / 255, blue: 195 / 255).opacity(0.2)
+    static let bg0 = Color(hex: 0x05070D)      // void: text on bright fills
+    static let bg1 = Color(hex: 0x0A0E18)      // surface: bars, inputs
+    static let bg2 = Color(hex: 0x0F1424)      // raised: rows and cards
+    static let bg3 = Color(hex: 0x161C30)      // hover / selected
+    static let line = Color(red: 150 / 255, green: 180 / 255, blue: 1).opacity(0.2)
     static let fg1 = Color(hex: 0xE9EEF8)      // primary text
     static let fg2 = Color(hex: 0x98A4BD)      // secondary text
     static let fg3 = Color(hex: 0x7A86A0)      // tertiary text
+    /// The screen behind the navy surfaces: the desktop's glass window, a grey with a green-teal cast that
+    /// brightens toward one corner.
+    static var backdrop: some View {
+        ZStack {
+            LinearGradient(colors: [Color(hex: 0x1D2624), Color(hex: 0x151B1A), Color(hex: 0x101514)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            RadialGradient(colors: [Color(hex: 0x2E4A44).opacity(0.5), .clear], center: .topLeading, startRadius: 0, endRadius: 520)
+        }
+        .ignoresSafeArea()
+    }
     static let accent = Color(hex: 0x7FDCFF)
     static let accentStrong = Color(hex: 0x38AAE6)
     static let warn = Color(hex: 0xFFA257)
@@ -28,7 +37,7 @@ extension View {
     /// A screen in the Infinitary look: dark void behind, raised rows, hairline lines, cyan accent.
     func infinitaryScreen() -> some View {
         self.scrollContentBackground(.hidden)
-            .background(Theme.bg0.ignoresSafeArea())
+            .background(Theme.backdrop)
             .listRowBackgroundCompat()
     }
 
@@ -42,7 +51,7 @@ extension View {
         self.preferredColorScheme(.dark)
             .tint(Theme.accent)
             
-            .background(Theme.bg0.ignoresSafeArea())
+            .background(Theme.backdrop)
             .onAppear(perform: Theme.applyBars)
     }
 }

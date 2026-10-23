@@ -82,7 +82,7 @@ struct CardDetailView: View {
             }
             .padding()
         }
-        .background(Theme.bg0.ignoresSafeArea())
+        .background(Theme.backdrop)
         .navigationTitle(card.title)
         .iOSInlineTitle()
         .navigationDestination(isPresented: $showThread) { CardThreadView(model: model, card: card) }
