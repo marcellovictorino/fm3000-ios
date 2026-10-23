@@ -180,9 +180,11 @@ struct TaskDetailView: View {
                 if let delivery = detail?.delivery, delivery.prNumber != nil || delivery.ci != nil { deliverySection(delivery) }
                 if let text = detail?.outcome ?? detail?.problem, !text.isEmpty { section(detail?.problem != nil ? "Problem" : "Outcome") { Text(text) } }
                 activitySection
-                NavigationLink(isActive: $showCrew) { CrewThreadView(model: model, task: task, log: $log) } label: {
+                Button { showCrew = true } label: {
                     rowLabel("bubble.left.and.bubble.right", "Thread with the crewmate")
-                }.buttonStyle(.plain)
+                }
+                .buttonStyle(.plain)
+                .navigationDestination(isPresented: $showCrew) { CrewThreadView(model: model, task: task, log: $log) }
             }
             .padding()
         }

@@ -177,7 +177,7 @@ public final class AppModel: ObservableObject {
     }
 
     private func loadLastTurn() async {
-        guard chat.isEmpty, let turn: LastTurn? = try? await ask("inf:conversation:last-turn"), let turn else { return }
+        guard chat.isEmpty, let turn = try? await ask("inf:conversation:last-turn") as LastTurn? else { return }
         let now = Date().timeIntervalSince1970 * 1000
         chat = [ChatItem(id: "last-you", who: "captain", text: turn.you, at: now - 1)]
         if let reply = turn.reply { chat.append(ChatItem(id: "last-reply", who: "firstmate", text: reply.text, at: now, problem: reply.problem ?? false)) }
@@ -210,7 +210,7 @@ public final class AppModel: ObservableObject {
 
     private func ask<T: Decodable>(_ channel: String, _ args: [JSONValue] = []) async throws -> T {
         guard let client else { throw WireError.closed(code: nil, reason: nil) }
-        return try await client.invoke(channel, args, as: T.self)
+        return try await client.invoke(channel, args).decoded(T.self)
     }
 
     // MARK: What the person does
