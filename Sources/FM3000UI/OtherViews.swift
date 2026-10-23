@@ -13,7 +13,7 @@ struct MessageView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 StatusBanner(model: model)
-                ChatList(items: model.chat, empty: "Say something to Firstmate. Its answer shows here.")
+                ChatList(items: model.chat, empty: "Say something to Firstmate. Its answer shows here.", typing: model.awaitingReply || DebugLaunch.has("-typing"))
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 Composer(placeholder: "Message Firstmate", text: $text, attachments: $attachments, enabled: model.canChange, sending: sending) {
@@ -35,7 +35,7 @@ struct FeedView: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        NavigationStack {
+        Group {
             List(model.feed.reversed()) { line in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(line.text)
@@ -60,7 +60,7 @@ struct MacView: View {
     @State private var confirming = false
 
     var body: some View {
-        NavigationStack {
+        Group {
             Form {
                 Section("Connection") {
                     switch model.phase {
@@ -89,6 +89,30 @@ struct MacView: View {
     }
 }
 
+/// Feed and Mac, behind one "Others" tab so the bottom bar keeps room for the screens used most.
+struct OthersView: View {
+    @ObservedObject var model: AppModel
+    @State private var path: [Page] = DebugLaunch.has("-openOthers") ? [.mac] : []
+    enum Page: Hashable { case feed, mac }
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            List {
+                NavigationLink(value: Page.feed) { Label("Activity feed", systemImage: "list.bullet") }.infinitaryRow()
+                NavigationLink(value: Page.mac) { Label("Mac connection", systemImage: "desktopcomputer") }.infinitaryRow()
+            }
+            .infinitaryScreen()
+            .navigationTitle("Others").iOSInlineTitle()
+            .navigationDestination(for: Page.self) { page in
+                switch page {
+                case .feed: FeedView(model: model)
+                case .mac: MacView(model: model)
+                }
+            }
+        }
+    }
+}
+
 public struct RootView: View {
     @ObservedObject var model: AppModel
     @State private var tab = DebugLaunch.tab
@@ -102,8 +126,7 @@ public struct RootView: View {
                 CardsView(model: model).tag(0).tabItem { Label("Cards", systemImage: "rectangle.stack") }.badge(model.cards.count)
                 MessageView(model: model).tag(1).tabItem { Label("Message", systemImage: "bubble.left") }
                 BoardView(model: model).tag(2).tabItem { Label("Tasks", systemImage: "checklist") }
-                FeedView(model: model).tag(3).tabItem { Label("Feed", systemImage: "list.bullet") }
-                MacView(model: model).tag(4).tabItem { Label("Mac", systemImage: "desktopcomputer") }
+                OthersView(model: model).tag(3).tabItem { Label("Others", systemImage: "ellipsis") }
             }
             .infinitaryRoot()
             .onChange(of: tab) { _ in dismissKeyboard() }
