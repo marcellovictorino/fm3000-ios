@@ -71,3 +71,7 @@ Only if you later want builds that do not expire after 7 days or want to share t
 - The phone's private key is made in, and never leaves, the iOS Keychain. The Mac keeps only its pin.
 - Tests and the probe use a scratch keychain file in a temporary folder, never your keychains. No Apple sign-in, no upload, nothing pushed.
 - The debug-only `-pairLink` launch argument (simulator runs) is compiled out of release builds.
+
+## Licence
+
+MIT, see `LICENSE`. `Sources/FM3000UI/CardStyle.swift` is generated from Infinitary's design styles.
