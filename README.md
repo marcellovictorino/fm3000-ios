@@ -2,7 +2,7 @@
 
 A single-user iPhone app that attaches to your running Firstmate 3000 over Tailscale. It shows the open cards, lets you choose a card's action, reply under it, send Firstmate a message, and read the task board and feed. It is a paired device of your Mac, as another Mac's window is: no relay, no account, no hosted service.
 
-Built against Firstmate 3000 0.1.30, protocol 8.3.0 (`docs/contract.json` inside the app bundle). The Mac gives full access to its own protocol major and the one before; after a major Firstmate update the app drops to read-only until it is rebuilt.
+Built against Infinitary (the renamed Firstmate 3000), protocol 11.0.0 (`docs/contract.json` inside the app bundle). The Mac now gives full access only to its own protocol major (`majorsBehind` is 0): after a major Infinitary update the app drops to read-only until it is updated to the new contract.
 
 ## What is here
 
@@ -30,7 +30,7 @@ A free Apple ID gives a "Personal Team". Xcode signs the app with it and install
 
 ### Pair it with your Mac
 
-1. On the Mac: Firstmate 3000 > Settings > Devices > make a link for another computer. The link works once and for ten minutes.
+1. On the Mac: Infinitary > Settings > Devices > **A phone**. It shows a QR code and a Copy link button. Scan the code with the iPhone camera (it opens this app, which shows the address for you to confirm) or paste the copied link. The link works once and for ten minutes.
 2. Copy it and get it to the phone (Universal Clipboard works: copy on the Mac, paste on the phone; or AirDrop or Notes).
 3. In the app: paste the link, "Review and pair", read the address it names, Pair. The app checks the Mac's key against the link's pin before it sends anything, then joins.
 4. The link names addresses the Mac listens on. Reaching the Mac over Tailscale needs one of them to be the Mac's Tailscale address (`tailscale ip -4`, a `100.x.y.z` address). If the pairing says it could not reach the Mac, edit the host part of `at=` in the pasted link to that address and try again with a fresh link.

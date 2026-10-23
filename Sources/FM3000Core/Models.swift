@@ -37,7 +37,7 @@ public struct CardThread: Codable, Equatable {
     public let messages: [ThreadMessage]
 }
 
-/// What `fm:cards:act` answers: the effect only a Mac window can show, or the Mac's refusal.
+/// What `inf:cards:act` answers: the effect only a Mac window can show, or the Mac's refusal.
 public struct ActResult: Codable, Equatable {
     public struct Effect: Codable, Equatable { public let kind: String; public let target: String? }
     public let effect: Effect?

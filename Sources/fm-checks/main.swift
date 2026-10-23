@@ -158,18 +158,18 @@ await check("pair: the grant keeps the address that answered first and the other
 
 // MARK: Wire frames (spec: docs/connection.md, docs/contract.json connection)
 
-await check("wire: hello says protocol 8.3.0, view, ios, arm64, and carries a cursor when it has one") {
+await check("wire: hello says protocol 11.0.0, view, ios, arm64, and carries a cursor when it has one") {
     let hello = try JSONDecoder().decode(JSONValue.self, from: Data(HomeFrame.hello(cursor: Cursor(epoch: "e1", seq: 7)).utf8))
     guard case .object(let o) = hello else { throw Failed(description: "not an object") }
-    try expectEqual(o["t"], .string("hello")); try expectEqual(o["protocolVersion"], .string("8.3.0"))
+    try expectEqual(o["t"], .string("hello")); try expectEqual(o["protocolVersion"], .string("11.0.0"))
     try expectEqual(o["as"], .string("view")); try expectEqual(o["system"], .string("ios")); try expectEqual(o["chip"], .string("arm64"))
     try expectEqual(o["cursor"], .object(["epoch": .string("e1"), "seq": .number(7)]))
     try expect(!HomeFrame.hello(cursor: nil).contains("cursor"))
 }
 await check("wire: reads welcome, push and results, ignoring fields it does not know") {
-    let welcome = try HomeFrame.parse(#"{"t":"welcome","protocolVersion":"8.3.0","epoch":"abc","seq":4,"catchUp":"reload","access":"read","name":"MacBook","spellings":["fm"],"future":1}"#)
-    try expectEqual(welcome, .welcome(Welcome(protocolVersion: "8.3.0", epoch: "abc", seq: 4, catchUp: "reload", access: .read, name: "MacBook")))
-    try expectEqual(try HomeFrame.parse(#"{"t":"push","seq":5,"channel":"fm:cards","payload":[]}"#), .push(Push(seq: 5, channel: "fm:cards", payload: .array([]))))
+    let welcome = try HomeFrame.parse(#"{"t":"welcome","protocolVersion":"11.0.0","epoch":"abc","seq":4,"catchUp":"reload","access":"read","name":"MacBook","spellings":["fm"],"future":1}"#)
+    try expectEqual(welcome, .welcome(Welcome(protocolVersion: "11.0.0", epoch: "abc", seq: 4, catchUp: "reload", access: .read, name: "MacBook")))
+    try expectEqual(try HomeFrame.parse(#"{"t":"push","seq":5,"channel":"inf:cards","payload":[]}"#), .push(Push(seq: 5, channel: "inf:cards", payload: .array([]))))
     try expectEqual(try HomeFrame.parse(#"{"t":"result","id":3,"ok":true,"value":{"ok":true}}"#), .result(id: 3, value: .object(["ok": .bool(true)]), error: nil))
     try expectEqual(try HomeFrame.parse(#"{"t":"result","id":4,"ok":false,"error":"There is no such card."}"#), .result(id: 4, value: nil, error: "There is no such card."))
     try expectEqual(try HomeFrame.parse(#"{"t":"something-later"}"#), .ignored)
@@ -212,7 +212,7 @@ final class ScriptedTransport: FrameTransport, @unchecked Sendable {
     }
     func close() {}
 }
-let welcomeText = #"{"t":"welcome","protocolVersion":"8.3.0","epoch":"E","seq":10,"catchUp":"reload","access":"full","name":"Mac"}"#
+let welcomeText = #"{"t":"welcome","protocolVersion":"11.0.0","epoch":"E","seq":10,"catchUp":"reload","access":"full","name":"Mac"}"#
 let addr = DialAddress(host: "127.0.0.1", port: 1)
 
 func nextEvent(_ client: HomeClient) async -> ClientEvent? {
@@ -225,7 +225,7 @@ await check("client: answers match their request by id, whatever order the Mac f
     transport.feed(.text(welcomeText))
     let client = HomeClient(addresses: [addr]) { _ in transport }
     _ = try await client.connect()
-    async let first = client.invoke("fm:a"), second = client.invoke("fm:b")
+    async let first = client.invoke("inf:a"), second = client.invoke("inf:b")
     while transport.sent.count < 3 { try await Task.sleep(nanoseconds: 10_000_000) }
     transport.feed(.text(#"{"t":"result","id":2,"ok":true,"value":"B"}"#))
     transport.feed(.text(#"{"t":"result","id":1,"ok":true,"value":"A"}"#))
@@ -238,14 +238,14 @@ await check("client: the Mac's refusal comes back as its own words") {
     let client = HomeClient(addresses: [addr]) { _ in transport }
     _ = try await client.connect()
     transport.onSend = { text in if text.contains("\"id\":1") { transport.feed(.text(#"{"t":"result","id":1,"ok":false,"error":"There is no such card."}"#)) } }
-    do { _ = try await client.invoke("fm:cards:act"); throw Failed(description: "no failure") }
+    do { _ = try await client.invoke("inf:cards:act"); throw Failed(description: "no failure") }
     catch let failure as InvokeFailure { try expectEqual(failure.reason, "There is no such card.") }
 }
 await check("client: a push already seen after a replay is dropped, and the cursor follows the newest") {
     let transport = ScriptedTransport()
-    transport.feed(.text(#"{"t":"welcome","protocolVersion":"8.3.0","epoch":"E","seq":10,"catchUp":"replay","access":"full"}"#))
-    transport.feed(.text(#"{"t":"push","seq":9,"channel":"fm:cards","payload":1}"#))
-    transport.feed(.text(#"{"t":"push","seq":11,"channel":"fm:cards","payload":2}"#))
+    transport.feed(.text(#"{"t":"welcome","protocolVersion":"11.0.0","epoch":"E","seq":10,"catchUp":"replay","access":"full"}"#))
+    transport.feed(.text(#"{"t":"push","seq":9,"channel":"inf:cards","payload":1}"#))
+    transport.feed(.text(#"{"t":"push","seq":11,"channel":"inf:cards","payload":2}"#))
     let client = HomeClient(addresses: [addr], cursor: Cursor(epoch: "E", seq: 10)) { _ in transport }
     _ = try await client.connect()
     guard case .push(let push)? = await nextEvent(client) else { throw Failed(description: "no push") }
@@ -255,7 +255,7 @@ await check("client: a push already seen after a replay is dropped, and the curs
 }
 await check("client: a new epoch is a reload, so the cursor restarts at the welcome's number") {
     let transport = ScriptedTransport()
-    transport.feed(.text(#"{"t":"welcome","protocolVersion":"8.3.0","epoch":"NEW","seq":3,"catchUp":"reload","access":"full"}"#))
+    transport.feed(.text(#"{"t":"welcome","protocolVersion":"11.0.0","epoch":"NEW","seq":3,"catchUp":"reload","access":"full"}"#))
     let client = HomeClient(addresses: [addr], cursor: Cursor(epoch: "OLD", seq: 99)) { _ in transport }
     _ = try await client.connect()
     try expectEqual(await client.cursor, Cursor(epoch: "NEW", seq: 3))
@@ -265,7 +265,7 @@ await check("client: close code 4401 is reported as unpaired, and pending reques
     transport.feed(.text(welcomeText))
     let client = HomeClient(addresses: [addr]) { _ in transport }
     _ = try await client.connect()
-    async let pending = client.invoke("fm:slow")
+    async let pending = client.invoke("inf:slow")
     while transport.sent.count < 2 { try await Task.sleep(nanoseconds: 10_000_000) }
     transport.feed(.closed(code: 4401))
     do { _ = try await pending; throw Failed(description: "answered") } catch let error as WireError { try expectEqual(error, .unpaired) }
@@ -292,7 +292,7 @@ await check("model: when the Mac removes this phone (4401) the app forgets the M
     let transport = ScriptedTransport()
     transport.feed(.text(welcomeText))
     transport.onSend = { text in
-        if text.contains("fm:cards:list") { transport.feed(.text(#"{"t":"result","id":1,"ok":true,"value":[]}"#)); transport.feed(.closed(code: 4401)) }
+        if text.contains("inf:cards:list") { transport.feed(.text(#"{"t":"result","id":1,"ok":true,"value":[]}"#)); transport.feed(.closed(code: 4401)) }
     }
     let model = await AppModel(grants: grants, identities: identities, deviceName: "iPhone", retryDelays: [0.05]) { _, _, _ in transport }
     await model.start()

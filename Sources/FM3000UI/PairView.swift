@@ -17,7 +17,7 @@ struct PairView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("On your Mac, open Firstmate 3000 > Settings > Devices, make a link for another computer, copy it, then paste it here. The link works once, for ten minutes. Tailscale must be on, on this phone and on the Mac.")
+                    Text("On your Mac, open Firstmate 3000 > Settings > Devices, choose A phone (or make a link for another computer), copy it, then paste it here. The link works once, for ten minutes. Tailscale must be on, on this phone and on the Mac.")
                         .font(.callout)
                 }
                 Section("Link") {
@@ -33,6 +33,12 @@ struct PairView: View {
                     Button(working ? "Pairing…" : "Review and pair") { review() }
                         .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || working)
                 }
+            }
+            .onReceive(model.$incomingLink) { link in
+                guard let link else { return }
+                text = link
+                model.incomingLink = nil
+                review()
             }
             .navigationTitle("Pair with your Mac")
             .iOSInlineTitle()

@@ -30,6 +30,9 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSLocalNetworkUsageDescription: Firstmate connects to your Mac, which may be on your local network.
         ITSAppUsesNonExemptEncryption: false
+        CFBundleURLTypes:
+          - CFBundleURLName: join
+            CFBundleURLSchemes: [infinitary, firstmate3000]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ${FM3000_BUNDLE_ID}

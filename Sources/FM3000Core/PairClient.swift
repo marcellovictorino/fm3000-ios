@@ -45,7 +45,7 @@ public struct PairClient {
                 continue
             }
             let body = try JSONSerialization.data(withJSONObject: [
-                "code": link.code, "kind": link.kind.rawValue, "name": deviceName, "window": true,
+                "code": link.code, "kind": link.kind.rawValue, "name": deviceName, "window": true, "system": "ios",
             ] as [String: Any])
             let head = "POST /pair HTTP/1.1\r\nHost: \(address)\r\nContent-Type: application/json\r\n"
                 + "Content-Length: \(body.count)\r\nConnection: close\r\n\r\n"

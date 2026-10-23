@@ -2,7 +2,7 @@ import FM3000Core
 import FM3000Model
 import SwiftUI
 
-/// Talks to Firstmate 3000: `fm:converse`, the same message box as the Mac's window.
+/// Talks to Firstmate 3000: `inf:converse`, the same message box as the Mac's window.
 struct MessageView: View {
     @ObservedObject var model: AppModel
     @State private var text = ""

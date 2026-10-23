@@ -16,6 +16,7 @@ struct FM3000App: App {
     var body: some Scene {
         WindowGroup {
             RootView(model: model)
+                .onOpenURL { url in if !model.isPaired { model.incomingLink = url.absoluteString } }
                 .task {
                     #if DEBUG
                     // Simulator runs: `-pairLink <link>` pairs without typing, so a script can drive the app.

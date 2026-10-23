@@ -20,7 +20,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { WebSocketServer } from "ws";
 
 export const DEFAULT_CONTRACT =
-  "/Applications/Firstmate 3000.app/Contents/Resources/self-source/docs/contract.json";
+  "/Applications/Infinitary.app/Contents/Resources/self-source/docs/contract.json";
 
 const b64url = (buffer) => Buffer.from(buffer).toString("base64url");
 const sha256 = (buffer) => createHash("sha256").update(buffer).digest();
@@ -173,9 +173,9 @@ export async function startFakeMac(options = {}) {
     }
   };
   // A fixture must fit the contract before it is ever served.
-  assertValid(schemaFor("fm:cards:list").response, state.cards, "fm:cards:list fixture");
-  assertValid(schemaFor("fm:tasks:board").response, state.board, "fm:tasks:board fixture");
-  assertValid(schemaFor("fm:feed:recent").response, state.feed, "fm:feed:recent fixture");
+  assertValid(schemaFor("inf:cards:list").response, state.cards, "inf:cards:list fixture");
+  assertValid(schemaFor("inf:tasks:board").response, state.board, "inf:tasks:board fixture");
+  assertValid(schemaFor("inf:feed:recent").response, state.feed, "inf:feed:recent fixture");
 
   function invite(kind = "mac", { ttlMs = 10 * 60_000 } = {}) {
     const code = b64url(randomBytes(32));
@@ -258,22 +258,26 @@ export async function startFakeMac(options = {}) {
     if (!link) return reply(STATUS.unknown, refusal("unknown", "No open link has that code."));
     if (link.used) return reply(STATUS.used, refusal("used", "That link was used already."));
     if (link.expiresAt < AT()) return reply(STATUS.expired, refusal("expired", "That link has expired."));
+    // Infinitary 11: a device that runs work must name its user; only a phone (system ios) may omit it.
+    if (parsed.kind !== "view" && parsed.system !== "ios" && !parsed.user) {
+      return reply(STATUS.malformed, refusal("malformed", "The request to join is not one this home reads."));
+    }
     if (link.kind !== parsed.kind) return reply(STATUS.kind, refusal("kind", "That link is for another kind."));
     const pin = pinOfCertificate(clientCert.raw);
     if (devices.has(pin)) return reply(STATUS.paired, refusal("paired", "That device is paired already."));
     link.used = true;
-    const device = { deviceId: `device-${b64url(randomBytes(6))}`, kind: parsed.kind, name: parsed.name };
+    const device = { deviceId: `device-${b64url(randomBytes(6))}`, kind: parsed.system === "ios" ? "view" : parsed.kind, name: parsed.name };
     devices.set(pin, device);
-    record({ ev: "pair", deviceId: device.deviceId, kind: device.kind, name: device.name, window: parsed.window === true, tls: request.socket.getProtocol(), pin });
+    record({ ev: "pair", deviceId: device.deviceId, kind: device.kind, name: device.name, window: parsed.window === true, system: parsed.system, tls: request.socket.getProtocol(), pin });
     reply(201, { deviceId: device.deviceId, kind: device.kind });
   }
 
   const handlers = {
-    "fm:cards:list": () => state.cards,
-    "fm:tasks:board": () => state.board,
-    "fm:feed:recent": () => state.feed,
-    "fm:cards:thread": ([cardId]) => ({ cardId, messages: [...(state.threads.get(cardId) ?? [])] }),
-    "fm:cards:act": ([cardId, actionId]) => {
+    "inf:cards:list": () => state.cards,
+    "inf:tasks:board": () => state.board,
+    "inf:feed:recent": () => state.feed,
+    "inf:cards:thread": ([cardId]) => ({ cardId, messages: [...(state.threads.get(cardId) ?? [])] }),
+    "inf:cards:act": ([cardId, actionId]) => {
       const card = state.cards.find((c) => c.id === cardId);
       if (!card) throw new Error("There is no such card.");
       const action = card.actions.find((a) => a.id === actionId);
@@ -281,12 +285,12 @@ export async function startFakeMac(options = {}) {
       record({ ev: "card-acted", cardId, actionId });
       if (!action.keepsOpen) {
         state.cards = state.cards.filter((c) => c.id !== cardId);
-        queueMicrotask(() => push("fm:cards", state.cards));
+        queueMicrotask(() => push("inf:cards", state.cards));
       }
       state.feed = [...state.feed, { kind: "you", text: `You chose ${action.label}.`, at: AT(), event: "decided" }];
       return {};
     },
-    "fm:cards:reply": ([cardId, payload]) => {
+    "inf:cards:reply": ([cardId, payload]) => {
       const card = state.cards.find((c) => c.id === cardId);
       if (!card) throw new Error("There is no such card.");
       const text = typeof payload === "string" ? payload : (payload.text ?? "");
@@ -297,11 +301,11 @@ export async function startFakeMac(options = {}) {
       const result = { cardId, messages: [...thread] };
       setTimeout(() => {
         thread.push({ id: nextMessageId++, cardId, who: "firstmate", text: `Noted: ${text}`, at: AT() });
-        push("fm:cards:thread", { cardId, messages: [...thread] });
+        push("inf:cards:thread", { cardId, messages: [...thread] });
       }, 50);
       return result;
     },
-    "fm:converse": ([input]) => {
+    "inf:converse": ([input]) => {
       const text = typeof input === "string" ? input : (input.text ?? "");
       record({ ev: "converse", text });
       state.feed = [...state.feed, { kind: "you", text, at: AT(), event: "replied" }];
@@ -314,7 +318,7 @@ export async function startFakeMac(options = {}) {
         };
         state.cards = [...state.cards, card];
         state.threads.set(card.id, []);
-        push("fm:cards", state.cards);
+        push("inf:cards", state.cards);
       }, 50);
       return { ok: true };
     },

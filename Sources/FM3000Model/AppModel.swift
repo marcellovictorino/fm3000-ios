@@ -49,6 +49,9 @@ public final class AppModel: ObservableObject {
         self.phase = grants.load() == nil ? .unpaired : .connecting
     }
 
+    /// A link opened from outside the app (a scanned code); the pairing screen shows it for review, never sends it.
+    @Published public var incomingLink: String?
+
     public var isPaired: Bool { grants.load() != nil }
     public var canChange: Bool { if case .connected(_, .full) = phase { return true } else { return false } }
 
@@ -152,18 +155,18 @@ public final class AppModel: ObservableObject {
     }
 
     private func reload() async throws {
-        let list: [Card] = try await ask("fm:cards:list")
+        let list: [Card] = try await ask("inf:cards:list")
         cards = list
         for card in list { threads[card.id] = threads[card.id] ?? [] }
     }
 
     private func apply(_ push: Push) {
         switch push.channel {
-        case "fm:cards":
+        case "inf:cards":
             if let list = try? push.payload.decoded([Card].self) { cards = list }
-        case "fm:cards:thread":
+        case "inf:cards:thread":
             if let thread = try? push.payload.decoded(CardThread.self) { threads[thread.cardId] = thread.messages }
-        case "fm:tasks", "fm:tasks:delta":
+        case "inf:tasks", "inf:tasks:delta":
             Task { await refreshBoard() }
         default:
             break
@@ -177,45 +180,45 @@ public final class AppModel: ObservableObject {
 
     // MARK: What the person does
 
-    /// Chooses one of a card's buttons: `fm:cards:act`.
+    /// Chooses one of a card's buttons: `inf:cards:act`.
     public func choose(_ action: CardAction, on card: Card) async {
         do {
-            let result: ActResult = try await ask("fm:cards:act", [.string(card.id), .string(action.id), .string("chrome")])
+            let result: ActResult = try await ask("inf:cards:act", [.string(card.id), .string(action.id), .string("chrome")])
             if let refusal = result.refusal { notice = refusal }
             else if result.effect != nil { notice = "\(action.label) needs your Mac's window: it opens something there." }
         } catch { notice = error.localizedDescription }
     }
 
-    /// Replies under a card: `fm:cards:reply`. The words go as the captain's own.
+    /// Replies under a card: `inf:cards:reply`. The words go as the captain's own.
     public func reply(_ text: String, to card: Card) async -> Bool {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty else { return false }
         do {
-            let thread: CardThread = try await ask("fm:cards:reply", [.string(card.id), .string(words)])
+            let thread: CardThread = try await ask("inf:cards:reply", [.string(card.id), .string(words)])
             threads[card.id] = thread.messages
             return true
         } catch { notice = error.localizedDescription; return false }
     }
 
     public func loadThread(of card: Card) async {
-        if let thread: CardThread = try? await ask("fm:cards:thread", [.string(card.id)]) { threads[card.id] = thread.messages }
+        if let thread: CardThread = try? await ask("inf:cards:thread", [.string(card.id)]) { threads[card.id] = thread.messages }
     }
 
-    /// Talks to Firstmate: `fm:converse`.
+    /// Talks to Firstmate: `inf:converse`.
     public func send(_ text: String) async -> Bool {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty else { return false }
         do {
-            let _: JSONValue = try await ask("fm:converse", [.string(words)])
+            let _: JSONValue = try await ask("inf:converse", [.string(words)])
             return true
         } catch { notice = error.localizedDescription; return false }
     }
 
     public func refreshBoard() async {
-        do { board = try await ask("fm:tasks:board") } catch { notice = error.localizedDescription }
+        do { board = try await ask("inf:tasks:board") } catch { notice = error.localizedDescription }
     }
 
     public func refreshFeed() async {
-        do { feed = try await ask("fm:feed:recent") } catch { notice = error.localizedDescription }
+        do { feed = try await ask("inf:feed:recent") } catch { notice = error.localizedDescription }
     }
 }

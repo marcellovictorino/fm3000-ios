@@ -44,7 +44,7 @@ process.on("SIGUSR1", () => {
       },
     ];
     mac.state.threads.set("card-missed", []);
-    mac.push("fm:cards", mac.state.cards);
+    mac.push("inf:cards", mac.state.cards);
   }, 200);
 });
 for (const signal of ["SIGINT", "SIGTERM"]) {
