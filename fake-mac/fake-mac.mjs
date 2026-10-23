@@ -303,9 +303,27 @@ export async function startFakeMac(options = {}) {
     "inf:cards:list": () => state.cards,
     "inf:tasks:board": () => state.board,
     "inf:feed:recent": () => state.feed,
+    "inf:plugins:db": ([query]) => {
+      if (query.op !== "get" || query.extensionId !== "open-prs" || query.key !== "prs") return { value: null };
+      const day = 24 * 3600_000, ago = (ms) => new Date(Date.now() - ms).toISOString();
+      const pr = (number, project, title, checks, opened, extra = {}) => ({ host: "github.com", project, number, label: `#${number}`, title, url: `https://example.com/${project}/pull/${number}`, draft: false, checks, updatedAt: ago(opened / 2), createdAt: ago(opened), ...extra });
+      return { value: { status: "ok", changes: [
+        pr(42, "fake/repo", "Group the toggles on the settings page", "passed", 2 * 3600_000),
+        pr(41, "fake/repo", "Add the Others tab", "passed", 3 * day),
+        pr(40, "fake/ios", "Draft: card pictures", "passed", day * 2, { draft: true }),
+        pr(38, "fake/ios", "Fix the keyboard trap in the composer", "failed", 5 * day),
+        pr(35, "fake/tools", "Bump the toolchain", "pending", 12 * day),
+        pr(30, "fake/tools", "Rewrite the release script", "none", 40 * day, { label: null }),
+      ] } };
+    },
+    "inf:plugins:invoke": ([id, name]) => {
+      if (id === "machine-load" && name === "sample") return { ok: true, result: { gpu: 18 + Math.round(((Date.now() / 1000) % 20)), memory: { usedBytes: 13.4 * 1024 ** 3, totalBytes: 24 * 1024 ** 3 } } };
+      if (id === "open-prs" && name === "refresh") return { ok: true, result: null };
+      return { ok: false, error: "There is no such panel action." };
+    },
     "inf:computers:resources": () => {
       const gib = 1024 ** 3, wobble = (Date.now() / 3000) % 1;
-      return { computers: [{ computerId: null, label: "Fake Mac", reading: { status: "fresh", ageMs: 400, memoryUsedBytes: Math.round((11 + wobble) * gib),
+      return { computers: [{ computerId: null, label: "This computer", reading: { status: "fresh", ageMs: 400, memoryUsedBytes: Math.round((11 + wobble) * gib),
         observation: { epoch: "00000000-0000-0000-0000-000000000000", sequence: 1, status: "sampled", sampleMs: 1000,
           cpu: { logicalCpus: 12, idleFraction: 0.62 - wobble / 10 },
           memory: { totalBytes: 24 * gib, freeBytes: 2 * gib, availableBytes: 9 * gib, purgeableBytes: gib, fileBackedBytes: 4 * gib, inactiveBytes: 3 * gib, memoryPressure: "normal" } } } },

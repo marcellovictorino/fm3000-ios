@@ -358,5 +358,26 @@ await check("model: when the Mac removes this phone (4401) the app forgets the M
     try expect(notice?.contains("removed") == true, "no explanation shown")
 }
 
+
+// The captain asked for the desktop's Open pull requests panel on the phone: same groups and age buckets as its panel.tsx.
+await check("open pull requests: grouped and aged like the desktop panel") {
+    let stored = """
+    {"status":"ok","changes":[
+     {"host":"github.com","project":"owner/app","number":7,"label":"#7","title":"Ready","url":"https://x/7","draft":false,"checks":"passed","updatedAt":null,"createdAt":"2026-10-23T09:00:00Z"},
+     {"host":"github.com","project":"owner/app","number":6,"title":"Draft passes","url":"https://x/6","draft":true,"checks":"passed","updatedAt":null,"createdAt":"2026-10-20T09:00:00Z"},
+     {"host":"github.com","project":"owner/app","number":5,"title":"Broken","url":"https://x/5","draft":false,"checks":"failed","updatedAt":null,"createdAt":"2026-09-01T09:00:00.123Z"},
+     {"host":"github.com","project":"owner/app","number":4,"title":"No date","url":"https://x/4","draft":false,"checks":"pending","updatedAt":null}]}
+    """
+    let prs = try JSONDecoder().decode(OpenPRs.self, from: Data(stored.utf8))
+    try expectEqual(prs.changes.map { OpenPRs.group(of: $0).rawValue }, ["ready", "waiting", "attention", "waiting"])
+    var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(identifier: "UTC")!
+    let now = ISO8601DateFormatter().date(from: "2026-10-23T15:00:00Z")!
+    try expectEqual(prs.changes.map { OpenPRs.age(of: $0, now: now, calendar: calendar)?.rawValue ?? "none" }, ["today", "week", "older", "none"])
+    try expectEqual(prs.changes[0].projectName, "app")
+    try expectEqual(prs.changes[2].shownLabel, "#5")
+    try expectEqual(prs.failedCount, 1)
+    try expectEqual(OpenPRs(status: "signed-out", changes: []).blocked, "Sign in to GitHub's command line on this Mac")
+}
+
 print(failures.isEmpty ? "ALL \(ran) CHECKS PASSED" : "\(failures.count) of \(ran) FAILED: \(failures.joined(separator: "; "))")
 exit(failures.isEmpty ? 0 : 1)

@@ -261,14 +261,22 @@ public final class AppModel: ObservableObject {
 
     public func resources() async -> ComputerResources? { try? await ask("inf:computers:resources") }
 
-    /// The delivery of each open or active task that has a pull request, read quietly (a failed read just leaves the task out).
-    public func pullRequests() async -> [(task: BoardTask, delivery: TaskDetail.Delivery)] {
-        guard let tasks = board?.tasks.filter({ $0.status == "open" || $0.status == "active" }) else { return [] }
-        var found: [(BoardTask, TaskDetail.Delivery)] = []
-        for task in tasks.prefix(30) {
-            if let detail: TaskDetail = try? await ask("inf:tasks:detail", [.string(task.id)]), let delivery = detail.delivery, delivery.prNumber != nil { found.append((task, delivery)) }
-        }
-        return found.map { (task: $0.0, delivery: $0.1) }
+    /// The desktop's "Open pull requests" panel: its extension stores the list under `prs` (`inf:plugins:db`).
+    public func openPRs() async -> OpenPRs? {
+        let args: [JSONValue] = [.object(["op": .string("get"), "extensionId": .string("open-prs"), "key": .string("prs")])]
+        guard let stored: StoreValue<OpenPRs> = try? await ask("inf:plugins:db", args) else { return nil }
+        return stored.value
+    }
+
+    /// Asks the panel's own server action to read GitHub again now (the panel's refresh button).
+    public func refreshOpenPRs() async {
+        let _: JSONValue? = try? await ask("inf:plugins:invoke", [.string("open-prs"), .string("refresh"), .null])
+    }
+
+    /// The `machine-load` panel's sample: GPU busy share and memory in use, measured on the Mac that runs Infinitary.
+    public func machineSample() async -> MachineSample? {
+        guard let answer: InvokeResult<MachineSample> = try? await ask("inf:plugins:invoke", [.string("machine-load"), .string("sample"), .null]) else { return nil }
+        return answer.ok ? answer.result : nil
     }
 
     public func crewLog(_ id: String) async -> CrewLog? { try? await ask("inf:tasks:crewmate", [.string(id)]) }
