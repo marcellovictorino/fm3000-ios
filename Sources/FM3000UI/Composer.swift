@@ -60,7 +60,7 @@ struct Composer: View {
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(Theme.bg0)
                             .frame(width: 36, height: 36)
-                            .background(enabled && !sending ? Theme.accent : Theme.fg3, in: Circle())
+                            .background(enabled && !sending ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.fg3), in: Circle())
                     }
                     .disabled(!enabled || sending)
                     .accessibilityLabel("Send")

@@ -5,9 +5,9 @@ import SwiftUI
 /// in Infinitary's `design/tokens/colors.css`), so the phone has the same visual identity.
 enum Theme {
     static let bg0 = Color(hex: 0x05070D)      // void: text on bright fills
-    static let bg1 = Color(hex: 0x0A0E18)      // surface: bars, inputs
-    static let bg2 = Color(hex: 0x0F1424)      // raised: rows and cards
-    static let bg3 = Color(hex: 0x161C30)      // hover / selected
+    static let bg1 = Color(hex: 0x0B1120)      // surface: bars, inputs
+    static let bg2 = Color(hex: 0x111A30)      // raised: rows and cards
+    static let bg3 = Color(hex: 0x192440)      // hover / selected
     static let line = Color(red: 150 / 255, green: 180 / 255, blue: 1).opacity(0.2)
     static let fg1 = Color(hex: 0xE9EEF8)      // primary text
     static let fg2 = Color(hex: 0x98A4BD)      // secondary text
@@ -22,7 +22,11 @@ enum Theme {
         .ignoresSafeArea()
     }
     static let accent = Color(hex: 0x7FDCFF)
-    static let accentStrong = Color(hex: 0x38AAE6)
+    static let accentStrong = Color(hex: 0x2F8FFF)
+    /// The icon's cyan-to-blue sweep: the sent bubble, the send button.
+    static let accentGradient = LinearGradient(colors: [Color(hex: 0x7FE3FF), Color(hex: 0x2F8FFF)], startPoint: .topLeading, endPoint: .bottomTrailing)
+    /// The first mate's own mark: a rank-stripe gold, used sparingly.
+    static let gold = Color(hex: 0xE8B04A)
     static let warn = Color(hex: 0xFFA257)
     static let danger = Color(hex: 0xFF6B52)
 }
