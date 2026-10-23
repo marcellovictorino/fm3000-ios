@@ -20,19 +20,22 @@ struct PairView: View {
                     Text("On your Mac, open Infinitary > Settings > Devices, choose A phone (or make a link for another computer), copy it, then paste it here. The link works once, for ten minutes. Tailscale must be on, on this phone and on the Mac.")
                         .font(.callout)
                 }
+                .infinitaryRow()
                 Section("Link") {
                     TextField("infinitary://join?…", text: $text, axis: .vertical).lineLimit(3...6).plainTextInput()
                     #if canImport(UIKit)
                     Button("Paste from clipboard") { text = UIPasteboard.general.string ?? text }
                     #endif
                 }
+                .infinitaryRow()
                 if let notice = model.notice {
-                    Section { Text(notice).foregroundStyle(.red) }
+                    Section { Text(notice).foregroundStyle(Theme.danger) }.infinitaryRow()
                 }
                 Section {
                     Button(working ? "Pairing…" : "Review and pair") { review() }
                         .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || working)
                 }
+                .infinitaryRow()
             }
             .onReceive(model.$incomingLink) { link in
                 guard let link else { return }
@@ -40,6 +43,7 @@ struct PairView: View {
                 model.incomingLink = nil
                 review()
             }
+            .infinitaryScreen()
             .navigationTitle("Pair with your Mac")
             .iOSInlineTitle()
             .alert("Pair with this Mac?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } })) {

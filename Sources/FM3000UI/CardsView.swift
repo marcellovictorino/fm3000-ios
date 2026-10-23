@@ -10,27 +10,29 @@ struct CardsView: View {
             Group {
                 if model.cards.isEmpty {
                     VStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle").font(.largeTitle).foregroundStyle(.secondary)
+                        Image(systemName: "checkmark.circle").font(.largeTitle).foregroundStyle(Theme.fg2)
                         Text("Nothing waits for you").font(.headline)
-                        Text("Cards from Firstmate 3000 appear here the moment they are raised.").font(.footnote).foregroundStyle(.secondary)
+                        Text("Cards from Infinitary appear here the moment they are raised.").font(.footnote).foregroundStyle(Theme.fg2)
                     }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List(model.cards) { card in
                         NavigationLink(value: card.id) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(card.title).font(.headline)
-                                Text(HTMLText.plain(card.body)).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
-                                Text("\(card.meta) · \(relativeTime(card.createdAt))").font(.caption).foregroundStyle(.tertiary)
+                                Text(HTMLText.plain(card.body)).font(.subheadline).foregroundStyle(Theme.fg2).lineLimit(2)
+                                Text("\(card.meta) · \(relativeTime(card.createdAt))").font(.caption).foregroundStyle(Theme.fg3)
                             }
                         }
+                        .infinitaryRow()
                     }
+                    .infinitaryScreen()
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) { StatusBanner(model: model) }
-            .navigationTitle("Cards")
+            .navigationTitle("Cards").iOSInlineTitle()
             .navigationDestination(for: String.self) { id in
                 if let card = model.cards.first(where: { $0.id == id }) { CardDetailView(model: model, card: card) }
-                else { Text("This card was answered.").foregroundStyle(.secondary) }
+                else { Text("This card was answered.").foregroundStyle(Theme.fg2) }
             }
         }
     }
@@ -45,7 +47,7 @@ struct CardDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(card.meta).font(.caption).foregroundStyle(.secondary)
+                Text(card.meta).font(.caption).foregroundStyle(Theme.fg2)
                 Text(HTMLText.plain(card.body)).textSelection(.enabled)
                 if card.status == "streaming" { ProgressView("Still being written…") }
                 if !card.actions.isEmpty {
@@ -55,7 +57,7 @@ struct CardDetailView: View {
                                 Text(action.label).frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.borderedProminent)
-                            .tint(action.variant == "danger" ? .red : (action.isDefault ? .accentColor : .gray))
+                            .tint(action.variant == "danger" ? Theme.danger : (action.isDefault ? Theme.accentStrong : Theme.bg3))
                             .disabled(!model.canChange)
                         }
                     }
@@ -63,11 +65,11 @@ struct CardDetailView: View {
                 Divider()
                 ForEach(model.threads[card.id] ?? []) { message in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(message.who == "captain" ? "You" : message.who.capitalized).font(.caption).foregroundStyle(.secondary)
+                        Text(message.who == "captain" ? "You" : message.who.capitalized).font(.caption).foregroundStyle(Theme.fg2)
                         Text(message.text)
                     }
                     .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(message.who == "captain" ? Color.accentColor.opacity(0.12) : Color.gray.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                    .background(message.who == "captain" ? Theme.accent.opacity(0.14) : Theme.bg2, in: RoundedRectangle(cornerRadius: 10))
                 }
                 HStack(alignment: .bottom) {
                     TextField("Reply", text: $reply, axis: .vertical).lineLimit(1...5).textFieldStyle(.roundedBorder)
@@ -84,6 +86,7 @@ struct CardDetailView: View {
             }
             .padding()
         }
+        .background(Theme.bg0.ignoresSafeArea())
         .navigationTitle(card.title)
         .iOSInlineTitle()
         .task { await model.loadThread(of: card) }

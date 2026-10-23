@@ -15,10 +15,11 @@ struct MessageView: View {
                 StatusBanner(model: model)
                 List {
                     if sent.isEmpty {
-                        Text("Say something to Firstmate. Its answer arrives as a card.").foregroundStyle(.secondary)
+                        Text("Say something to Firstmate. Its answer arrives as a card.").foregroundStyle(Theme.fg2).listRowBackground(Color.clear)
                     }
-                    ForEach(Array(sent.enumerated()), id: \.offset) { _, line in Label(line, systemImage: "paperplane") }
+                    ForEach(Array(sent.enumerated()), id: \.offset) { _, line in Label(line, systemImage: "paperplane").listRowBackground(Theme.bg2) }
                 }
+                .infinitaryScreen()
                 HStack(alignment: .bottom) {
                     TextField("Message Firstmate", text: $text, axis: .vertical).lineLimit(1...6).textFieldStyle(.roundedBorder)
                     Button("Send") {
@@ -52,17 +53,19 @@ struct BoardView: View {
                             ForEach(board.tasks.filter { $0.projectId == project.id && ($0.status == "open" || $0.status == "active") }) { task in
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("\(task.key)  \(task.title)").font(.headline)
-                                    Text([task.status, task.activity, task.assignee].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                                    Text([task.status, task.activity, task.assignee].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(Theme.fg2)
                                 }
+                                .infinitaryRow()
                             }
                         }
                     }
                 } else {
-                    Text("Loading the task board…").foregroundStyle(.secondary)
+                    Text("Loading the task board…").foregroundStyle(Theme.fg2).listRowBackground(Color.clear)
                 }
             }
+            .infinitaryScreen()
             .safeAreaInset(edge: .top, spacing: 0) { StatusBanner(model: model) }
-            .navigationTitle("Tasks")
+            .navigationTitle("Tasks").iOSInlineTitle()
             .refreshable { await model.refreshBoard() }
             .task { await model.refreshBoard() }
         }
@@ -77,11 +80,13 @@ struct FeedView: View {
             List(model.feed.reversed()) { line in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(line.text)
-                    Text("\(line.taskKey.map { $0 + " · " } ?? "")\(relativeTime(line.at))").font(.caption).foregroundStyle(.secondary)
+                    Text("\(line.taskKey.map { $0 + " · " } ?? "")\(relativeTime(line.at))").font(.caption).foregroundStyle(Theme.fg2)
                 }
+                .infinitaryRow()
             }
+            .infinitaryScreen()
             .safeAreaInset(edge: .top, spacing: 0) { StatusBanner(model: model) }
-            .navigationTitle("Feed")
+            .navigationTitle("Feed").iOSInlineTitle()
             .refreshable { await model.refreshFeed() }
             .task { await model.refreshFeed() }
         }
@@ -99,18 +104,21 @@ struct MacView: View {
                     switch model.phase {
                     case .connected(let mac, let access): LabeledContent("Mac", value: mac); LabeledContent("Access", value: access == .full ? "Full" : "Read only")
                     case .connecting: Text("Connecting…")
-                    case .offline(let reason): Text(reason).foregroundStyle(.red)
+                    case .offline(let reason): Text(reason).foregroundStyle(Theme.danger)
                     case .unpaired: Text("Not paired")
                     }
                     Button("Reconnect") { model.start() }
                 }
+                .infinitaryRow()
                 Section {
                     Button("Forget this Mac", role: .destructive) { confirming = true }
+                        .listRowBackground(Theme.bg2)
                 } footer: {
-                    Text("If this phone is lost, open Firstmate 3000 on your Mac > Settings > Devices and remove it there. Removing it on the Mac cuts it off at once.")
+                    Text("If this phone is lost, open Infinitary on your Mac > Settings > Devices and remove it there. Removing it on the Mac cuts it off at once.")
                 }
             }
-            .navigationTitle("Mac")
+            .infinitaryScreen()
+            .navigationTitle("Mac").iOSInlineTitle()
             .alert("Forget this Mac?", isPresented: $confirming) {
                 Button("Cancel", role: .cancel) {}
                 Button("Forget", role: .destructive) { Task { await model.unpair() } }
@@ -121,11 +129,11 @@ struct MacView: View {
 
 public struct RootView: View {
     @ObservedObject var model: AppModel
-    public init(model: AppModel) { self.model = model }
+    public init(model: AppModel) { self.model = model; Theme.applyBars() }
 
     public var body: some View {
         if model.phase == .unpaired {
-            PairView(model: model)
+            PairView(model: model).infinitaryRoot()
         } else {
             TabView {
                 CardsView(model: model).tabItem { Label("Cards", systemImage: "rectangle.stack") }.badge(model.cards.count)
@@ -134,6 +142,7 @@ public struct RootView: View {
                 FeedView(model: model).tabItem { Label("Feed", systemImage: "list.bullet") }
                 MacView(model: model).tabItem { Label("Mac", systemImage: "desktopcomputer") }
             }
+            .infinitaryRoot()
         }
     }
 }

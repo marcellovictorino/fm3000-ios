@@ -29,16 +29,16 @@ struct StatusBanner: View {
         VStack(spacing: 0) {
             switch model.phase {
             case .connecting:
-                banner("Connecting to your Mac…", tint: .orange)
+                banner("Connecting to your Mac…", tint: Theme.warn)
             case .offline(let reason):
-                banner(reason, tint: .red) { Button("Retry") { model.start() }.buttonStyle(.bordered) }
+                banner(reason, tint: Theme.danger) { Button("Retry") { model.start() }.buttonStyle(.bordered) }
             case .connected(_, .read):
-                banner("This app is older than your Mac's Firstmate 3000. You can read, not change.", tint: .orange)
+                banner("This app is older than your Mac's Infinitary. You can read, not change.", tint: Theme.warn)
             case .connected, .unpaired:
                 EmptyView()
             }
             if let notice = model.notice {
-                banner(notice, tint: .blue) { Button("OK") { model.notice = nil }.buttonStyle(.bordered) }
+                banner(notice, tint: Theme.accent) { Button("OK") { model.notice = nil }.buttonStyle(.bordered) }
             }
         }
     }
