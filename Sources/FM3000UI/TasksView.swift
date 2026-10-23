@@ -40,7 +40,12 @@ struct BoardView: View {
             .navigationDestination(for: BoardTask.self) { TaskDetailView(model: model, task: $0) }
             .refreshable { await model.refreshBoard() }
             .onChange(of: model.phase) { phase in
-                if case .connected = phase { Task { await model.refreshBoard() } }
+                if case .connected = phase {
+                    Task {
+                        await model.refreshBoard()
+                        if DebugLaunch.has("-openTask"), path.isEmpty, let first = model.board?.tasks.first { path = [first] }
+                    }
+                }
             }
             .task {
                 await model.refreshBoard()
@@ -160,6 +165,7 @@ struct TaskDetailView: View {
     @State private var detail: TaskDetail?
     @State private var log: CrewLog?
     @State private var live: CrewLive?
+    @State private var showCrew = DebugLaunch.has("-openCrew")
 
     private var cardId: String? { detail?.waitingCardId ?? task.waitingCardId }
     private var card: Card? { cardId.flatMap { id in model.cards.first { $0.id == id } } }
@@ -174,7 +180,7 @@ struct TaskDetailView: View {
                 if let delivery = detail?.delivery, delivery.prNumber != nil || delivery.ci != nil { deliverySection(delivery) }
                 if let text = detail?.outcome ?? detail?.problem, !text.isEmpty { section(detail?.problem != nil ? "Problem" : "Outcome") { Text(text) } }
                 activitySection
-                NavigationLink { CrewThreadView(model: model, task: task, log: $log) } label: {
+                NavigationLink(isActive: $showCrew) { CrewThreadView(model: model, task: task, log: $log) } label: {
                     rowLabel("bubble.left.and.bubble.right", "Thread with the crewmate")
                 }.buttonStyle(.plain)
             }

@@ -117,7 +117,10 @@ function fixtureDetail(now) {
 
 function fixtureCrew(now) {
   const at = (n) => now - n * 60_000;
+  // FM_LONG_CREW=n pads the thread with n older lines, to try a long history on a phone or simulator.
+  const filler = Array.from({ length: Number(process.env.FM_LONG_CREW ?? 0) }, (_, i) => ({ kind: "said", id: `f${i}`, at: at(100 + i), text: `Earlier note ${i + 1}: working through the settings page step by step.` })).reverse();
   return [
+    ...filler,
     { kind: "brief", id: "l1", at: at(30), text: "Group the toggles on the settings page." },
     { kind: "said", id: "l2", at: at(20), text: "I found the toggles in SettingsView and will group them under three headings." },
     { kind: "card", id: "l3", at: at(10), title: "Merge the settings page change?", cardId: "card-merge-1" },

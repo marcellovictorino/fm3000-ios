@@ -43,7 +43,8 @@ struct ChatList: View {
             else { proxy.scrollTo(Self.end, anchor: .bottom) }
         }
         go()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { go() }
+        // A long history loads late and a lazy stack estimates row heights, so settle on the end again.
+        for delay in [0.15, 0.5] { DispatchQueue.main.asyncAfter(deadline: .now() + delay) { go() } }
     }
 
     private func bubble(_ item: ChatItem) -> some View {
