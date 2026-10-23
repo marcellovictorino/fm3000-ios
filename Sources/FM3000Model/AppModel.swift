@@ -156,9 +156,22 @@ public final class AppModel: ObservableObject {
 
     /// The main Firstmate chat: what you sent, and what the first mate answered (`firstmate_reply` on `inf:event`).
     @Published public private(set) var chat: [ChatItem] = []
+    /// True from a sent message until the first mate's reply arrives (or three minutes pass): the "typing" dots.
+    @Published public private(set) var awaitingReply = false
     private var chatCounter = 0
+    private var awaitingSince = Date.distantPast
+
+    private func expectReply() {
+        awaitingReply = true
+        let since = Date(); awaitingSince = since
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 180_000_000_000)
+            if let self, self.awaitingSince == since { self.awaitingReply = false }
+        }
+    }
 
     private func addChat(_ who: String, _ text: String, problem: Bool = false) {
+        if who == "firstmate" { awaitingReply = false }
         chatCounter += 1
         chat.append(ChatItem(id: "c\(chatCounter)", who: who, text: text, at: Date().timeIntervalSince1970 * 1000, problem: problem))
     }
@@ -187,7 +200,7 @@ public final class AppModel: ObservableObject {
             guard case .object(let o) = push.payload, case .string(let type)? = o["type"], case .string(let text)? = o["text"] else { break }
             if type == "firstmate_reply" { addChat("firstmate", text, problem: o["problem"] == .bool(true)) }
             // Another device's message shows too; one this phone just sent is already there.
-            else if type == "user_turn", !(chat.last(where: { $0.isMine })?.text == text && Date().timeIntervalSince1970 * 1000 - (chat.last?.at ?? 0) < 30_000) { addChat("captain", text) }
+            else if type == "user_turn", !(chat.last(where: { $0.isMine })?.text == text && Date().timeIntervalSince1970 * 1000 - (chat.last?.at ?? 0) < 30_000) { addChat("captain", text); expectReply() }
         case "inf:tasks", "inf:tasks:delta":
             Task { await refreshBoard() }
         default:
@@ -233,6 +246,7 @@ public final class AppModel: ObservableObject {
         do {
             let _: JSONValue = try await ask("inf:converse", [Attachments.payload(text: words, attachments: attachments)])
             addChat("captain", words.isEmpty ? "(\(attachments.count) attachment\(attachments.count == 1 ? "" : "s"))" : words)
+            expectReply()
             return true
         } catch { notice = error.localizedDescription; return false }
     }

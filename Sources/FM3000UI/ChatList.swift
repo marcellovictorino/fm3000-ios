@@ -8,6 +8,8 @@ import SwiftUI
 struct ChatList: View {
     let items: [ChatItem]
     var empty: String
+    /// Shows the other side "typing" (three pulsing dots) at the end while an answer is on its way.
+    var typing = false
 
     private var ordered: [ChatItem] { ChatItem.chronological(items) }
 
@@ -17,6 +19,7 @@ struct ChatList: View {
                 LazyVStack(spacing: 10) {
                     if items.isEmpty { Text(empty).font(.footnote).foregroundStyle(Theme.fg2).padding(.top, 24) }
                     ForEach(ordered) { item in bubble(item) }
+                    if typing { TypingBubble() }
                     Color.clear.frame(height: 1).id(Self.end)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 10)
@@ -24,6 +27,7 @@ struct ChatList: View {
             .scrollDismissesKeyboard(.interactively)
             .dismissKeyboardOnTap()
             .onChange(of: ordered.last?.id) { _ in scrollToEnd(proxy, animated: true) }
+            .onChange(of: typing) { _ in scrollToEnd(proxy, animated: true) }
             .onChange(of: ordered.count) { _ in scrollToEnd(proxy, animated: true) }
             #if os(iOS)
             // The keyboard shrinks the list: keep the newest message in view as it opens.
@@ -69,5 +73,29 @@ struct ChatList: View {
         let formatter = DateFormatter()
         formatter.dateFormat = Calendar.current.isDateInToday(date) ? "HH:mm" : "d MMM HH:mm"
         return formatter.string(from: date)
+    }
+}
+
+/// A reply bubble with three dots that pulse in turn, as chat apps show while the other side is writing.
+private struct TypingBubble: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("Firstmate").font(.caption2).foregroundStyle(Theme.accent)
+            TimelineView(.animation) { context in
+                let t = context.date.timeIntervalSinceReferenceDate
+                HStack(spacing: 5) {
+                    ForEach(0..<3, id: \.self) { i in
+                        let phase = (sin(t * 5 - Double(i) * 0.9) + 1) / 2
+                        Circle().fill(Theme.fg2).frame(width: 7, height: 7)
+                            .opacity(0.35 + 0.65 * phase).scaleEffect(0.8 + 0.3 * phase)
+                    }
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(Theme.bg2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.line.opacity(0.6), lineWidth: 0.5))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityLabel("Firstmate is answering")
     }
 }
