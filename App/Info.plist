@@ -34,13 +34,21 @@
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo to attach to a message for your Mac.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Firstmate connects to your Mac, which may be on your local network.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Record a voice note to attach to a message for your Mac.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo to attach to a message for your Mac.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 </dict>
 </plist>

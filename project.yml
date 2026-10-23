@@ -27,8 +27,11 @@ targets:
       properties:
         CFBundleDisplayName: Firstmate
         UILaunchScreen: {}
-        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         NSLocalNetworkUsageDescription: Firstmate connects to your Mac, which may be on your local network.
+        NSCameraUsageDescription: Take a photo to attach to a message for your Mac.
+        NSPhotoLibraryUsageDescription: Choose a photo to attach to a message for your Mac.
+        NSMicrophoneUsageDescription: Record a voice note to attach to a message for your Mac.
         ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
           - CFBundleURLName: join
