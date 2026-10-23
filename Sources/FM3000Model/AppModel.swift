@@ -259,6 +259,18 @@ public final class AppModel: ObservableObject {
         do { return try await ask("inf:tasks:detail", [.string(id)]) } catch { notice = error.localizedDescription; return nil }
     }
 
+    public func resources() async -> ComputerResources? { try? await ask("inf:computers:resources") }
+
+    /// The delivery of each open or active task that has a pull request, read quietly (a failed read just leaves the task out).
+    public func pullRequests() async -> [(task: BoardTask, delivery: TaskDetail.Delivery)] {
+        guard let tasks = board?.tasks.filter({ $0.status == "open" || $0.status == "active" }) else { return [] }
+        var found: [(BoardTask, TaskDetail.Delivery)] = []
+        for task in tasks.prefix(30) {
+            if let detail: TaskDetail = try? await ask("inf:tasks:detail", [.string(task.id)]), let delivery = detail.delivery, delivery.prNumber != nil { found.append((task, delivery)) }
+        }
+        return found.map { (task: $0.0, delivery: $0.1) }
+    }
+
     public func crewLog(_ id: String) async -> CrewLog? { try? await ask("inf:tasks:crewmate", [.string(id)]) }
 
     public func crewLive(_ id: String) async -> CrewLive? { try? await ask("inf:tasks:crewmate:live", [.string(id)]) }

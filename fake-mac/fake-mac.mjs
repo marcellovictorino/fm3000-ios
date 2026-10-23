@@ -303,6 +303,14 @@ export async function startFakeMac(options = {}) {
     "inf:cards:list": () => state.cards,
     "inf:tasks:board": () => state.board,
     "inf:feed:recent": () => state.feed,
+    "inf:computers:resources": () => {
+      const gib = 1024 ** 3, wobble = (Date.now() / 3000) % 1;
+      return { computers: [{ computerId: null, label: "Fake Mac", reading: { status: "fresh", ageMs: 400, memoryUsedBytes: Math.round((11 + wobble) * gib),
+        observation: { epoch: "00000000-0000-0000-0000-000000000000", sequence: 1, status: "sampled", sampleMs: 1000,
+          cpu: { logicalCpus: 12, idleFraction: 0.62 - wobble / 10 },
+          memory: { totalBytes: 24 * gib, freeBytes: 2 * gib, availableBytes: 9 * gib, purgeableBytes: gib, fileBackedBytes: 4 * gib, inactiveBytes: 3 * gib, memoryPressure: "normal" } } } },
+        { computerId: "dev-2", label: "Mac mini", reading: { status: "unknown", reason: "out-of-reach" } }] };
+    },
     "inf:tasks:detail": ([taskId]) => {
       if (taskId !== "task-1") throw new Error("There is no such task.");
       return fixtureDetail(now);

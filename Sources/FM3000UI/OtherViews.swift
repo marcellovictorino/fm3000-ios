@@ -90,21 +90,29 @@ struct MacView: View {
 }
 
 /// Feed and Mac, behind one "Others" tab so the bottom bar keeps room for the screens used most.
+enum OthersPage: Hashable { case panels, resources, pullRequests, feed, mac }
+
 struct OthersView: View {
     @ObservedObject var model: AppModel
-    @State private var path: [Page] = DebugLaunch.has("-openOthers") ? [.mac] : []
-    enum Page: Hashable { case feed, mac }
+    @State private var path: [OthersPage] = DebugLaunch.has("-openOthers") ? [.mac]
+        : DebugLaunch.has("-openResources") ? [.panels, .resources]
+        : DebugLaunch.has("-openPRs") ? [.panels, .pullRequests]
+        : DebugLaunch.has("-openPanels") ? [.panels] : []
 
     var body: some View {
         NavigationStack(path: $path) {
             List {
-                NavigationLink(value: Page.feed) { Label("Activity feed", systemImage: "list.bullet") }.infinitaryRow()
-                NavigationLink(value: Page.mac) { Label("Mac connection", systemImage: "desktopcomputer") }.infinitaryRow()
+                NavigationLink(value: OthersPage.panels) { Label("Panels", systemImage: "square.grid.2x2") }.infinitaryRow()
+                NavigationLink(value: OthersPage.feed) { Label("Activity feed", systemImage: "list.bullet") }.infinitaryRow()
+                NavigationLink(value: OthersPage.mac) { Label("Mac connection", systemImage: "desktopcomputer") }.infinitaryRow()
             }
             .infinitaryScreen()
             .navigationTitle("Others").iOSInlineTitle()
-            .navigationDestination(for: Page.self) { page in
+            .navigationDestination(for: OthersPage.self) { page in
                 switch page {
+                case .panels: PanelsView(model: model)
+                case .resources: ResourcesView(model: model)
+                case .pullRequests: PullRequestsView(model: model)
                 case .feed: FeedView(model: model)
                 case .mac: MacView(model: model)
                 }

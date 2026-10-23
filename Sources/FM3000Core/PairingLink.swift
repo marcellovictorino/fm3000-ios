@@ -41,8 +41,8 @@ public enum PairingLinkError: Error, Equatable, LocalizedError {
     // Never repeats the link: it carries its code (docs/devices.md, "The link").
     public var errorDescription: String? {
         switch self {
-        case .notALink: return "This is not a link to join Firstmate 3000."
-        case .damaged: return "This link to join Firstmate 3000 is damaged."
+        case .notALink: return "This is not a link to join Infinitary."
+        case .damaged: return "This link to join Infinitary is damaged."
         case .wrongKind: return "This link is for a computer that runs work, which a phone cannot be."
         case .viaUnsupported: return "This link reaches the Mac through SSH, which a phone cannot do."
         }

@@ -195,3 +195,45 @@ public extension Board {
         return Board(projects: projects.filter { $0.id == projectId }, tasks: tasks.filter { $0.projectId == projectId })
     }
 }
+
+/// What `inf:computers:resources` answers: one reading per computer the home can see (this Mac and any others).
+public struct ComputerResources: Codable, Equatable {
+    public struct Computer: Codable, Equatable, Identifiable {
+        public struct Observation: Codable, Equatable {
+            public struct CPU: Codable, Equatable { public let logicalCpus: Int; public let idleFraction: Double }
+            public struct Memory: Codable, Equatable {
+                public let totalBytes: Int
+                public let freeBytes: Int
+                public let availableBytes: Int?
+                public let purgeableBytes: Int?
+                public let fileBackedBytes: Int?
+                public let inactiveBytes: Int?
+                public let speculativeBytes: Int?
+                public let memoryPressure: String?
+            }
+            public let sampleMs: Double
+            public let cpu: CPU
+            public let memory: Memory
+        }
+        public struct Reading: Codable, Equatable {
+            public let status: String
+            public let observation: Observation?
+            public let ageMs: Double?
+            public let memoryUsedBytes: Int?
+            public let reason: String?
+        }
+        public let computerId: String?
+        public let label: String
+        public let reading: Reading
+        public var id: String { computerId ?? label }
+
+        public var cpuUsed: Double? { reading.observation.map { 1 - $0.cpu.idleFraction } }
+        /// Memory in use as a fraction: the Mac's own figure when it gives one, else total minus what is available.
+        public var memoryUsed: Double? {
+            guard let memory = reading.observation?.memory, memory.totalBytes > 0 else { return nil }
+            let used = reading.memoryUsedBytes ?? (memory.totalBytes - (memory.availableBytes ?? memory.freeBytes))
+            return min(1, max(0, Double(used) / Double(memory.totalBytes)))
+        }
+    }
+    public let computers: [Computer]
+}
