@@ -104,6 +104,27 @@ function fixtureBoard(now) {
   };
 }
 
+function fixtureDetail(now) {
+  const t = fixtureBoard(now).tasks[0];
+  return {
+    ...t, goal: "Group the toggles on the settings page", workPosture: { state: "active", reason: "turn" },
+    delivery: { mode: "direct-pr", prNumber: 42, prUrl: "https://example.com/fake/repo/pull/42", ci: "green",
+      runChecks: { runId: 7, name: "CI / test", state: "passed", at: now } },
+    modelLabel: "Sonnet", intent: null, rigor: "standard", deliverable: "change", basis: null, skippedPlanBecause: null,
+    brief: "Group the toggles.", outcome: null, cards: [], events: [], activityLog: [], plan: null, closing: null, problem: null, asks: [],
+  };
+}
+
+function fixtureCrew(now) {
+  const at = (n) => now - n * 60_000;
+  return [
+    { kind: "brief", id: "l1", at: at(30), text: "Group the toggles on the settings page." },
+    { kind: "said", id: "l2", at: at(20), text: "I found the toggles in SettingsView and will group them under three headings." },
+    { kind: "card", id: "l3", at: at(10), title: "Merge the settings page change?", cardId: "card-merge-1" },
+    { kind: "report", id: "l4", at: at(5), summary: "Settings grouped", text: "Three headings, tests green." },
+  ];
+}
+
 function fixtureFeed(now) {
   return [
     { kind: "info", text: "FM-1 started.", at: now - 60_000, taskKey: "FM-1", event: "dispatched" },
@@ -158,7 +179,7 @@ export async function startFakeMac(options = {}) {
 
   // What the home holds.
   const now = AT();
-  const state = { cards: fixtureCards(now), threads: new Map(), board: fixtureBoard(now), feed: fixtureFeed(now) };
+  const state = { cards: fixtureCards(now), threads: new Map(), board: fixtureBoard(now), feed: fixtureFeed(now), crew: fixtureCrew(now) };
   for (const card of state.cards) state.threads.set(card.id, []);
   let nextMessageId = 1;
   const links = new Map(); // sha256(code) -> { kind, expiresAt, used }
@@ -176,6 +197,8 @@ export async function startFakeMac(options = {}) {
   assertValid(schemaFor("inf:cards:list").response, state.cards, "inf:cards:list fixture");
   assertValid(schemaFor("inf:tasks:board").response, state.board, "inf:tasks:board fixture");
   assertValid(schemaFor("inf:feed:recent").response, state.feed, "inf:feed:recent fixture");
+  assertValid(schemaFor("inf:tasks:detail").response, fixtureDetail(now), "inf:tasks:detail fixture");
+  assertValid(schemaFor("inf:tasks:crewmate").response, { taskId: "task-1", earlier: 0, lines: state.crew, revision: "r1" }, "inf:tasks:crewmate fixture");
 
   function invite(kind = "mac", { ttlMs = 10 * 60_000 } = {}) {
     const code = b64url(randomBytes(32));
@@ -276,6 +299,18 @@ export async function startFakeMac(options = {}) {
     "inf:cards:list": () => state.cards,
     "inf:tasks:board": () => state.board,
     "inf:feed:recent": () => state.feed,
+    "inf:tasks:detail": ([taskId]) => {
+      if (taskId !== "task-1") throw new Error("There is no such task.");
+      return fixtureDetail(now);
+    },
+    "inf:tasks:crewmate": ([taskId]) => ({ taskId, earlier: 0, lines: [...state.crew], revision: `r${state.crew.length}` }),
+    "inf:tasks:crewmate:live": ([taskId]) => ({ taskId, text: "Running the tests for the settings page.", since: AT() }),
+    "inf:task:steer": ([taskId, text]) => {
+      record({ ev: "steer", taskId, text });
+      state.crew.push({ kind: "sent", id: `l${state.crew.length + 1}`, at: AT(), from: "captain", text, queued: false, via: "other" });
+      return { ok: true };
+    },
+    "inf:conversation:last-turn": () => state.lastTurn ?? null,
     "inf:cards:thread": ([cardId]) => ({ cardId, messages: [...(state.threads.get(cardId) ?? [])] }),
     "inf:cards:act": ([cardId, actionId]) => {
       const card = state.cards.find((c) => c.id === cardId);
@@ -297,7 +332,7 @@ export async function startFakeMac(options = {}) {
       const thread = state.threads.get(cardId) ?? [];
       thread.push({ id: nextMessageId++, cardId, who: "captain", text, at: AT() });
       state.threads.set(cardId, thread);
-      record({ ev: "card-replied", cardId, text });
+      record({ ev: "card-replied", cardId, text, images: payload.images?.length ?? 0, files: payload.files?.length ?? 0 });
       const result = { cardId, messages: [...thread] };
       setTimeout(() => {
         thread.push({ id: nextMessageId++, cardId, who: "firstmate", text: `Noted: ${text}`, at: AT() });
@@ -307,8 +342,10 @@ export async function startFakeMac(options = {}) {
     },
     "inf:converse": ([input]) => {
       const text = typeof input === "string" ? input : (input.text ?? "");
-      record({ ev: "converse", text });
+      record({ ev: "converse", text, images: input.images?.length ?? 0, files: input.files?.length ?? 0 });
       state.feed = [...state.feed, { kind: "you", text, at: AT(), event: "replied" }];
+      state.lastTurn = { you: text, reply: { text: `Got it: ${text}`, eligibility: "completed" } };
+      setTimeout(() => push("inf:event", { type: "firstmate_reply", text: `Got it: ${text}`, eligibility: "completed" }), 30);
       setTimeout(() => {
         const card = {
           id: `card-answer-${nextMessageId++}`, author: "firstmate", priority: 1,

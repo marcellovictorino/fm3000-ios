@@ -80,7 +80,7 @@ public final class AppModel: ObservableObject {
         client = nil
         grants.clear()
         identities.delete()
-        cards = []; threads = [:]; board = nil; feed = []; cursor = nil
+        cards = []; chat = []; threads = [:]; board = nil; feed = []; cursor = nil
         phase = .unpaired
     }
 
@@ -136,7 +136,7 @@ public final class AppModel: ObservableObject {
             } catch WireError.unpaired {
                 grants.clear()
                 identities.delete()
-                cards = []; threads = [:]; board = nil; feed = []; cursor = nil; client = nil
+                cards = []; chat = []; threads = [:]; board = nil; feed = []; cursor = nil; client = nil
                 phase = .unpaired
                 notice = WireError.unpaired.localizedDescription
                 return
@@ -154,9 +154,26 @@ public final class AppModel: ObservableObject {
         }
     }
 
+    /// The main Firstmate chat: what you sent, and what the first mate answered (`firstmate_reply` on `inf:event`).
+    @Published public private(set) var chat: [ChatItem] = []
+    private var chatCounter = 0
+
+    private func addChat(_ who: String, _ text: String, problem: Bool = false) {
+        chatCounter += 1
+        chat.append(ChatItem(id: "c\(chatCounter)", who: who, text: text, at: Date().timeIntervalSince1970 * 1000, problem: problem))
+    }
+
+    private func loadLastTurn() async {
+        guard chat.isEmpty, let turn: LastTurn? = try? await ask("inf:conversation:last-turn"), let turn else { return }
+        let now = Date().timeIntervalSince1970 * 1000
+        chat = [ChatItem(id: "last-you", who: "captain", text: turn.you, at: now - 1)]
+        if let reply = turn.reply { chat.append(ChatItem(id: "last-reply", who: "firstmate", text: reply.text, at: now, problem: reply.problem ?? false)) }
+    }
+
     private func reload() async throws {
         let list: [Card] = try await ask("inf:cards:list")
         cards = list
+        await loadLastTurn()
         for card in list { threads[card.id] = threads[card.id] ?? [] }
     }
 
@@ -166,6 +183,11 @@ public final class AppModel: ObservableObject {
             if let list = try? push.payload.decoded([Card].self) { cards = list }
         case "inf:cards:thread":
             if let thread = try? push.payload.decoded(CardThread.self) { threads[thread.cardId] = thread.messages }
+        case "inf:event":
+            guard case .object(let o) = push.payload, case .string(let type)? = o["type"], case .string(let text)? = o["text"] else { break }
+            if type == "firstmate_reply" { addChat("firstmate", text, problem: o["problem"] == .bool(true)) }
+            // Another device's message shows too; one this phone just sent is already there.
+            else if type == "user_turn", !(chat.last(where: { $0.isMine })?.text == text && Date().timeIntervalSince1970 * 1000 - (chat.last?.at ?? 0) < 30_000) { addChat("captain", text) }
         case "inf:tasks", "inf:tasks:delta":
             Task { await refreshBoard() }
         default:
@@ -190,11 +212,11 @@ public final class AppModel: ObservableObject {
     }
 
     /// Replies under a card: `inf:cards:reply`. The words go as the captain's own.
-    public func reply(_ text: String, to card: Card) async -> Bool {
+    public func reply(_ text: String, to card: Card, attachments: [Attachment] = []) async -> Bool {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !words.isEmpty else { return false }
+        guard !words.isEmpty || !attachments.isEmpty else { return false }
         do {
-            let thread: CardThread = try await ask("inf:cards:reply", [.string(card.id), .string(words)])
+            let thread: CardThread = try await ask("inf:cards:reply", [.string(card.id), Attachments.payload(text: words, attachments: attachments)])
             threads[card.id] = thread.messages
             return true
         } catch { notice = error.localizedDescription; return false }
@@ -205,17 +227,37 @@ public final class AppModel: ObservableObject {
     }
 
     /// Talks to Firstmate: `inf:converse`.
-    public func send(_ text: String) async -> Bool {
+    public func send(_ text: String, attachments: [Attachment] = []) async -> Bool {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !words.isEmpty else { return false }
+        guard !words.isEmpty || !attachments.isEmpty else { return false }
         do {
-            let _: JSONValue = try await ask("inf:converse", [.string(words)])
+            let _: JSONValue = try await ask("inf:converse", [Attachments.payload(text: words, attachments: attachments)])
+            addChat("captain", words.isEmpty ? "(\(attachments.count) attachment\(attachments.count == 1 ? "" : "s"))" : words)
             return true
         } catch { notice = error.localizedDescription; return false }
     }
 
     public func refreshBoard() async {
         do { board = try await ask("inf:tasks:board") } catch { notice = error.localizedDescription }
+    }
+
+    public func taskDetail(_ id: String) async -> TaskDetail? {
+        do { return try await ask("inf:tasks:detail", [.string(id)]) } catch { notice = error.localizedDescription; return nil }
+    }
+
+    public func crewLog(_ id: String) async -> CrewLog? { try? await ask("inf:tasks:crewmate", [.string(id)]) }
+
+    public func crewLive(_ id: String) async -> CrewLive? { try? await ask("inf:tasks:crewmate:live", [.string(id)]) }
+
+    /// Tells the crewmate something: `inf:task:steer`. The Mac may refuse (nothing is running), and says why.
+    public func steer(_ taskId: String, _ text: String) async -> Bool {
+        let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !words.isEmpty else { return false }
+        do {
+            let result: SteerResult = try await ask("inf:task:steer", [.string(taskId), .string(words)])
+            if !result.ok { notice = result.text ?? "The Mac did not take that." }
+            return result.ok
+        } catch { notice = error.localizedDescription; return false }
     }
 
     public func refreshFeed() async {

@@ -62,6 +62,9 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         step("card body reads as text")
 
         guard await model.send("hello from the phone") else { fail("converse refused: \(model.notice ?? "")") }
+        await until("first mate's reply in the main chat, after what you sent") {
+            model.chat.map(\.who) == ["captain", "firstmate"] && model.chat.last?.text == "Got it: hello from the phone"
+        }
         await until("pushed card from converse") { model.cards.contains { $0.title == "Firstmate answered" } }
 
         guard await model.reply("Call it Bridge", to: question) else { fail("reply refused: \(model.notice ?? "")") }

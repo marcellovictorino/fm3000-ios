@@ -158,6 +158,49 @@ await check("pair: the grant keeps the address that answered first and the other
 
 // MARK: Wire frames (spec: docs/connection.md, docs/contract.json connection)
 
+await check("thread: the row on a card says how many replies it has") {
+    try expectEqual(repliesLabel(0), "No replies yet"); try expectEqual(repliesLabel(1), "1 reply"); try expectEqual(repliesLabel(4), "4 replies")
+}
+await check("tasks: the board groups by status, and layout follows the toggle, else the phone's orientation") {
+    func task(_ id: String, _ status: String, _ at: Double) -> BoardTask {
+        BoardTask(id: id, key: id, projectId: "p", title: id, kind: "work", status: status, activity: nil, assignee: nil, model: nil, waitingCardId: nil, updatedAt: at)
+    }
+    let columns = boardColumns([task("a", "open", 1), task("b", "active", 2), task("c", "open", 5), task("d", "done", 3)])
+    try expectEqual(columns.map(\.title), ["Open", "Active", "Done"])
+    try expectEqual(columns[0].tasks.map(\.id), ["c", "a"])
+    try expectEqual(boardColumns([task("x", "dropped", 1)]).map(\.title), ["Open", "Active", "Done", "Dropped"])
+    try expect(tasksLayout(picked: nil, landscape: true) == .board && tasksLayout(picked: nil, landscape: false) == .list)
+    try expect(tasksLayout(picked: .board, landscape: false) == .board && tasksLayout(picked: .list, landscape: true) == .list)
+}
+await check("task detail: a detail and the crewmate's record decode, and only readable lines show") {
+    let detail = try JSONDecoder().decode(TaskDetail.self, from: Data(#"{"id":"t","key":"FM-1","title":"T","goal":null,"status":"active","activity":"running","workPosture":{"state":"active","reason":"turn"},"assignee":null,"model":null,"modelLabel":"Sonnet","waitingCardId":"c1","outcome":null,"problem":null,"delivery":{"mode":"direct-pr","prNumber":42,"prUrl":"https://x/42","ci":"green","runChecks":{"runId":7,"name":"CI","state":"passed","at":1}},"updatedAt":5,"unknown":{"a":1}}"#.utf8))
+    try expectEqual(detail.delivery?.prNumber, 42); try expectEqual(detail.workPosture?.reason, "turn")
+    let log = try JSONDecoder().decode(CrewLog.self, from: Data(#"{"taskId":"t","earlier":0,"revision":"r","lines":[{"kind":"said","id":"1","at":1,"text":"hi"},{"kind":"tool","id":"2","at":2,"name":"Read","target":"f","reading":"r","result":null},{"kind":"sent","id":"3","at":3,"from":"captain","text":"go","queued":false},{"kind":"report","id":"4","at":4,"summary":"S","text":"T"}]}"#.utf8))
+    try expectEqual(log.lines.compactMap { $0.readable?.who }, ["Crewmate", "You", "Report"])
+}
+await check("attachments: text only stays a string; images and text files take the Mac's object form; binary files are refused") {
+    try expectEqual(Attachments.payload(text: "hi", attachments: []), .string("hi"))
+    let png = try Attachments.image(name: "a.png", mimeType: "image/png", data: Data([1, 2, 3]))
+    let note = try Attachments.textFile(name: "n.md", data: Data("# note".utf8))
+    guard case .object(let o) = Attachments.payload(text: "see", attachments: [png, note]) else { throw Failed(description: "not an object") }
+    try expectEqual(o["text"], .string("see"))
+    guard case .array(let images)? = o["images"], case .array(let files)? = o["files"] else { throw Failed(description: "missing images or files") }
+    try expectEqual(images.count, 1); try expectEqual(files, [.object(["name": .string("n.md"), "text": .string("# note")])])
+    do { _ = try Attachments.textFile(name: "x.bin", data: Data([0xff, 0xfe, 0x00])); throw Failed(description: "a binary file was taken") } catch AttachmentError.notText {}
+    do { _ = try Attachments.image(name: "a.heic", mimeType: "image/heic", data: Data([1])); throw Failed(description: "heic was taken") } catch AttachmentError.notImage {}
+}
+await check("chat: oldest first whatever order they arrive in, captain on the right, replies on the left with a label") {
+    let items = [
+        ChatItem(id: "3", who: "crewmate", text: "done", at: 300), ChatItem(id: "1", who: "captain", text: "go", at: 100),
+        ChatItem(id: "2", who: "firstmate", text: "ok", at: 200), ChatItem(id: "2b", who: "host", text: "saved", at: 200),
+    ]
+    let ordered = ChatItem.chronological(items)
+    try expectEqual(ordered.map(\.id), ["1", "2", "2b", "3"])
+    try expectEqual(ordered.map(\.isMine), [true, false, false, false])
+    try expectEqual(ordered.map(\.label), ["You", "Firstmate", "Infinitary", "Crewmate"])
+    let message = try JSONDecoder().decode(ThreadMessage.self, from: Data(#"{"id":5,"cardId":"c","who":"firstmate","text":"hi","at":9,"answers":[]}"#.utf8))
+    try expectEqual(message.chatItem.who, "firstmate")
+}
 await check("wire: hello says protocol 11.0.0, view, ios, arm64, and carries a cursor when it has one") {
     let hello = try JSONDecoder().decode(JSONValue.self, from: Data(HomeFrame.hello(cursor: Cursor(epoch: "e1", seq: 7)).utf8))
     guard case .object(let o) = hello else { throw Failed(description: "not an object") }
