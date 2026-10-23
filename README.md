@@ -1,6 +1,6 @@
-# Firstmate for iPhone
+# Infinitary for iPhone
 
-A single-user iPhone app that attaches to your running Firstmate 3000 over Tailscale. It shows the open cards, lets you choose a card's action, reply under it, send Firstmate a message, and read the task board and feed. It is a paired device of your Mac, as another Mac's window is: no relay, no account, no hosted service.
+A single-user iPhone app that attaches to your running Infinitary over Tailscale. It shows the open cards, lets you choose a card's action, reply under it, send Firstmate a message, and read the task board and feed. It is a paired device of your Mac, as another Mac's window is: no relay, no account, no hosted service.
 
 Built against Infinitary (the renamed Firstmate 3000), protocol 11.0.0 (`docs/contract.json` inside the app bundle). The Mac now gives full access only to its own protocol major (`majorsBehind` is 0): after a major Infinitary update the app drops to read-only until it is updated to the new contract.
 
@@ -37,14 +37,14 @@ A free Apple ID gives a "Personal Team". Xcode signs the app with it and install
 
 ### If the phone is lost
 
-On the Mac: Firstmate 3000 > Settings > Devices > remove the phone. It is cut off at once; its key is useless after that. Words typed on the phone count as yours, so do this promptly. "Forget this Mac" in the app's Mac tab does the same from the phone.
+On the Mac: Infinitary > Settings > Devices > remove the phone. It is cut off at once; its key is useless after that. Words typed on the phone count as yours, so do this promptly. "Forget this Mac" in the app's Mac tab does the same from the phone.
 
 ## What was verified, and what was not
 
 Run everything that needs no phone: `./scripts/test.sh`.
 
 - **Fake Mac against the contract** (`fake-mac`, 11 tests): the pairing statuses, Origin refusal (403), 401 for an unpaired key, 404, hello and welcome, replay by cursor, read access for an older major, argument checks, all against `contract.json`.
-- **Swift checks** (`fm-checks`, 23 checks): link parsing as the Mac builds it, the SPKI pin against openssl's, the phone's certificate verified by openssl, chunked `/pair` answers, wire frames, the client's request matching, push de-duplication, 4401 handling and the app forgetting the Mac.
+- **Swift checks** (`fm-checks`, 29 checks): link parsing as the Mac builds it, the SPKI pin against openssl's, the phone's certificate verified by openssl, chunked `/pair` answers, wire frames, the client's request matching, push de-duplication, 4401 handling and the app forgetting the Mac.
 - **End to end** (`scripts/e2e.sh`): the app's own model pairs with the fake Mac and runs cards, act, reply, converse, board, feed, a pushed card, reconnect with replay, unpair, over real TLS 1.3 and a real WebSocket through Network.framework. The fake confirms: TLS 1.3, client certificate pin, hello `8.3.0 / view / ios / arm64`, and no Origin header on any request.
 - **Simulator**: `./scripts/run-simulator.sh` builds the app for the iOS simulator, installs it and pairs it with the fake Mac. It paired and showed the cards.
 
@@ -54,7 +54,7 @@ Not verified, because it needs your real Mac or your phone:
 - Whether the Mac raises a "Finish setting up" card for a phone paired as a computer. The app pairs as `kind: mac` and connects only as a view. If a card appears, choose "Not now"; it never runs work for the phone.
 - iOS WebSocket Origin behaviour on a real iOS device. Network.framework sent no Origin on macOS and in the simulator; a real phone uses the same stack.
 - Whether iOS reaches the Mac's `100.x` address without a local network prompt (it should not ask). The app declares a local network usage string in case it does.
-- Card pictures, forms and other rich card parts. Card bodies are shown as plain text; the Mac shows them whole. Actions that open a window on the Mac (settings, browser) answer "needs your Mac's window".
+- Card pictures, live forms and scripts. Card bodies are drawn as HTML with the desktop stylesheet (headings, colours, tables, SVG), without scripts or pictures. Actions that open a window on the Mac (settings, browser) answer "needs your Mac's window".
 - The identity lookup on a real iPhone (the simulator exercises the same code).
 
 ## TestFlight (optional, needs the paid Apple Developer Program)
