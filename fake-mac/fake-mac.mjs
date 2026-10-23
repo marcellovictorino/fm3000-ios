@@ -179,7 +179,8 @@ export async function startFakeMac(options = {}) {
 
   // What the home holds.
   const now = AT();
-  const state = { cards: fixtureCards(now), threads: new Map(), board: fixtureBoard(now), feed: fixtureFeed(now), crew: fixtureCrew(now) };
+  const state = { cards: fixtureCards(now), threads: new Map(), board: fixtureBoard(now), feed: fixtureFeed(now), crew: fixtureCrew(now),
+    lastTurn: { you: "Tidy the settings page", reply: { text: "Started FM-1: grouping the toggles under three headings.", eligibility: "completed" } } };
   for (const card of state.cards) state.threads.set(card.id, []);
   let nextMessageId = 1;
   const links = new Map(); // sha256(code) -> { kind, expiresAt, used }
