@@ -2,228 +2,336 @@ import FM3000Core
 import FM3000Model
 import SwiftUI
 
-/// Panels on the phone. The Mac keeps its own panel calls to its window (`reach: home` in the contract), so these are
-/// native screens over the data the phone may read: machine resources and pull request status.
+/// Panels on the phone: the same two panels as the desktop (Machine load and Open pull requests), read from the Mac
+/// that runs Infinitary through the extensions' own stores and server actions.
 struct PanelsView: View {
     @ObservedObject var model: AppModel
 
-    enum Page: Hashable { case computer(String) }
-
     var body: some View {
         List {
-            NavigationLink(value: OthersPage.resources) { Label("Resources", systemImage: "gauge.with.dots.needle.50percent") }.infinitaryRow()
-            NavigationLink(value: OthersPage.pullRequests) { Label("Pull requests", systemImage: "arrow.triangle.pull") }.infinitaryRow()
+            NavigationLink(value: OthersPage.resources) { Label("Machine load", systemImage: "gauge.with.dots.needle.50percent") }.infinitaryRow()
+            NavigationLink(value: OthersPage.pullRequests) { Label("Open pull requests", systemImage: "arrow.triangle.pull") }.infinitaryRow()
         }
         .infinitaryScreen()
         .navigationTitle("Panels").iOSInlineTitle()
     }
 }
 
-struct Gauge: View {
-    let title: String
-    let fraction: Double
-    var detail: String?
+// MARK: Machine load
 
-    private var tint: Color { fraction > 0.9 ? Theme.danger : (fraction > 0.75 ? Theme.warn : Theme.accent) }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(title).font(.subheadline).foregroundStyle(Theme.fg2)
-                Spacer()
-                Text("\(Int((fraction * 100).rounded()))%").font(.subheadline.monospacedDigit()).foregroundStyle(Theme.fg1)
-            }
-            GeometryReader { box in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.bg3)
-                    Capsule().fill(tint).frame(width: max(4, box.size.width * fraction))
-                        .shadow(color: tint.opacity(0.4), radius: 4)
-                }
-            }
-            .frame(height: 8)
-            if let detail { Text(detail).font(.caption).foregroundStyle(Theme.fg3) }
-        }
-    }
+/// The desktop's colours: orange above 60%, red above 85%.
+private func loadTint(_ value: Double?) -> Color {
+    guard let value else { return Theme.fg3 }
+    return value > 85 ? Theme.danger : (value > 60 ? Theme.warn : Theme.accent)
 }
+
+private func gigabytes(_ bytes: Double) -> String { String(format: "%.1f", bytes / 1_073_741_824) }
 
 private func bytes(_ value: Int?) -> String {
     guard let value else { return "—" }
     return ByteCountFormatter.string(fromByteCount: Int64(value), countStyle: .memory)
 }
 
-/// Every computer the home can see, refreshed every two seconds while the screen is open.
-struct ResourcesView: View {
-    @ObservedObject var model: AppModel
-    @State private var resources: ComputerResources?
-    @State private var loaded = false
+struct Meter: View {
+    let label: String
+    let history: [Double?]
+    var detail: String?
+
+    private var value: Double? { history.last ?? nil }
 
     var body: some View {
-        List {
-            if let computers = resources?.computers, !computers.isEmpty {
-                ForEach(computers) { computer in
-                    NavigationLink(value: PanelsView.Page.computer(computer.id)) { row(computer) }.infinitaryRow()
-                }
-            } else {
-                Text(loaded ? "The Mac gave no readings." : "Reading…").foregroundStyle(Theme.fg2).infinitaryRow()
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(label).font(.subheadline).foregroundStyle(Theme.fg2)
+                if let detail { Text(detail).font(.caption).foregroundStyle(Theme.fg3) }
+                Spacer()
+                Text(value.map { "\(Int($0.rounded()))%" } ?? "–").font(.title3.monospacedDigit()).foregroundStyle(loadTint(value))
             }
-        }
-        .infinitaryScreen()
-        .navigationTitle("Resources").iOSInlineTitle()
-        .navigationDestination(for: PanelsView.Page.self) { page in
-            if case .computer(let id) = page { ComputerView(model: model, computerId: id) }
-        }
-        .task {
-            while !Task.isCancelled {
-                resources = await model.resources(); loaded = true
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-            }
-        }
-    }
-
-    private func row(_ computer: ComputerResources.Computer) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(computer.label).font(.headline)
-            if let cpu = computer.cpuUsed, let memory = computer.memoryUsed {
-                Gauge(title: "CPU", fraction: cpu)
-                Gauge(title: "Memory", fraction: memory)
-            } else {
-                Text(reasonText(computer.reading.reason)).font(.footnote).foregroundStyle(Theme.warn)
-            }
+            Spark(history: history, tint: loadTint(value)).frame(height: 36)
         }
         .padding(.vertical, 4)
     }
 }
 
-private func reasonText(_ reason: String?) -> String {
-    switch reason {
-    case "out-of-reach": return "Out of reach right now."
-    case "stale": return "The last reading is too old."
-    case "unsupported": return "This computer does not report resources."
-    case "timeout": return "The reading timed out."
-    default: return "No reading available."
-    }
-}
-
-/// One computer in detail: the gauges plus the memory breakdown and the sample rate.
-struct ComputerView: View {
-    @ObservedObject var model: AppModel
-    let computerId: String
-    @State private var computer: ComputerResources.Computer?
+/// The last minute as a line over a faint area, like the desktop's sparkline: 0 to 100% top to bottom, gaps where there was no reading.
+struct Spark: View {
+    static let capacity = 60
+    let history: [Double?]
+    let tint: Color
 
     var body: some View {
-        List {
-            if let computer, let observation = computer.reading.observation, let cpu = computer.cpuUsed, let memory = computer.memoryUsed {
-                Section {
-                    Gauge(title: "CPU", fraction: cpu, detail: "\(observation.cpu.logicalCpus) logical cores").infinitaryRow()
-                    Gauge(title: "Memory", fraction: memory, detail: "\(bytes(computer.reading.memoryUsedBytes)) of \(bytes(observation.memory.totalBytes)) in use").infinitaryRow()
-                }
-                Section("Memory") {
-                    LabeledContent("Pressure", value: (observation.memory.memoryPressure ?? "normal").capitalized).infinitaryRow()
-                    LabeledContent("Available", value: bytes(observation.memory.availableBytes)).infinitaryRow()
-                    LabeledContent("Free", value: bytes(observation.memory.freeBytes)).infinitaryRow()
-                    LabeledContent("Inactive", value: bytes(observation.memory.inactiveBytes)).infinitaryRow()
-                    LabeledContent("File cache", value: bytes(observation.memory.fileBackedBytes)).infinitaryRow()
-                    LabeledContent("Purgeable", value: bytes(observation.memory.purgeableBytes)).infinitaryRow()
-                }
-                Section("Sampling") {
-                    LabeledContent("Every", value: "\(Int(observation.sampleMs)) ms").infinitaryRow()
-                    if let age = computer.reading.ageMs { LabeledContent("Reading age", value: "\(Int(age)) ms").infinitaryRow() }
-                }
-            } else {
-                Text(reasonText(computer?.reading.reason)).foregroundStyle(Theme.fg2).infinitaryRow()
+        GeometryReader { box in
+            let step = box.size.width / CGFloat(Spark.capacity - 1)
+            let offset = Spark.capacity - history.count
+            let point = { (i: Int, v: Double) in
+                CGPoint(x: CGFloat(offset + i) * step, y: box.size.height - 1 - CGFloat(min(100, max(0, v)) / 100) * (box.size.height - 2))
             }
-        }
-        .infinitaryScreen()
-        .navigationTitle(computer?.label ?? "Computer").iOSInlineTitle()
-        .task {
-            while !Task.isCancelled {
-                computer = await model.resources()?.computers.first { $0.id == computerId }
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-            }
-        }
-    }
-}
-
-/// Open and active tasks that have a pull request, with their check state.
-struct PullRequestsView: View {
-    @ObservedObject var model: AppModel
-    @State private var items: [(task: BoardTask, delivery: TaskDetail.Delivery)] = []
-    @State private var loaded = false
-    @State private var picked: BoardTask?
-
-    var body: some View {
-        List {
-            if items.isEmpty {
-                Text(loaded ? "No open task has a pull request." : "Reading…").foregroundStyle(Theme.fg2).infinitaryRow()
-            }
-            ForEach(items, id: \.task.id) { item in
-                NavigationLink(value: item.task) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("#\(item.delivery.prNumber ?? 0)").font(.subheadline.monospaced()).foregroundStyle(Theme.accent)
-                            Text(item.task.key).font(.caption.monospaced()).foregroundStyle(Theme.fg3)
-                            Spacer()
-                            CheckPill(state: item.delivery.ci)
+            ZStack {
+                Path { p in p.move(to: CGPoint(x: 0, y: box.size.height - 0.5)); p.addLine(to: CGPoint(x: box.size.width, y: box.size.height - 0.5)) }
+                    .stroke(Theme.line, lineWidth: 0.5)
+                Path { p in
+                    var run: [CGPoint] = []
+                    func flush() {
+                        if run.count > 1, let first = run.first, let last = run.last {
+                            p.move(to: CGPoint(x: first.x, y: box.size.height))
+                            for pt in run { p.addLine(to: pt) }
+                            p.addLine(to: CGPoint(x: last.x, y: box.size.height)); p.closeSubpath()
                         }
-                        Text(item.task.title).font(.subheadline)
+                        run = []
+                    }
+                    for (i, v) in history.enumerated() { if let v { run.append(point(i, v)) } else { flush() } }
+                    flush()
+                }
+                .fill(tint.opacity(0.14))
+                Path { p in
+                    var started = false
+                    for (i, v) in history.enumerated() {
+                        guard let v else { started = false; continue }
+                        if started { p.addLine(to: point(i, v)) } else { p.move(to: point(i, v)); started = true }
                     }
                 }
-                .infinitaryRow()
+                .stroke(tint, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
             }
         }
-        .infinitaryScreen()
-        .navigationTitle("Pull requests").iOSInlineTitle()
-        .navigationDestination(for: BoardTask.self) { task in
-            if let delivery = items.first(where: { $0.task.id == task.id })?.delivery { PullRequestDetail(task: task, delivery: delivery) }
-        }
-        .refreshable { items = await model.pullRequests() }
-        .task { await load() }
-        .onChange(of: model.phase) { phase in if case .connected = phase { Task { await load() } } }
     }
 }
 
-extension PullRequestsView {
-    fileprivate func load() async {
-        await model.refreshBoard()
-        items = await model.pullRequests()
-        loaded = true
-    }
-}
+/// CPU, GPU and memory of the Mac that runs Infinitary (never the iPhone), sampled every two seconds like the desktop panel.
+struct ResourcesView: View {
+    @ObservedObject var model: AppModel
+    @State private var cpu: [Double?] = []
+    @State private var gpu: [Double?] = []
+    @State private var memory: [Double?] = []
+    @State private var memoryDetail: String?
+    @State private var observation: ComputerResources.Computer.Observation?
 
-struct CheckPill: View {
-    let state: String?
-    private var color: Color {
-        switch state { case "green": Theme.accent; case "red", "failed": Theme.danger; case "pending", "running": Theme.warn; default: Theme.fg3 }
+    private var macName: String {
+        if case .connected(let mac, _) = model.phase { return mac }
+        return "your Mac"
     }
-    var body: some View {
-        Text((state ?? "no checks").replacingOccurrences(of: "-", with: " ").capitalized)
-            .font(.caption2.weight(.medium)).foregroundStyle(color)
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(color.opacity(0.14), in: Capsule())
-    }
-}
-
-private struct PullRequestDetail: View {
-    let task: BoardTask
-    let delivery: TaskDetail.Delivery
 
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(task.title).font(.headline)
-                    HStack { CheckPill(state: delivery.ci); Text(task.key).font(.caption.monospaced()).foregroundStyle(Theme.fg3) }
-                }
-                .infinitaryRow()
+                Meter(label: "CPU", history: cpu).infinitaryRow()
+                Meter(label: "GPU", history: gpu).infinitaryRow()
+                Meter(label: "Memory", history: memory, detail: memoryDetail).infinitaryRow()
+            } footer: {
+                Text("Measured on \(macName), the Mac running Infinitary. Not this iPhone. GPU stays blank: Infinitary shares it only with the desktop app.")
             }
-            Section("Pull request") {
-                LabeledContent("Number", value: "#\(delivery.prNumber ?? 0)").infinitaryRow()
-                if let mode = delivery.mode { LabeledContent("Delivery", value: mode).infinitaryRow() }
-                if let checks = delivery.runChecks { LabeledContent(checks.name, value: checks.state).infinitaryRow() }
-                if let text = delivery.prUrl, let url = URL(string: text) { Link("Open on the web", destination: url).infinitaryRow() }
+            if let memory = observation?.memory {
+                Section("Memory details") {
+                    LabeledContent("Pressure", value: (memory.memoryPressure ?? "normal").capitalized).infinitaryRow()
+                    LabeledContent("Available", value: bytes(memory.availableBytes)).infinitaryRow()
+                    LabeledContent("Free", value: bytes(memory.freeBytes)).infinitaryRow()
+                    LabeledContent("Inactive", value: bytes(memory.inactiveBytes)).infinitaryRow()
+                    LabeledContent("File cache", value: bytes(memory.fileBackedBytes)).infinitaryRow()
+                    LabeledContent("Purgeable", value: bytes(memory.purgeableBytes)).infinitaryRow()
+                }
+            }
+            if let observation {
+                Section("Processor") {
+                    LabeledContent("Logical cores", value: "\(observation.cpu.logicalCpus)").infinitaryRow()
+                    LabeledContent("Sampled every", value: "\(Int(observation.sampleMs)) ms").infinitaryRow()
+                }
             }
         }
         .infinitaryScreen()
-        .navigationTitle("#\(delivery.prNumber ?? 0)").iOSInlineTitle()
+        .navigationTitle("Machine load").iOSInlineTitle()
+        .task {
+            while !Task.isCancelled {
+                if model.phase.isConnected { await sample() }
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            }
+        }
     }
+
+    private func push(_ list: inout [Double?], _ value: Double?) {
+        list.append(value)
+        if list.count > Spark.capacity { list.removeFirst(list.count - Spark.capacity) }
+    }
+
+    private func sample() async {
+        let home = await model.resources()?.computers.first { $0.computerId == nil }
+        push(&cpu, home?.cpuUsed.map { $0 * 100 })
+        observation = home?.reading.observation
+        if let machine = await model.machineSample() {
+            push(&gpu, machine.gpu)
+            if let used = machine.memory {
+                push(&memory, 100 * used.usedBytes / used.totalBytes)
+                memoryDetail = "\(gigabytes(used.usedBytes)) of \(gigabytes(used.totalBytes)) GB"
+                return
+            }
+        } else {
+            push(&gpu, nil)
+        }
+        push(&memory, home?.memoryUsed.map { $0 * 100 })
+        memoryDetail = nil
+    }
+}
+
+// MARK: Open pull requests
+
+private func tone(_ checks: String) -> Color {
+    switch checks { case "passed": Theme.accent; case "failed": Theme.danger; case "pending": Theme.warn; default: Theme.fg3 }
+}
+
+private func word(_ checks: String) -> String {
+    switch checks { case "passed": "passed"; case "failed": "failed"; case "pending": "running"; default: "no checks" }
+}
+
+/// The desktop's "Open pull requests" panel: how many are open, an age filter (today, week, older) with bars,
+/// and the groups Ready to merge, Needs attention and Waiting, each row led by its checks colour.
+struct PullRequestsView: View {
+    @ObservedObject var model: AppModel
+    @State private var prs: OpenPRs?
+    @State private var loaded = false
+    @State private var refreshing = false
+    @State private var age: OpenPRs.Age?
+    @State private var expanded: Set<OpenPRs.Group> = DebugLaunch.has("-openGroups") ? Set(OpenPRs.Group.allCases) : []
+    @State private var expandedBefore: Set<OpenPRs.Group> = []
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        List {
+            if let blocked = prs?.blocked {
+                Text(blocked).foregroundStyle(Theme.fg2).infinitaryRow()
+            } else if let prs {
+                tally(prs).infinitaryRow()
+                if prs.changes.isEmpty {
+                    Text("No open pull requests").foregroundStyle(Theme.fg2).infinitaryRow()
+                } else {
+                    ForEach(OpenPRs.Group.allCases) { group in groupSection(group, prs) }
+                    if let age, shown(prs).isEmpty { Text("None opened \(ageWords(age))").foregroundStyle(Theme.fg2).infinitaryRow() }
+                }
+                if prs.status == "unreachable" { Text("Could not reach GitHub just now").font(.caption).foregroundStyle(Theme.fg3).infinitaryRow() }
+            } else {
+                Text(loaded ? "The Mac does not let the iPhone read this panel yet. Infinitary keeps panel data to the desktop app." : "Reading…").foregroundStyle(Theme.fg2).infinitaryRow()
+            }
+        }
+        .infinitaryScreen()
+        .navigationTitle("Open pull requests").iOSInlineTitle()
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { Task { await refreshNow() } } label: { Image(systemName: "arrow.clockwise") }
+                    .disabled(refreshing).accessibilityLabel(refreshing ? "Reading GitHub" : "Refresh now")
+            }
+        }
+        .refreshable { await refreshNow() }
+        .task {
+            // Read again every 30 seconds, and every 2 until the first answer (the phone may still be connecting).
+            while !Task.isCancelled {
+                if model.phase.isConnected { prs = await model.openPRs(); loaded = true }
+                try? await Task.sleep(nanoseconds: prs == nil ? 2_000_000_000 : 30_000_000_000)
+            }
+        }
+    }
+
+    private func refreshNow() async {
+        refreshing = true
+        await model.refreshOpenPRs()
+        prs = await model.openPRs()
+        refreshing = false
+    }
+
+    private func ageWords(_ age: OpenPRs.Age) -> String {
+        switch age { case .today: "today"; case .week: "this week"; case .older: "over a week ago" }
+    }
+
+    private func shown(_ prs: OpenPRs) -> [OpenPRs.Change] {
+        guard let age else { return prs.changes }
+        return prs.changes.filter { OpenPRs.age(of: $0) == age }
+    }
+
+    private func pick(_ next: OpenPRs.Age) {
+        if age == next { age = nil; expanded = expandedBefore; return }
+        if age == nil { expandedBefore = expanded }
+        age = next
+        expanded = Set(OpenPRs.Group.allCases)
+    }
+
+    private func tally(_ prs: OpenPRs) -> some View {
+        let counts = prs.counts()
+        let most = max(1, counts.values.max() ?? 1)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(prs.changes.count)").font(.title2.monospacedDigit()).foregroundStyle(Theme.fg1)
+                Text("open").font(.subheadline).foregroundStyle(Theme.fg2)
+                if prs.failedCount > 0 { Text("\(prs.failedCount) failed").font(.caption.weight(.semibold)).foregroundStyle(Theme.danger).padding(.leading, 6) }
+            }
+            if !prs.changes.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(OpenPRs.Age.allCases) { bucket in
+                        let count = counts[bucket] ?? 0
+                        Button { pick(bucket) } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text("\(count)").font(.subheadline.monospacedDigit()).foregroundStyle(Theme.fg1)
+                                    Text(bucket.label).font(.caption).foregroundStyle(Theme.fg2)
+                                }
+                                GeometryReader { box in
+                                    ZStack(alignment: .leading) {
+                                        Capsule().fill(Theme.bg3)
+                                        Capsule().fill(Theme.accent).frame(width: box.size.width * CGFloat(count) / CGFloat(most))
+                                    }
+                                }
+                                .frame(height: 4)
+                            }
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(age == bucket ? Theme.bg3 : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(age == bucket ? Theme.accent.opacity(0.6) : Theme.line, lineWidth: 0.75))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(count == 0 && age != bucket)
+                        .opacity(count == 0 && age != bucket ? 0.5 : 1)
+                        .accessibilityLabel("\(bucket.title): \(count)")
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder private func groupSection(_ group: OpenPRs.Group, _ prs: OpenPRs) -> some View {
+        let rows = shown(prs).filter { OpenPRs.group(of: $0) == group }
+        let isOpen = !rows.isEmpty && expanded.contains(group)
+        Button {
+            if expanded.contains(group) { expanded.remove(group) } else { expanded.insert(group) }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(Theme.fg3)
+                    .rotationEffect(.degrees(isOpen ? 90 : 0))
+                Text(group.label.uppercased()).font(.caption.weight(.medium)).tracking(1).foregroundStyle(Theme.fg2)
+                Text("\(rows.count)").font(.caption.monospacedDigit()).foregroundStyle(Theme.fg3)
+                Spacer()
+            }
+        }
+        .buttonStyle(.plain).disabled(rows.isEmpty).infinitaryRow()
+        if isOpen {
+            ForEach(rows) { change in
+                Button { if let url = URL(string: change.url) { openURL(url) } } label: {
+                    HStack(alignment: .top, spacing: 10) {
+                        Circle().fill(tone(change.checks)).frame(width: 8, height: 8).padding(.top, 6)
+                            .shadow(color: tone(change.checks).opacity(0.5), radius: 3)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(change.title).font(.subheadline).foregroundStyle(Theme.fg1).lineLimit(2)
+                            HStack(spacing: 8) {
+                                Text(change.projectName).foregroundStyle(Theme.fg3)
+                                Text(change.shownLabel).foregroundStyle(Theme.fg3).font(.caption.monospaced())
+                                Text(word(change.checks)).foregroundStyle(tone(change.checks))
+                                if change.draft { Text("draft").foregroundStyle(Theme.fg2) }
+                            }
+                            .font(.caption)
+                        }
+                    }
+                }
+                .buttonStyle(.plain).infinitaryRow()
+            }
+        }
+    }
+}
+
+private extension ConnectionPhase {
+    var isConnected: Bool { if case .connected = self { return true } else { return false } }
 }
