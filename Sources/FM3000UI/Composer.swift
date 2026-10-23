@@ -18,6 +18,9 @@ struct Composer: View {
     var sending: Bool
     var onSend: () -> Void
     @FocusState private var focused: Bool
+    #if canImport(UIKit)
+    @StateObject private var dictation = Dictation()
+    #endif
     @State private var problem: String?
     #if canImport(UIKit)
     @State private var pickedPhotos: [PhotosPickerItem] = []
@@ -31,6 +34,9 @@ struct Composer: View {
 
     var body: some View {
         VStack(spacing: 6) {
+            #if canImport(UIKit)
+            if let problem = dictation.problem { Text(problem).font(.caption).foregroundStyle(Theme.warn).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16) }
+            #endif
             if let problem { Text(problem).font(.caption).foregroundStyle(Theme.warn).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16) }
             if let items = attachments?.wrappedValue, !items.isEmpty { chips(items) }
             HStack(alignment: .bottom, spacing: 8) {
@@ -45,8 +51,11 @@ struct Composer: View {
                     .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(focused ? Theme.accent.opacity(0.6) : Theme.accent.opacity(0.28), lineWidth: focused ? 1 : 0.75))
                     .shadow(color: Theme.accent.opacity(focused ? 0.4 : 0.16), radius: focused ? 10 : 6)
                     .animation(.easeOut(duration: 0.16), value: focused)
+                #if canImport(UIKit)
+                if !hasContent || dictation.listening { micButton }
+                #endif
                 if hasContent {
-                    Button(action: { focused = false; problem = nil; onSend() }) {
+                    Button(action: { stopDictation(); focused = false; problem = nil; onSend() }) {
                         Image(systemName: sending ? "ellipsis" : "arrow.up")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(Theme.bg0)
@@ -62,6 +71,27 @@ struct Composer: View {
         .padding(.horizontal, 12).padding(.vertical, 8)
         .background(Theme.bg1.ignoresSafeArea(edges: .bottom))
         .animation(.easeOut(duration: 0.15), value: hasContent)
+    }
+
+    #if canImport(UIKit)
+    /// Dictation: tap, speak, tap again. The words land in the box to check before sending.
+    private var micButton: some View {
+        Button { focused = false; dictation.toggle(into: $text) } label: {
+            Image(systemName: dictation.listening ? "stop.fill" : "mic.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(dictation.listening ? Theme.bg0 : Theme.accent)
+                .frame(width: 36, height: 36)
+                .background(dictation.listening ? AnyShapeStyle(Theme.danger) : AnyShapeStyle(Theme.bg2), in: Circle())
+        }
+        .accessibilityLabel(dictation.listening ? "Stop dictating" : "Dictate")
+        .disabled(!enabled)
+    }
+    #endif
+
+    private func stopDictation() {
+        #if canImport(UIKit)
+        dictation.stop()
+        #endif
     }
 
     private func chips(_ items: [Attachment]) -> some View {
@@ -100,8 +130,6 @@ struct Composer: View {
             Button { showPhotos = true } label: { Label("Photo library", systemImage: "photo.on.rectangle") }
             Button { showCamera = true } label: { Label("Take photo", systemImage: "camera") }.disabled(!cameraAvailable)
             Button { showFiles = true } label: { Label("File (text)", systemImage: "doc") }
-            // Voice notes: the Mac takes images and text files only (`inf:converse` has no audio field), so this stays off.
-            Button {} label: { Label("Voice note (your Mac cannot take audio yet)", systemImage: "mic") }.disabled(true)
         } label: {
             Image(systemName: "plus").font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.accent)
                 .frame(width: 36, height: 36).background(Theme.bg2, in: Circle())

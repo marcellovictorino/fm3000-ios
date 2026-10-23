@@ -64,6 +64,7 @@ struct ChatList: View {
                 .background(item.isMine ? Theme.accent.opacity(0.18) : Theme.bg2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(item.isMine ? Theme.accent.opacity(0.35) : Theme.line.opacity(0.6), lineWidth: 0.5))
                 .frame(maxWidth: 520, alignment: item.isMine ? .trailing : .leading)
+                .contextMenu { ListenButton(text: item.text, id: "chat-\(item.id)") }
         }
         .frame(maxWidth: .infinity, alignment: item.isMine ? .trailing : .leading)
     }

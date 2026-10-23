@@ -86,6 +86,8 @@ struct CardDetailView: View {
         .navigationTitle(card.title)
         .iOSInlineTitle()
         .navigationDestination(isPresented: $showThread) { CardThreadView(model: model, card: card) }
+        .toolbar { ToolbarItem(placement: .primaryAction) { ListenButton(text: card.title + ". " + HTMLText.plain(card.body), id: "card-" + card.id) } }
+        .onDisappear { Speaker.shared.stop() }
         .task { await model.loadThread(of: card) }
     }
 }
