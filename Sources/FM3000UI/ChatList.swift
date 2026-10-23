@@ -54,14 +54,14 @@ struct ChatList: View {
     private func bubble(_ item: ChatItem) -> some View {
         VStack(alignment: item.isMine ? .trailing : .leading, spacing: 3) {
             HStack(spacing: 6) {
-                Text(item.label).foregroundStyle(item.who == "firstmate" || item.who == "crewmate" ? Theme.accent : Theme.fg3)
+                Text(item.label).foregroundStyle(item.who == "firstmate" ? Theme.gold : item.who == "crewmate" ? Theme.accent : Theme.fg3)
                 Text(stamp(item.at)).foregroundStyle(Theme.fg3)
             }
             .font(.caption2)
             Text(item.text)
                 .foregroundStyle(item.problem ? Theme.danger : Theme.fg1)
                 .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(item.isMine ? Theme.accent.opacity(0.18) : Theme.bg2, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(item.isMine ? AnyShapeStyle(Theme.accentGradient.opacity(0.28)) : AnyShapeStyle(Theme.bg2), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(item.isMine ? Theme.accent.opacity(0.35) : Theme.line.opacity(0.6), lineWidth: 0.5))
                 .frame(maxWidth: 520, alignment: item.isMine ? .trailing : .leading)
                 .contextMenu { ListenButton(text: item.text, id: "chat-\(item.id)") }
@@ -81,7 +81,7 @@ struct ChatList: View {
 private struct TypingBubble: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("Firstmate").font(.caption2).foregroundStyle(Theme.accent)
+            Text("Firstmate").font(.caption2).foregroundStyle(Theme.gold)
             TimelineView(.animation) { context in
                 let t = context.date.timeIntervalSinceReferenceDate
                 HStack(spacing: 5) {
