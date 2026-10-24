@@ -297,18 +297,26 @@ struct CrewThreadView: View {
     @State private var sending = false
 
     var body: some View {
-        ChatList(items: (log?.lines ?? []).compactMap(\.chatItem), empty: "Nothing said yet. Write below to tell the crewmate something.")
+        ChatList(items: (log?.lines ?? []).compactMap(\.chatItem), empty: "Nothing said yet. Write below to tell the crewmate something.", typing: model.awaitingThreads.contains("crew-" + task.id) || DebugLaunch.has("-typing"))
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Composer(placeholder: "Tell \(task.key)’s crewmate…", text: $text, attachments: nil, enabled: model.canChange, sending: sending) {
                 let words = text
                 sending = true
                 Task {
-                    if await model.steer(task.id, words) { text = ""; log = await model.crewLog(task.id) }
+                    if await model.steer(task.id, words) { text = ""; model.expectCrewReply(task.id); log = await model.crewLog(task.id) }
                     sending = false
                 }
             }
         }
         .navigationTitle("Thread").iOSInlineTitle()
         .task { log = await model.crewLog(task.id) }
+        .task(id: model.awaitingThreads.contains("crew-" + task.id)) {
+            // While the crewmate may answer, read its log again every few seconds; a line from it ends the dots.
+            while model.awaitingThreads.contains("crew-" + task.id), !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                log = await model.crewLog(task.id)
+                if let last = (log?.lines ?? []).compactMap(\.chatItem).last, !last.isMine { model.crewAnswered(task.id) }
+            }
+        }
     }
 }

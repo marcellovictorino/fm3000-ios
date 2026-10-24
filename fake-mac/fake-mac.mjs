@@ -374,8 +374,13 @@ export async function startFakeMac(options = {}) {
       const text = typeof input === "string" ? input : (input.text ?? "");
       record({ ev: "converse", text, images: input.images?.length ?? 0, files: input.files?.length ?? 0 });
       state.feed = [...state.feed, { kind: "you", text, at: AT(), event: "replied" }];
-      state.lastTurn = { you: text, reply: { text: `Got it: ${text}`, eligibility: "completed" } };
-      setTimeout(() => push("inf:event", { type: "firstmate_reply", text: `Got it: ${text}`, eligibility: "completed" }), 30);
+      const answer = { you: text, reply: { text: `Got it: ${text}`, eligibility: "completed" } };
+      // "quiet:" is a reply that no push announces: only the saved last turn has it, as when a push misses a phone.
+      if (text.startsWith("quiet:")) setTimeout(() => { state.lastTurn = answer; }, 300);
+      else {
+        state.lastTurn = answer;
+        setTimeout(() => push("inf:event", { type: "firstmate_reply", text: `Got it: ${text}`, eligibility: "completed" }), 30);
+      }
       setTimeout(() => {
         const card = {
           id: `card-answer-${nextMessageId++}`, author: "firstmate", priority: 1,

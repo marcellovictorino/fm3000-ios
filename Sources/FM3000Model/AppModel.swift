@@ -164,14 +164,28 @@ public final class AppModel: ObservableObject {
     private var chatCounter = 0
     private var awaitingSince = Date.distantPast
 
-    private func expectReply() {
+    private func expectReply(to words: String) {
         awaitingReply = true
         let since = Date(); awaitingSince = since
+        let before = chat.last(where: { $0.who == "firstmate" })?.text
         Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 180_000_000_000)
+            // The reply line the desktop shows above its input is saved as the last turn. A push may miss this phone, so ask for it too.
+            while let self, self.awaitingSince == since, self.awaitingReply, Date().timeIntervalSince(since) < 180 {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard self.awaitingSince == since, self.awaitingReply else { return }
+                if let turn: LastTurn = try? await self.ask("inf:conversation:last-turn"), let reply = turn.reply,
+                   turn.you.trimmingCharacters(in: .whitespacesAndNewlines) == words, reply.text != before, self.awaitingSince == since {
+                    self.addChat("firstmate", reply.text, problem: reply.problem ?? false)
+                    return
+                }
+            }
             if let self, self.awaitingSince == since { self.awaitingReply = false }
         }
     }
+
+    /// The crewmate thread has no push: the view refreshes its log while this is set, and ends it with `crewAnswered`.
+    public func expectCrewReply(_ taskId: String) { expectThreadReply("crew-" + taskId) }
+    public func crewAnswered(_ taskId: String) { awaitingThreads.remove("crew-" + taskId) }
 
     private func expectThreadReply(_ cardId: String) {
         awaitingThreads.insert(cardId)
@@ -218,7 +232,7 @@ public final class AppModel: ObservableObject {
             guard case .object(let o) = push.payload, case .string(let type)? = o["type"], case .string(let text)? = o["text"] else { break }
             if type == "firstmate_reply" { addChat("firstmate", text, problem: o["problem"] == .bool(true)) }
             // Another device's message shows too; one this phone just sent is already there.
-            else if type == "user_turn", !(chat.last(where: { $0.isMine })?.text == text && Date().timeIntervalSince1970 * 1000 - (chat.last?.at ?? 0) < 30_000) { addChat("captain", text); expectReply() }
+            else if type == "user_turn", !(chat.last(where: { $0.isMine })?.text == text && Date().timeIntervalSince1970 * 1000 - (chat.last?.at ?? 0) < 30_000) { addChat("captain", text); expectReply(to: text) }
         case "inf:tasks", "inf:tasks:delta":
             Task { await refreshBoard() }
         default:
@@ -265,7 +279,7 @@ public final class AppModel: ObservableObject {
         do {
             let _: JSONValue = try await ask("inf:converse", [Attachments.payload(text: words, attachments: attachments)])
             addChat("captain", words.isEmpty ? "(\(attachments.count) attachment\(attachments.count == 1 ? "" : "s"))" : words)
-            expectReply()
+            expectReply(to: words)
             return true
         } catch { notice = error.localizedDescription; return false }
     }

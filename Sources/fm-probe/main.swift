@@ -66,6 +66,8 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         await until("first mate's reply in the main chat, after what you sent") {
             model.chat.map(\.who) == ["captain", "firstmate", "captain", "firstmate"] && model.chat.last?.text == "Got it: hello from the phone"
         }
+        guard await model.send("quiet: ping") else { fail("converse refused: \(model.notice ?? "")") }
+        await until("reply found in the saved last turn when no push announced it", seconds: 8) { model.chat.last?.text == "Got it: quiet: ping" && !model.awaitingReply }
         await until("pushed card from converse") { model.cards.contains { $0.title == "Firstmate answered" } }
 
         guard await model.reply("Call it Bridge", to: question) else { fail("reply refused: \(model.notice ?? "")") }
