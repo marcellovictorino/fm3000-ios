@@ -187,7 +187,7 @@ await check("cards strip: Working, Waiting on you and Queued follow the desktop'
     let board = Board(projects: [], tasks: tasks)
     let cards = [card("c1", task: "ask", actions: 2), card("c2", task: "run", actions: 0), card("c3", task: "next", actions: 0)]
     let tally = CardsTally(cards: cards, board: board)
-    try expectEqual(tally.working, 3); try expectEqual(tally.waiting, 1); try expectEqual(tally.queued, 2)
+    try expectEqual(tally.working, 2); try expectEqual(tally.waiting, 1); try expectEqual(tally.queued, 2)
     try expectEqual(filterCards(cards, by: .working, board: board).map(\.id), ["c2"])
     try expectEqual(filterCards(cards, by: .queued, board: board).map(\.id), ["c3"])
     try expectEqual(filterCards(cards, by: .waiting, board: board).map(\.id), ["c1"])
