@@ -30,9 +30,23 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         let utterance = AVSpeechUtterance(string: words)
         // The language the text is written in, so Portuguese or French is not read in an English accent.
         let language = NSLinguisticTagger.dominantLanguage(for: words) ?? AVSpeechSynthesisVoice.currentLanguageCode()
-        utterance.voice = AVSpeechSynthesisVoice(language: language) ?? AVSpeechSynthesisVoice(language: AVSpeechSynthesisVoice.currentLanguageCode())
+        utterance.voice = Self.bestVoice(for: language) ?? Self.bestVoice(for: AVSpeechSynthesisVoice.currentLanguageCode())
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         speaking = id
         synthesizer.speak(utterance)
+    }
+
+    /// The best voice installed for a language: Premium over Enhanced over the compact default, which is what sounds robotic.
+    /// More are free in Settings > Accessibility > Spoken Content > Voices.
+    static func bestVoice(for language: String) -> AVSpeechSynthesisVoice? {
+        let base = language.split(separator: "-").first.map(String.init) ?? language
+        let candidates = AVSpeechSynthesisVoice.speechVoices().filter { $0.language == language || $0.language.hasPrefix(base + "-") }
+        return candidates.max { rank($0) < rank($1) } ?? AVSpeechSynthesisVoice(language: language)
+    }
+
+    private static func rank(_ voice: AVSpeechSynthesisVoice) -> Int {
+        // An exact regional match breaks ties between voices of the same quality.
+        voice.quality.rawValue * 10 + (voice.language == AVSpeechSynthesisVoice.currentLanguageCode() ? 1 : 0)
     }
 
     func stop() {
