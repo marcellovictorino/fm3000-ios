@@ -202,6 +202,10 @@ final class Dictation: ObservableObject {
         let prefix = base.isEmpty ? "" : base + " "
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
+        // Commas, full stops and question marks, put in by the recogniser as it hears the sentence's shape.
+        if #available(iOS 16, *) { request.addsPunctuation = true }
+        // Words this app's owner says often, so "Firstmate" and "Infinitary" are not heard as other words.
+        request.contextualStrings = ["Firstmate", "Infinitary", "crewmate", "Mac", "pull request", "kanban"]
         request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
         self.request = request
         do {
