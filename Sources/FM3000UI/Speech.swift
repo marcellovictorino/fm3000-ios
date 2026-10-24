@@ -11,6 +11,8 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     static let shared = Speaker()
     /// What is being read now, so its button can turn into Stop.
     @Published private(set) var speaking: String?
+    /// The voice now reading, so the button can say whose voice it is.
+    @Published private(set) var voiceName: String?
     private let synthesizer = AVSpeechSynthesizer()
 
     override init() {
@@ -30,9 +32,11 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         let utterance = AVSpeechUtterance(string: words)
         // The language the text is written in, so Portuguese or French is not read in an English accent.
         let language = NSLinguisticTagger.dominantLanguage(for: words) ?? AVSpeechSynthesisVoice.currentLanguageCode()
-        // A chosen voice speaks the text only in its own language; any other text gets the best voice for that language.
-        let chosen = Self.preferred.flatMap { $0.language.hasPrefix(language.split(separator: "-").first.map(String.init) ?? language) ? $0 : nil }
-        utterance.voice = chosen ?? Self.bestVoice(for: language) ?? Self.bestVoice(for: AVSpeechSynthesisVoice.currentLanguageCode())
+        // A voice the person chose reads everything, whatever language the detector guesses: short or mixed text
+        // is easily taken for another language, and their choice is the one they asked to hear.
+        let voice = Self.preferred ?? Self.bestVoice(for: language) ?? Self.bestVoice(for: AVSpeechSynthesisVoice.currentLanguageCode())
+        utterance.voice = voice
+        voiceName = voice.map { "\($0.name) (\(qualityName($0)))" }
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         speaking = id
         synthesizer.speak(utterance)
@@ -152,7 +156,7 @@ struct ListenButton: View {
     var body: some View {
         let on = speaker.speaking == id
         Button { speaker.toggle(text, id: id) } label: {
-            Label(on ? "Stop" : "Listen", systemImage: on ? "stop.fill" : "speaker.wave.2")
+            Label(on ? "Stop" + (speaker.voiceName.map { " · " + $0 } ?? "") : "Listen", systemImage: on ? "stop.fill" : "speaker.wave.2")
         }
         .accessibilityLabel(on ? "Stop reading aloud" : "Read aloud")
     }
