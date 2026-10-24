@@ -35,7 +35,7 @@ struct CardsView: View {
                 if DebugLaunch.has("-openCard"), path.isEmpty, let first = model.cards.first { path = [first.id] }
             }
             .navigationDestination(for: String.self) { id in
-                if let card = model.cards.first(where: { $0.id == id }) { CardDetailView(model: model, card: card) }
+                if let card = model.cards.first(where: { $0.id == id }) ?? model.answered[id]?.card { CardDetailView(model: model, card: card) }
                 else { Text("This card was answered.").foregroundStyle(Theme.fg2) }
             }
         }
@@ -54,15 +54,26 @@ struct CardDetailView: View {
                 Text(card.meta).font(.caption).foregroundStyle(Theme.fg2)
                 CardBody(html: card.body)
                 if card.status == "streaming" { ProgressView("Still being written…") }
-                if !card.actions.isEmpty {
+                if let done = model.answered[card.id] {
+                    Label { Text("You chose \(done.label). This card is closed.") } icon: { Image(systemName: "checkmark.circle.fill") }
+                        .font(.subheadline.weight(.medium)).foregroundStyle(Theme.accent)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(14)
+                        .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                } else if !card.actions.isEmpty {
                     VStack(spacing: 8) {
                         ForEach(card.actions) { action in
+                            let sending = model.choosing[card.id] == action.id
                             Button { Task { await model.choose(action, on: card) } } label: {
-                                Text(action.label).frame(maxWidth: .infinity)
+                                HStack(spacing: 8) {
+                                    if sending { ProgressView().controlSize(.small) }
+                                    Text(sending ? "Sending…" : action.label)
+                                }
+                                .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(action.variant == "danger" ? Theme.danger : (action.isDefault ? Theme.accentStrong : Theme.bg3))
-                            .disabled(!model.canChange)
+                            .disabled(!model.canChange || model.choosing[card.id] != nil)
+                            .opacity(model.choosing[card.id] != nil && !sending ? 0.5 : 1)
                         }
                     }
                 }
@@ -103,12 +114,22 @@ struct CardThreadView: View {
     var body: some View {
         ChatList(items: (model.threads[card.id] ?? []).map(\.chatItem), empty: "No replies yet. Write the first one below.", typing: model.awaitingThreads.contains(card.id) || DebugLaunch.has("-typing"))
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            Composer(placeholder: "Reply", text: $reply, attachments: $attachments, enabled: model.canChange, sending: sending) {
-                let words = reply, files = attachments
-                sending = true
-                Task {
-                    if await model.reply(words, to: card, attachments: files) { reply = ""; attachments = [] }
-                    sending = false
+            if model.isClosed(card) {
+                VStack(spacing: 8) {
+                    Text(model.answered[card.id].map { "You chose \($0.label), so this card and its thread are closed." } ?? "This card is closed, so its thread takes no more replies.")
+                        .font(.footnote).foregroundStyle(Theme.fg2).multilineTextAlignment(.center)
+                    Button { model.requestedTab = 1 } label: { Label("Message Firstmate instead", systemImage: "bubble.left") }
+                        .buttonStyle(.borderedProminent).tint(Theme.accentStrong)
+                }
+                .padding(12).frame(maxWidth: .infinity).background(Theme.bg1.ignoresSafeArea(edges: .bottom))
+            } else {
+                Composer(placeholder: "Reply", text: $reply, attachments: $attachments, enabled: model.canChange, sending: sending) {
+                    let words = reply, files = attachments
+                    sending = true
+                    Task {
+                        if await model.reply(words, to: card, attachments: files) { reply = ""; attachments = [] }
+                        sending = false
+                    }
                 }
             }
         }

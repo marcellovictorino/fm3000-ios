@@ -141,6 +141,9 @@ public struct RootView: View {
             }
             .infinitaryRoot()
             .onChange(of: tab) { _ in dismissKeyboard() }
+            .onChange(of: model.requestedTab) { wanted in
+                if let wanted { tab = wanted; model.requestedTab = nil }
+            }
         }
     }
 }

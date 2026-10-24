@@ -80,7 +80,7 @@ public final class AppModel: ObservableObject {
         client = nil
         grants.clear()
         identities.delete()
-        cards = []; chat = []; threads = [:]; awaitingThreads = []; board = nil; feed = []; cursor = nil
+        cards = []; chat = []; threads = [:]; awaitingThreads = []; answered = [:]; board = nil; feed = []; cursor = nil
         phase = .unpaired
     }
 
@@ -136,7 +136,7 @@ public final class AppModel: ObservableObject {
             } catch WireError.unpaired {
                 grants.clear()
                 identities.delete()
-                cards = []; chat = []; threads = [:]; awaitingThreads = []; board = nil; feed = []; cursor = nil; client = nil
+                cards = []; chat = []; threads = [:]; awaitingThreads = []; answered = [:]; board = nil; feed = []; cursor = nil; client = nil
                 phase = .unpaired
                 notice = WireError.unpaired.localizedDescription
                 return
@@ -247,12 +247,27 @@ public final class AppModel: ObservableObject {
 
     // MARK: What the person does
 
+    /// A card the person answered from this phone: what it said and which button they pressed, kept after the Mac closes it.
+    public struct AnsweredCard: Equatable { public let card: Card; public let label: String }
+    @Published public private(set) var answered: [String: AnsweredCard] = [:]
+    /// The button being sent right now, by card: the screen shows it as working at once.
+    @Published public private(set) var choosing: [String: String] = [:]
+    /// A screen asks for a tab (0 Cards, 1 Message, 2 Tasks, 3 Others); the root shows it and clears this.
+    @Published public var requestedTab: Int?
+
+    /// True once a card is closed: answered here, or gone from the Mac's list.
+    public func isClosed(_ card: Card) -> Bool { answered[card.id] != nil || !cards.contains { $0.id == card.id } }
+
     /// Chooses one of a card's buttons: `inf:cards:act`.
     public func choose(_ action: CardAction, on card: Card) async {
+        guard choosing[card.id] == nil else { return }
+        choosing[card.id] = action.id
+        defer { choosing[card.id] = nil }
         do {
             let result: ActResult = try await ask("inf:cards:act", [.string(card.id), .string(action.id), .string("chrome")])
-            if let refusal = result.refusal { notice = refusal }
-            else if result.effect != nil { notice = "\(action.label) needs your Mac's window: it opens something there." }
+            if let refusal = result.refusal { notice = refusal; return }
+            if result.effect != nil { notice = "\(action.label) needs your Mac's window: it opens something there." }
+            if action.keepsOpen != true { answered[card.id] = AnsweredCard(card: card, label: action.label) }
         } catch { notice = error.localizedDescription }
     }
 
