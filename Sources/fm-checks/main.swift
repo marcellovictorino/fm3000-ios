@@ -161,6 +161,38 @@ await check("pair: the grant keeps the address that answered first and the other
 await check("thread: the row on a card says how many replies it has") {
     try expectEqual(repliesLabel(0), "No replies yet"); try expectEqual(repliesLabel(1), "1 reply"); try expectEqual(repliesLabel(4), "4 replies")
 }
+await check("cards strip: Working, Waiting on you and Queued follow the desktop's grouping rule") {
+    func t(_ id: String, _ status: String, activity: String? = nil, waiting: String? = nil, parent: String? = nil, policy: String? = "when-ready", kind: String = "work") -> BoardTask {
+        BoardTask(id: id, key: id, projectId: "p", title: id, kind: kind, status: status, activity: activity, assignee: nil, model: nil,
+                  waitingCardId: waiting, updatedAt: 1, parentId: parent, startPolicy: policy)
+    }
+    let tasks = [
+        t("run", "active", activity: "running"),                       // working
+        t("child", "done", parent: "run"),                              // finished: stays out of Working
+        t("live-child", "open", parent: "run"),                         // a live part of a working tree: working
+        t("ask", "active", waiting: "card-1"),                          // waiting on you
+        t("starting", "active", activity: "starting"),                  // queued until its crewmate begins
+        t("next", "open"),                                              // queued: starts by itself
+        t("later", "open", policy: "on-request"),                       // backlog, in no chip
+        t("old", "dropped"), t("chat", "done", kind: "question"),       // outside every group
+    ]
+    let groups = nowGroups(tasks)
+    try expectEqual(groups["run"], .working); try expectEqual(groups["live-child"], .working); try expectEqual(groups["child"], .landed)
+    try expectEqual(groups["ask"], .waiting); try expectEqual(groups["starting"], .queued); try expectEqual(groups["next"], .queued)
+    try expectEqual(groups["later"], .backlog); try expectEqual(groups["old"], nil); try expectEqual(groups["chat"], nil)
+    func card(_ id: String, task: String?, actions: Int) -> Card {
+        Card(id: id, taskId: task, author: "firstmate", priority: 1, title: id, meta: "", body: "",
+             actions: (0..<actions).map { CardAction(id: "a\($0)", label: "A", variant: nil, default: nil, keepsOpen: nil) }, status: "ready", createdAt: 1, holdsPlace: nil, asking: nil)
+    }
+    let board = Board(projects: [], tasks: tasks)
+    let cards = [card("c1", task: "ask", actions: 2), card("c2", task: "run", actions: 0), card("c3", task: "next", actions: 0)]
+    let tally = CardsTally(cards: cards, board: board)
+    try expectEqual(tally.working, 3); try expectEqual(tally.waiting, 1); try expectEqual(tally.queued, 2)
+    try expectEqual(filterCards(cards, by: .working, board: board).map(\.id), ["c2"])
+    try expectEqual(filterCards(cards, by: .queued, board: board).map(\.id), ["c3"])
+    try expectEqual(filterCards(cards, by: .waiting, board: board).map(\.id), ["c1"])
+    try expectEqual(filterCards(cards, by: nil, board: board).count, 3)
+}
 await check("tasks: the board groups by status, and layout follows the toggle, else the phone's orientation") {
     func task(_ id: String, _ status: String, _ at: Double) -> BoardTask {
         BoardTask(id: id, key: id, projectId: "p", title: id, kind: "work", status: status, activity: nil, assignee: nil, model: nil, waitingCardId: nil, updatedAt: at)

@@ -65,9 +65,21 @@ public struct BoardTask: Codable, Equatable, Identifiable, Hashable {
     public let model: String?
     public let waitingCardId: String?
     public let updatedAt: Double
+    // What the desktop's one grouping rule reads (`nowGroupOf` in Infinitary's src/shared/nowPanel.ts).
+    public struct RequiredAction: Codable, Equatable, Hashable { public let cardId: String?; public let state: String? }
+    public struct StartAttempt: Codable, Equatable, Hashable { public let phase: String }
+    public let parentId: String?
+    public let startPolicy: String?
+    public let minimizedCardId: String?
+    public let requiredAction: RequiredAction?
+    public let startAttempt: StartAttempt?
 
     public init(id: String, key: String, projectId: String, title: String, kind: String, status: String, activity: String?,
-                assignee: String?, model: String?, waitingCardId: String?, updatedAt: Double) {
+                assignee: String?, model: String?, waitingCardId: String?, updatedAt: Double,
+                parentId: String? = nil, startPolicy: String? = nil, minimizedCardId: String? = nil,
+                requiredAction: RequiredAction? = nil, startAttempt: StartAttempt? = nil) {
+        self.parentId = parentId; self.startPolicy = startPolicy; self.minimizedCardId = minimizedCardId
+        self.requiredAction = requiredAction; self.startAttempt = startAttempt
         self.id = id; self.key = key; self.projectId = projectId; self.title = title; self.kind = kind; self.status = status
         self.activity = activity; self.assignee = assignee; self.model = model; self.waitingCardId = waitingCardId; self.updatedAt = updatedAt
     }
@@ -236,4 +248,71 @@ public struct ComputerResources: Codable, Equatable {
         }
     }
     public let computers: [Computer]
+}
+
+
+/// The desktop's five groups for a task (waiting on you, working, queued, backlog, done), ported from `nowGroupOf` and
+/// `nowGroupsOf` in Infinitary's src/shared/nowPanel.ts so the phone's counts are the desktop's.
+public enum NowGroup: String, CaseIterable { case waiting, working, queued, backlog, landed }
+
+public func nowGroupOf(_ task: BoardTask) -> NowGroup? {
+    if task.minimizedCardId != nil { return .waiting }
+    if task.requiredAction != nil, task.status == "open" || task.status == "active" { return .waiting }
+    let preparing = task.startAttempt?.phase == "preparing" || task.startAttempt?.phase == "checking"
+    if (preparing || (task.status == "active" && task.activity == "starting")), task.status != "done", task.status != "dropped", task.waitingCardId == nil {
+        return .queued
+    }
+    switch task.status {
+    case "done": return task.kind == "work" || task.requiredAction != nil ? .landed : nil
+    case "active": return task.waitingCardId != nil ? .waiting : .working
+    case "open": return task.waitingCardId != nil ? .waiting : (task.startPolicy == "on-request" ? .backlog : .queued)
+    default: return nil  // dropped, or a status this app does not know
+    }
+}
+
+/// Each task's visible group; a working task's live parents and live children stay in Working with it.
+public func nowGroups(_ tasks: [BoardTask]) -> [String: NowGroup] {
+    let byId = Dictionary(tasks.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    func live(_ task: BoardTask?) -> BoardTask? { task.flatMap { $0.status != "done" && $0.status != "dropped" ? $0 : nil } }
+    func liveParent(_ task: BoardTask) -> BoardTask? { task.parentId.flatMap { live(byId[$0]) } }
+    var trees = Set<String>()
+    for task in tasks where nowGroupOf(task) == .working {
+        var member = live(task)
+        while let current = member { trees.insert(current.id); member = liveParent(current) }
+    }
+    for task in tasks where live(task) != nil {
+        var member = liveParent(task)
+        while let current = member {
+            if trees.contains(current.id) { trees.insert(task.id); break }
+            member = liveParent(current)
+        }
+    }
+    var result: [String: NowGroup] = [:]
+    for task in tasks {
+        guard let group = nowGroupOf(task) else { continue }
+        result[task.id] = trees.contains(task.id) && group != .waiting ? .working : group
+    }
+    return result
+}
+
+/// What the Cards strip counts: tasks Working and Queued as the desktop groups them; Waiting on you is the open decision cards.
+public struct CardsTally: Equatable {
+    public var working = 0, waiting = 0, queued = 0
+    public init(cards: [Card], board: Board?) {
+        waiting = cards.filter { !$0.actions.isEmpty }.count
+        let groups = nowGroups(board?.tasks ?? [])
+        working = groups.values.filter { $0 == .working }.count
+        queued = groups.values.filter { $0 == .queued }.count
+    }
+}
+
+public enum CardsFilter: String, CaseIterable { case working, waiting, queued }
+
+/// The cards a strip chip shows: waiting is every open decision card; the others are the cards of tasks in that group.
+public func filterCards(_ cards: [Card], by filter: CardsFilter?, board: Board?) -> [Card] {
+    guard let filter else { return cards }
+    if filter == .waiting { return cards.filter { !$0.actions.isEmpty } }
+    let groups = nowGroups(board?.tasks ?? [])
+    let want: NowGroup = filter == .working ? .working : .queued
+    return cards.filter { card in card.taskId.flatMap { groups[$0] } == want }
 }
