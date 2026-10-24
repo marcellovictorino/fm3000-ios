@@ -42,7 +42,7 @@ struct Composer: View {
             HStack(alignment: .bottom, spacing: 8) {
                 if attachments != nil { attachMenu }
                 TextField(placeholder, text: $text, axis: .vertical)
-                    .lineLimit(1...6)
+                    .lineLimit(1...8)
                     .focused($focused)
                     .font(.body)
                     .padding(.horizontal, 14).padding(.vertical, 9)
@@ -76,7 +76,11 @@ struct Composer: View {
     #if canImport(UIKit)
     /// Dictation: tap, speak, tap again. The words land in the box to check before sending.
     private var micButton: some View {
-        Button { focused = false; dictation.toggle(into: $text) } label: {
+        Button {
+            // The box stays focused while dictating, so its caret follows the newest words and the text scrolls with them.
+            if !dictation.listening { focused = true }
+            dictation.toggle(into: $text)
+        } label: {
             Image(systemName: dictation.listening ? "stop.fill" : "mic.fill")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(dictation.listening ? Theme.bg0 : Theme.accent)

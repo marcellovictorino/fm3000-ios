@@ -219,21 +219,37 @@ final class Dictation: ObservableObject {
         }
         problem = nil
         listening = true
+        generation += 1
+        let mine = generation, started = Date()
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             Task { @MainActor in
+                guard let self, self.generation == mine else { return }
                 if let result { text.wrappedValue = prefix + result.bestTranscription.formattedString }
-                if error != nil || result?.isFinal == true { self?.stop() }
+                guard error != nil || result?.isFinal == true else { return }
+                // Apple ends one recognition after about a minute of speech. Carry on in a new one, after what was heard,
+                // unless it ended at once (a real failure) or the person stopped it.
+                if Date().timeIntervalSince(started) > 3 {
+                    self.teardown()
+                    self.begin(into: text)
+                } else { self.stop() }
             }
         }
     }
 
-    func stop() {
+    private var generation = 0
+
+    private func teardown() {
         engine.stop()
         engine.inputNode.removeTap(onBus: 0)
         request?.endAudio()
-        task?.finish()
+        task?.cancel()
         request = nil
         task = nil
+    }
+
+    func stop() {
+        generation += 1
+        teardown()
         listening = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
