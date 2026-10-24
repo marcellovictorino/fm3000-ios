@@ -101,7 +101,7 @@ struct CardThreadView: View {
     @State private var attachments: [Attachment] = []
 
     var body: some View {
-        ChatList(items: (model.threads[card.id] ?? []).map(\.chatItem), empty: "No replies yet. Write the first one below.")
+        ChatList(items: (model.threads[card.id] ?? []).map(\.chatItem), empty: "No replies yet. Write the first one below.", typing: model.awaitingThreads.contains(card.id) || DebugLaunch.has("-typing"))
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Composer(placeholder: "Reply", text: $reply, attachments: $attachments, enabled: model.canChange, sending: sending) {
                 let words = reply, files = attachments

@@ -80,7 +80,7 @@ public final class AppModel: ObservableObject {
         client = nil
         grants.clear()
         identities.delete()
-        cards = []; chat = []; threads = [:]; board = nil; feed = []; cursor = nil
+        cards = []; chat = []; threads = [:]; awaitingThreads = []; board = nil; feed = []; cursor = nil
         phase = .unpaired
     }
 
@@ -136,7 +136,7 @@ public final class AppModel: ObservableObject {
             } catch WireError.unpaired {
                 grants.clear()
                 identities.delete()
-                cards = []; chat = []; threads = [:]; board = nil; feed = []; cursor = nil; client = nil
+                cards = []; chat = []; threads = [:]; awaitingThreads = []; board = nil; feed = []; cursor = nil; client = nil
                 phase = .unpaired
                 notice = WireError.unpaired.localizedDescription
                 return
@@ -158,6 +158,9 @@ public final class AppModel: ObservableObject {
     @Published public private(set) var chat: [ChatItem] = []
     /// True from a sent message until the first mate's reply arrives (or three minutes pass): the "typing" dots.
     @Published public private(set) var awaitingReply = false
+    /// Cards whose thread is waiting for an answer to what the captain just wrote there: the "typing" dots under that card.
+    @Published public private(set) var awaitingThreads: Set<String> = []
+    private var threadAwaitingSince: [String: Date] = [:]
     private var chatCounter = 0
     private var awaitingSince = Date.distantPast
 
@@ -168,6 +171,21 @@ public final class AppModel: ObservableObject {
             try? await Task.sleep(nanoseconds: 180_000_000_000)
             if let self, self.awaitingSince == since { self.awaitingReply = false }
         }
+    }
+
+    private func expectThreadReply(_ cardId: String) {
+        awaitingThreads.insert(cardId)
+        let since = Date(); threadAwaitingSince[cardId] = since
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 180_000_000_000)
+            if let self, self.threadAwaitingSince[cardId] == since { self.awaitingThreads.remove(cardId) }
+        }
+    }
+
+    /// Stores a thread as the Mac sent it; an answer from the other side ends the wait.
+    private func setThread(_ cardId: String, _ messages: [ThreadMessage]) {
+        threads[cardId] = messages
+        if let last = messages.last, last.who != "captain" { awaitingThreads.remove(cardId) }
     }
 
     private func addChat(_ who: String, _ text: String, problem: Bool = false) {
@@ -195,7 +213,7 @@ public final class AppModel: ObservableObject {
         case "inf:cards":
             if let list = try? push.payload.decoded([Card].self) { cards = list }
         case "inf:cards:thread":
-            if let thread = try? push.payload.decoded(CardThread.self) { threads[thread.cardId] = thread.messages }
+            if let thread = try? push.payload.decoded(CardThread.self) { setThread(thread.cardId, thread.messages) }
         case "inf:event":
             guard case .object(let o) = push.payload, case .string(let type)? = o["type"], case .string(let text)? = o["text"] else { break }
             if type == "firstmate_reply" { addChat("firstmate", text, problem: o["problem"] == .bool(true)) }
@@ -230,13 +248,14 @@ public final class AppModel: ObservableObject {
         guard !words.isEmpty || !attachments.isEmpty else { return false }
         do {
             let thread: CardThread = try await ask("inf:cards:reply", [.string(card.id), Attachments.payload(text: words, attachments: attachments)])
-            threads[card.id] = thread.messages
+            setThread(card.id, thread.messages)
+            expectThreadReply(card.id)
             return true
         } catch { notice = error.localizedDescription; return false }
     }
 
     public func loadThread(of card: Card) async {
-        if let thread: CardThread = try? await ask("inf:cards:thread", [.string(card.id)]) { threads[card.id] = thread.messages }
+        if let thread: CardThread = try? await ask("inf:cards:thread", [.string(card.id)]) { setThread(card.id, thread.messages) }
     }
 
     /// Talks to Firstmate: `inf:converse`.

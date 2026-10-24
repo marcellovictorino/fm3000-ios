@@ -69,8 +69,12 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         await until("pushed card from converse") { model.cards.contains { $0.title == "Firstmate answered" } }
 
         guard await model.reply("Call it Bridge", to: question) else { fail("reply refused: \(model.notice ?? "")") }
+        guard model.awaitingThreads.contains(question.id) else { fail("no typing indicator after replying in the card thread") }
+        step("typing indicator on while the thread waits")
         await until("own reply in thread") { model.threads[question.id]?.contains { $0.who == "captain" && $0.text == "Call it Bridge" } == true }
         await until("pushed thread message") { model.threads[question.id]?.contains { $0.who == "firstmate" && $0.text == "Noted: Call it Bridge" } == true }
+        guard !model.awaitingThreads.contains(question.id) else { fail("typing indicator stayed after the answer arrived") }
+        step("typing indicator off once answered")
 
         guard let action = merge.actions.first(where: { $0.isDefault }) else { fail("no default action") }
         await model.choose(action, on: merge)
