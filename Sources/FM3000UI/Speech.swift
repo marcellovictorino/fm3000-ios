@@ -194,11 +194,12 @@ final class Dictation: ObservableObject {
         }
     }
 
-    private func begin(into text: Binding<String>) {
+    private func begin(into text: Binding<String>, carrying carried: String? = nil) {
         guard let recognizer = SFSpeechRecognizer(locale: Locale.current) ?? SFSpeechRecognizer(), recognizer.isAvailable else {
             problem = "Speech recognition is not available right now."; return
         }
-        let prefix = text.wrappedValue.isEmpty ? "" : text.wrappedValue + " "
+        let base = carried ?? text.wrappedValue
+        let prefix = base.isEmpty ? "" : base + " "
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
@@ -220,23 +221,28 @@ final class Dictation: ObservableObject {
         problem = nil
         listening = true
         generation += 1
+        latest = base
         let mine = generation, started = Date()
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             Task { @MainActor in
                 guard let self, self.generation == mine else { return }
-                if let result { text.wrappedValue = prefix + result.bestTranscription.formattedString }
+                // The recogniser's last report at its time limit can be empty: never replace words already captured with nothing.
+                let heard = result?.bestTranscription.formattedString ?? ""
+                if !heard.isEmpty { self.latest = prefix + heard; text.wrappedValue = self.latest }
                 guard error != nil || result?.isFinal == true else { return }
                 // Apple ends one recognition after about a minute of speech. Carry on in a new one, after what was heard,
                 // unless it ended at once (a real failure) or the person stopped it.
                 if Date().timeIntervalSince(started) > 3 {
                     self.teardown()
-                    self.begin(into: text)
+                    self.begin(into: text, carrying: self.latest.isEmpty ? text.wrappedValue : self.latest)
                 } else { self.stop() }
             }
         }
     }
 
     private var generation = 0
+    /// Everything in the box as dictation last set it: what a restarted recognition continues from.
+    private var latest = ""
 
     private func teardown() {
         engine.stop()
