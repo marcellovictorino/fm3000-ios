@@ -30,7 +30,9 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         let utterance = AVSpeechUtterance(string: words)
         // The language the text is written in, so Portuguese or French is not read in an English accent.
         let language = NSLinguisticTagger.dominantLanguage(for: words) ?? AVSpeechSynthesisVoice.currentLanguageCode()
-        utterance.voice = Self.bestVoice(for: language) ?? Self.bestVoice(for: AVSpeechSynthesisVoice.currentLanguageCode())
+        // A chosen voice speaks the text only in its own language; any other text gets the best voice for that language.
+        let chosen = Self.preferred.flatMap { $0.language.hasPrefix(language.split(separator: "-").first.map(String.init) ?? language) ? $0 : nil }
+        utterance.voice = chosen ?? Self.bestVoice(for: language) ?? Self.bestVoice(for: AVSpeechSynthesisVoice.currentLanguageCode())
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         speaking = id
         synthesizer.speak(utterance)
@@ -38,6 +40,24 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
 
     /// The best voice installed for a language: Premium over Enhanced over the compact default, which is what sounds robotic.
     /// More are free in Settings > Accessibility > Spoken Content > Voices.
+    /// The voice the person chose in Others > Reading voice, kept on the phone; nil means "best available".
+    static let preferredKey = "listenVoiceIdentifier"
+    static var preferred: AVSpeechSynthesisVoice? {
+        UserDefaults.standard.string(forKey: preferredKey).flatMap { AVSpeechSynthesisVoice(identifier: $0) }
+    }
+
+    /// Speaks a sample in one voice, so it can be judged before it is chosen.
+    func preview(_ voice: AVSpeechSynthesisVoice) {
+        stop()
+        #if os(iOS)
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        #endif
+        let utterance = AVSpeechUtterance(string: "Hello, I am \(voice.name). This is how I read your cards.")
+        utterance.voice = voice
+        synthesizer.speak(utterance)
+    }
+
     static func bestVoice(for language: String) -> AVSpeechSynthesisVoice? {
         let base = language.split(separator: "-").first.map(String.init) ?? language
         let candidates = AVSpeechSynthesisVoice.speechVoices().filter { $0.language == language || $0.language.hasPrefix(base + "-") }
@@ -59,6 +79,67 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     }
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
         Task { @MainActor in self.speaking = nil }
+    }
+}
+
+private func qualityName(_ voice: AVSpeechSynthesisVoice) -> String {
+    switch voice.quality { case .premium: "Premium"; case .enhanced: "Enhanced"; default: "Compact" }
+}
+
+/// Others > Reading voice: every voice installed on the phone, best first, with a preview; the choice is what Listen uses.
+struct VoicePickerView: View {
+    @AppStorage(Speaker.preferredKey) private var chosen = ""
+    private let voices = AVSpeechSynthesisVoice.speechVoices().sorted {
+        ($0.quality.rawValue, $1.name) > ($1.quality.rawValue, $0.name)
+    }
+
+    @State private var allLanguages = false
+
+    /// The phone's own languages and English, unless all are asked for: the list holds a voice for every language otherwise.
+    private var shown: [AVSpeechSynthesisVoice] {
+        if allLanguages { return voices }
+        let mine = Set(Locale.preferredLanguages.map { String($0.split(separator: "-").first ?? "") } + ["en"])
+        return voices.filter { mine.contains(String($0.language.split(separator: "-").first ?? "")) }
+    }
+
+    var body: some View {
+        List {
+            Section {
+                row("Best available", detail: "Premium, then Enhanced, in the text's language", id: "", voice: nil)
+            } footer: {
+                Text("More voices are free in Settings > Accessibility > Spoken Content > Voices. Download one, then come back here.")
+            }
+            ForEach(Dictionary(grouping: shown, by: { Locale.current.localizedString(forIdentifier: $0.language) ?? $0.language }).sorted { $0.key < $1.key }, id: \.key) { language, group in
+                Section(language) {
+                    ForEach(group.sorted { ($0.quality.rawValue, $1.name) > ($1.quality.rawValue, $0.name) }, id: \.identifier) { voice in
+                        row("\(voice.name) (\(qualityName(voice)))", detail: nil, id: voice.identifier, voice: voice)
+                    }
+                }
+            }
+            Section {
+                Toggle("Show every language", isOn: $allLanguages).infinitaryRow()
+            }
+        }
+        .infinitaryScreen()
+        .navigationTitle("Reading voice").iOSInlineTitle()
+        .onDisappear { Speaker.shared.stop() }
+    }
+
+    private func row(_ title: String, detail: String?, id: String, voice: AVSpeechSynthesisVoice?) -> some View {
+        Button {
+            chosen = id
+            if let voice { Speaker.shared.preview(voice) }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).foregroundStyle(Theme.fg1)
+                    if let detail { Text(detail).font(.caption).foregroundStyle(Theme.fg2) }
+                }
+                Spacer()
+                if chosen == id { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
+            }
+        }
+        .infinitaryRow()
     }
 }
 
