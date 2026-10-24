@@ -5,18 +5,26 @@ import SwiftUI
 struct CardsView: View {
     @ObservedObject var model: AppModel
     @State private var path: [String] = []
+    @State private var filter: CardsFilter?
+
+    private var shown: [Card] { filterCards(model.cards, by: filter, board: model.board) }
 
     var body: some View {
         NavigationStack(path: $path) {
             Group {
-                if model.cards.isEmpty {
+                if shown.isEmpty, let filter {
+                    VStack(spacing: 6) {
+                        Text("No cards under \(Self.title(filter))").font(.headline)
+                        Text("Tap the chip again to see every card.").font(.footnote).foregroundStyle(Theme.fg2)
+                    }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if model.cards.isEmpty {
                     VStack(spacing: 8) {
                         Image(systemName: "checkmark.circle").font(.largeTitle).foregroundStyle(Theme.fg2)
                         Text("Nothing waits for you").font(.headline)
                         Text("Cards from Infinitary appear here the moment they are raised.").font(.footnote).foregroundStyle(Theme.fg2)
                     }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    List(model.cards) { card in
+                    List(shown) { card in
                         NavigationLink(value: card.id) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(card.title).font(.headline)
@@ -29,7 +37,14 @@ struct CardsView: View {
                     .infinitaryScreen()
                 }
             }
-            .safeAreaInset(edge: .top, spacing: 0) { StatusBanner(model: model) }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: 0) {
+                    StatusBanner(model: model)
+                    KPIStrip(tally: CardsTally(cards: model.cards, board: model.board), filter: $filter)
+                }
+            }
+            .task { await model.refreshBoard() }
+            .onChange(of: model.phase) { phase in if case .connected = phase { Task { await model.refreshBoard() } } }
             .navigationTitle("Cards").iOSInlineTitle()
             .onChange(of: model.cards.count) { _ in
                 if DebugLaunch.has("-openCard"), path.isEmpty, let first = model.cards.first { path = [first.id] }
@@ -39,6 +54,48 @@ struct CardsView: View {
                 else { Text("This card was answered.").foregroundStyle(Theme.fg2) }
             }
         }
+    }
+}
+
+extension CardsView {
+    fileprivate static func title(_ filter: CardsFilter) -> String {
+        switch filter { case .working: "Working"; case .waiting: "Waiting on you"; case .queued: "Queued" }
+    }
+}
+
+/// One thin line of chips above the cards: how many tasks are Working, how many decision cards wait on you, how many are Queued,
+/// counted as the desktop counts them. A tap filters the list to that chip; a second tap clears it.
+private struct KPIStrip: View {
+    let tally: CardsTally
+    @Binding var filter: CardsFilter?
+
+    var body: some View {
+        HStack(spacing: 6) {
+            chip(.working, "Working", tally.working)
+            chip(.waiting, "Waiting on you", tally.waiting)
+            chip(.queued, "Queued", tally.queued)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 5)
+        .background(Theme.bg1)
+    }
+
+    private func chip(_ kind: CardsFilter, _ label: String, _ count: Int) -> some View {
+        let on = filter == kind
+        return Button { filter = on ? nil : kind } label: {
+            HStack(spacing: 4) {
+                Text(label)
+                Text("\(count)").fontWeight(.semibold).monospacedDigit()
+            }
+            .font(.caption2)
+            .foregroundStyle(on ? Theme.bg0 : (kind == .waiting && count > 0 ? Theme.accent : Theme.fg2))
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(on ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.bg2), in: Capsule())
+            .overlay(Capsule().stroke(Theme.line.opacity(on ? 0 : 0.7), lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(label) \(count)")
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
