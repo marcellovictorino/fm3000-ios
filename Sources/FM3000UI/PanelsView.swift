@@ -103,6 +103,8 @@ struct ResourcesView: View {
     @State private var gpu: [Double?] = []
     @State private var memory: [Double?] = []
     @State private var memoryDetail: String?
+    /// True while the numbers are the panel's saved reading; false when only the Mac's general reading reaches this phone.
+    @State private var savedReading = false
     @State private var observation: ComputerResources.Computer.Observation?
 
     private var macName: String {
@@ -117,7 +119,11 @@ struct ResourcesView: View {
                 Meter(label: "GPU", history: gpu).infinitaryRow()
                 Meter(label: "Memory", history: memory, detail: memoryDetail).infinitaryRow()
             } footer: {
-                Text("Measured on \(macName), the Mac running Infinitary. Not this iPhone. GPU stays blank: Infinitary shares it only with the desktop app.")
+                if savedReading {
+                    Text("Measured on \(macName), the Mac running Infinitary. Not this iPhone. GPU and memory are the panel's reading, saved by the Mac every minute.")
+                } else {
+                    Text("Measured on \(macName), the Mac running Infinitary. Not this iPhone. The Mac does not let the phone read the panel's saved GPU and memory yet, so GPU stays blank and memory is macOS's own count, which includes compressed and cached memory and reads higher than the desktop panel.")
+                }
             }
             if let memory = observation?.memory {
                 Section("Memory details") {
@@ -156,13 +162,15 @@ struct ResourcesView: View {
         push(&cpu, home?.cpuUsed.map { $0 * 100 })
         observation = home?.reading.observation
         if let machine = await model.machineSample() {
+            savedReading = true
             push(&gpu, machine.gpu)
-            if let used = machine.memory {
-                push(&memory, 100 * used.usedBytes / used.totalBytes)
+            if let used = machine.memory, let percent = machine.memoryPercent {
+                push(&memory, percent)
                 memoryDetail = "\(gigabytes(used.usedBytes)) of \(gigabytes(used.totalBytes)) GB"
                 return
             }
         } else {
+            savedReading = false
             push(&gpu, nil)
         }
         push(&memory, home?.memoryUsed.map { $0 * 100 })
