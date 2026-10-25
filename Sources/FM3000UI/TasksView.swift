@@ -20,7 +20,7 @@ struct BoardView: View {
                     VStack(spacing: 0) {
                         ProjectPills(board: board, selected: $projectId)
                         let shown = board.filtered(by: projectId)
-                        if layout == .board { KanbanView(board: shown) } else { TaskListView(board: shown) }
+                        if layout == .board { KanbanView(board: shown, names: model.taskModels) } else { TaskListView(board: shown, names: model.taskModels) }
                     }
                 } else {
                     Text("Loading the task board…").foregroundStyle(Theme.fg2).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -92,6 +92,7 @@ private struct ProjectPills: View {
 
 private struct TaskListView: View {
     let board: Board
+    let names: [String: String]
 
     var body: some View {
         List {
@@ -100,7 +101,7 @@ private struct TaskListView: View {
                     ForEach(board.tasks.filter { $0.projectId == project.id && ($0.status == "open" || $0.status == "active") }) { task in
                         NavigationLink(value: task) {
                             VStack(alignment: .leading, spacing: 2) {
-                                ModelPill(name: model.modelName(for: task))
+                                ModelPill(name: names[task.id] ?? modelPill(label: nil, id: task.model))
                                 Text("\(task.key)  \(task.title)").font(.headline)
                                 Text([task.status, task.activity, task.assignee].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(Theme.fg2)
                             }
@@ -117,6 +118,7 @@ private struct TaskListView: View {
 /// Columns by status, side by side; the columns scroll sideways and each scrolls down.
 private struct KanbanView: View {
     let board: Board
+    let names: [String: String]
 
     var body: some View {
         ScrollView(.horizontal) {
@@ -127,7 +129,7 @@ private struct KanbanView: View {
                         ScrollView {
                             LazyVStack(spacing: 8) {
                                 ForEach(column.tasks) { task in
-                                    NavigationLink(value: task) { KanbanCard(task: task) }.buttonStyle(.plain)
+                                    NavigationLink(value: task) { KanbanCard(task: task, name: names[task.id] ?? modelPill(label: nil, id: task.model)) }.buttonStyle(.plain)
                                 }
                                 if column.tasks.isEmpty { Text("Nothing here").font(.footnote).foregroundStyle(Theme.fg3).padding(.top, 8) }
                             }
@@ -143,10 +145,11 @@ private struct KanbanView: View {
 
 private struct KanbanCard: View {
     let task: BoardTask
+    let name: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            ModelPill(name: model.modelName(for: task))
+            ModelPill(name: name)
             Text(task.key).font(.caption.monospaced()).foregroundStyle(Theme.accent)
             Text(task.title).font(.subheadline).multilineTextAlignment(.leading)
             if let line = [task.activity, task.assignee].compactMap({ $0 }).joined(separator: " · ") as String?, !line.isEmpty {
