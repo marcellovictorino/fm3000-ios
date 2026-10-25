@@ -218,7 +218,9 @@ await check("quota: the Mac's snapshot gives Claude and Codex their five-hour an
 }
 await check("model pill: the Mac's label wins, an id reads as a name, and no model shows no pill") {
     try expectEqual(modelPill(label: "Sonnet", id: "claude-sonnet-5-5"), "Sonnet")
-    try expectEqual(modelPill(label: nil, id: "claude-sonnet-5-5"), "Sonnet 5.5")
+    try expectEqual(modelPill(label: "Anthropic Claude Sonnet 5.5", id: nil, effort: "medium"), "Claude Sonnet 5.5 (Medium)")
+    try expectEqual(modelPill(label: nil, id: "claude-sonnet-5-5", effort: "xhigh"), "Claude Sonnet 5.5 (Xhigh)")
+    try expectEqual(modelPill(label: nil, id: "claude-sonnet-5-5", effort: "default"), "Claude Sonnet 5.5")
     try expectEqual(modelPill(label: nil, id: "gpt-5.5-codex"), "GPT 5.5 Codex")
     try expectEqual(modelPill(label: nil, id: "sonnet"), "Sonnet")
     try expectEqual(modelPill(label: nil, id: nil), nil)

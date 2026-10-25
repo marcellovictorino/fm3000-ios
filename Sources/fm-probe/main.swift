@@ -61,7 +61,7 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         guard let merge = model.cards.first(where: { $0.id == "card-merge-1" }), let question = model.cards.first(where: { $0.id == "card-question-1" }) else { fail("fixture cards missing") }
         guard HTMLText.plain(merge.body).contains("• Checks passed") else { fail("card body did not read as text: \(HTMLText.plain(merge.body))") }
         step("card body reads as text")
-        guard model.modelName(for: merge) == "Sonnet 5.5" else { fail("card model pill is \(String(describing: model.modelName(for: merge)))") }
+        guard model.modelName(for: merge) == "Claude Sonnet 5.5" else { fail("card model pill is \(String(describing: model.modelName(for: merge)))") }
 
         guard await model.send("hello from the phone") else { fail("converse refused: \(model.notice ?? "")") }
         await until("first mate's reply in the main chat, after what you sent") {
@@ -90,6 +90,8 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         step("task board read")
         guard model.board?.tasks.first?.model == "sonnet" else { fail("board task lost its model") }
         step("model pill for a card and a task")
+        guard let first = model.board?.tasks.first, model.modelName(for: first) == "Claude Sonnet 5.5 (Medium)" else { fail("task pill is \(String(describing: model.board?.tasks.first.flatMap { model.modelName(for: $0) }))") }
+        step("task pill carries the reasoning effort")
         guard let quota = await model.quota(), let claude = quota.shown.first, claude.fiveHour?.percentRemaining == 78, claude.weekly?.percentRemaining == 44 else { fail("quota snapshot not read") }
         step("quota read: Claude 78% / 44% left")
         await model.refreshFeed()

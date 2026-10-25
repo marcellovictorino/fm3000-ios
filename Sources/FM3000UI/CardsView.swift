@@ -18,7 +18,7 @@ struct CardsView: View {
                     List(shownTasks) { task in
                         NavigationLink { TaskDetailView(model: model, task: task) } label: {
                             VStack(alignment: .leading, spacing: 3) {
-                                ModelPill(name: modelPill(label: nil, id: task.model))
+                                ModelPill(name: model.modelName(for: task))
                                 Text(task.title).font(.headline)
                                 Text("\(task.key) · \(Self.title(filter))\(task.activity.map { " · " + $0 } ?? "")").font(.caption).foregroundStyle(Theme.fg3)
                             }

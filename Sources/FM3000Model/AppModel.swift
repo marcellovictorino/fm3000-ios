@@ -310,7 +310,30 @@ public final class AppModel: ObservableObject {
 
     public func refreshBoard() async {
         do { board = try await ask("inf:tasks:board") } catch { notice = error.localizedDescription }
+        await refreshModelNames()
     }
+
+    /// What each live task's pill says. The board has the model id only; the reasoning effort and the Mac's own model label
+    /// come with the task's detail, so read those for the tasks on screen (open or active, at most 30).
+    @Published public private(set) var taskModels: [String: String] = [:]
+
+    private func refreshModelNames() async {
+        let tasks = (board?.tasks ?? []).filter { $0.status == "open" || $0.status == "active" }.prefix(30)
+        var names: [String: String] = taskModels
+        await withTaskGroup(of: (String, String?).self) { group in
+            for task in tasks {
+                group.addTask { [self] in
+                    let detail: TaskDetail? = try? await ask("inf:tasks:detail", [.string(task.id)])
+                    return (task.id, modelPill(label: detail?.modelLabel, id: detail?.model ?? task.model, effort: detail?.reasoning?.level))
+                }
+            }
+            for await (id, name) in group { names[id] = name }
+        }
+        if names != taskModels { taskModels = names }
+    }
+
+    /// The pill for a task: the detail-based name once read, else what the board's model id gives.
+    public func modelName(for task: BoardTask) -> String? { taskModels[task.id] ?? modelPill(label: nil, id: task.model) }
 
     public func taskDetail(_ id: String) async -> TaskDetail? {
         do { return try await ask("inf:tasks:detail", [.string(id)]) } catch { notice = error.localizedDescription; return nil }
@@ -346,7 +369,8 @@ public final class AppModel: ObservableObject {
 
     /// The model a card's task runs on: the card's own model id, else the one the board holds for that task.
     public func modelName(for card: Card) -> String? {
-        modelPill(label: nil, id: card.model ?? board?.tasks.first { $0.id == card.taskId }?.model)
+        if let id = card.taskId, let named = taskModels[id] { return named }
+        return modelPill(label: nil, id: card.model ?? board?.tasks.first { $0.id == card.taskId }?.model)
     }
 
     /// The Mac's live feed over the tailnet (`MachineFeed`). Needs no pairing, so it also works while the phone is not connected.

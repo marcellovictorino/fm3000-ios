@@ -156,6 +156,8 @@ public struct TaskDetail: Codable, Equatable {
     public let assignee: String?
     public let model: String?
     public let modelLabel: String?
+    public struct Reasoning: Codable, Equatable { public let level: String }
+    public let reasoning: Reasoning?
     public let waitingCardId: String?
     public let outcome: String?
     public let problem: String?
