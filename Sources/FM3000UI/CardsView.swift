@@ -18,6 +18,7 @@ struct CardsView: View {
                     List(shownTasks) { task in
                         NavigationLink { TaskDetailView(model: model, task: task) } label: {
                             VStack(alignment: .leading, spacing: 3) {
+                                ModelPill(name: modelPill(label: nil, id: task.model))
                                 Text(task.title).font(.headline)
                                 Text("\(task.key) · \(Self.title(filter))\(task.activity.map { " · " + $0 } ?? "")").font(.caption).foregroundStyle(Theme.fg3)
                             }
@@ -41,6 +42,7 @@ struct CardsView: View {
                     List(shown) { card in
                         NavigationLink(value: card.id) {
                             VStack(alignment: .leading, spacing: 4) {
+                                ModelPill(name: model.modelName(for: card))
                                 Text(card.title).font(.headline)
                                 Text(HTMLText.plain(card.body)).font(.subheadline).foregroundStyle(Theme.fg2).lineLimit(2)
                                 Text("\(card.meta) · \(relativeTime(card.createdAt))").font(.caption).foregroundStyle(Theme.fg3)
@@ -122,6 +124,7 @@ struct CardDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                ModelPill(name: model.modelName(for: card))
                 Text(card.meta).font(.caption).foregroundStyle(Theme.fg2)
                 CardBody(html: card.body)
                 if card.status == "streaming" { ProgressView("Still being written…") }

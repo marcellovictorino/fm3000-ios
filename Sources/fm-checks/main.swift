@@ -182,7 +182,7 @@ await check("cards strip: Working, Waiting on you and Queued follow the desktop'
     try expectEqual(groups["later"], .backlog); try expectEqual(groups["old"], nil); try expectEqual(groups["chat"], nil)
     func card(_ id: String, task: String?, actions: Int) -> Card {
         Card(id: id, taskId: task, author: "firstmate", priority: 1, title: id, meta: "", body: "",
-             actions: (0..<actions).map { CardAction(id: "a\($0)", label: "A", variant: nil, default: nil, keepsOpen: nil) }, status: "ready", createdAt: 1, holdsPlace: nil, asking: nil)
+             actions: (0..<actions).map { CardAction(id: "a\($0)", label: "A", variant: nil, default: nil, keepsOpen: nil) }, status: "ready", createdAt: 1, holdsPlace: nil, asking: nil, model: nil)
     }
     let board = Board(projects: [], tasks: tasks)
     let cards = [card("c1", task: "ask", actions: 2), card("c2", task: "run", actions: 0), card("c3", task: "next", actions: 0)]
@@ -206,6 +206,23 @@ await check("machine load: the Mac's saved reading gives the GPU and the memory 
     try expectEqual(sample.isFresh(now: now + 60_000), true); try expectEqual(sample.isFresh(now: now + 200_000), false)
     let missing = try JSONDecoder().decode(StoreValue<MachineSample>.self, from: Data(#"{"value":null}"#.utf8))
     try expectEqual(missing.value == nil, true)
+}
+await check("quota: the Mac's snapshot gives Claude and Codex their five-hour and weekly shares, and an unmeasured provider says why") {
+    let json = #"{"generatedAt":"x","fetchedAt":1,"providers":[{"provider":"codex","label":"Codex","status":"ok","stale":false,"windows":[{"id":"five_hour","label":"session","percentRemaining":98,"windowSeconds":18000},{"id":"weekly","label":"week","percentRemaining":96,"windowSeconds":604800}]},{"provider":"cursor","label":"Cursor","status":"ok","stale":false,"windows":[]},{"provider":"claude","label":"Claude","plan":"team","status":"auth_required","stale":false,"windows":[]}]}"#
+    let snapshot = try JSONDecoder().decode(QuotaSnapshot.self, from: Data(json.utf8))
+    try expectEqual(snapshot.shown.map(\.provider), ["claude", "codex"])
+    let codex = snapshot.shown[1]
+    try expectEqual(codex.fiveHour?.percentRemaining, 98); try expectEqual(codex.weekly?.percentRemaining, 96)
+    let claude = snapshot.shown[0]
+    try expectEqual(claude.fiveHour == nil && claude.weekly == nil, true); try expectEqual(claude.unavailable, "Sign in again on the Mac")
+}
+await check("model pill: the Mac's label wins, an id reads as a name, and no model shows no pill") {
+    try expectEqual(modelPill(label: "Sonnet", id: "claude-sonnet-5-5"), "Sonnet")
+    try expectEqual(modelPill(label: nil, id: "claude-sonnet-5-5"), "Sonnet 5.5")
+    try expectEqual(modelPill(label: nil, id: "gpt-5.5-codex"), "GPT 5.5 Codex")
+    try expectEqual(modelPill(label: nil, id: "sonnet"), "Sonnet")
+    try expectEqual(modelPill(label: nil, id: nil), nil)
+    try expectEqual(modelPill(label: " ", id: ""), nil)
 }
 await check("machine feed: a reading from the Mac's job is live for 15 seconds, then stale, and junk is unreachable") {
     // The shape mac-feed/machine_load_feed.py serves, taken from the captain's laptop: CPU 42.5%, GPU 98%, 17 of 24 GB used.

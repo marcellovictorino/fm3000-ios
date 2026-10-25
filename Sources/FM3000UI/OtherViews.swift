@@ -90,12 +90,13 @@ struct MacView: View {
 }
 
 /// Feed and Mac, behind one "Others" tab so the bottom bar keeps room for the screens used most.
-enum OthersPage: Hashable { case panels, resources, pullRequests, feed, voice, mac }
+enum OthersPage: Hashable { case panels, quota, resources, pullRequests, feed, voice, mac }
 
 struct OthersView: View {
     @ObservedObject var model: AppModel
     @State private var path: [OthersPage] = DebugLaunch.has("-openOthers") ? [.mac]
         : DebugLaunch.has("-openResources") ? [.panels, .resources]
+        : DebugLaunch.has("-openQuota") ? [.panels, .quota]
         : DebugLaunch.has("-openPRs") ? [.panels, .pullRequests]
         : DebugLaunch.has("-openPanels") ? [.panels]
         : DebugLaunch.has("-openVoice") ? [.voice] : []
@@ -113,6 +114,7 @@ struct OthersView: View {
             .navigationDestination(for: OthersPage.self) { page in
                 switch page {
                 case .panels: PanelsView(model: model)
+                case .quota: QuotaView(model: model)
                 case .resources: ResourcesView(model: model)
                 case .pullRequests: PullRequestsView(model: model)
                 case .feed: FeedView(model: model)

@@ -100,6 +100,7 @@ private struct TaskListView: View {
                     ForEach(board.tasks.filter { $0.projectId == project.id && ($0.status == "open" || $0.status == "active") }) { task in
                         NavigationLink(value: task) {
                             VStack(alignment: .leading, spacing: 2) {
+                                ModelPill(name: modelPill(label: nil, id: task.model))
                                 Text("\(task.key)  \(task.title)").font(.headline)
                                 Text([task.status, task.activity, task.assignee].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(Theme.fg2)
                             }
@@ -145,6 +146,7 @@ private struct KanbanCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            ModelPill(name: modelPill(label: nil, id: task.model))
             Text(task.key).font(.caption.monospaced()).foregroundStyle(Theme.accent)
             Text(task.title).font(.subheadline).multilineTextAlignment(.leading)
             if let line = [task.activity, task.assignee].compactMap({ $0 }).joined(separator: " · ") as String?, !line.isEmpty {
@@ -203,6 +205,7 @@ struct TaskDetailView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
+            ModelPill(name: modelPill(label: detail?.modelLabel, id: detail?.model ?? task.model))
             Text(detail?.title ?? task.title).font(.title3.weight(.semibold))
             HStack(spacing: 6) {
                 chip((detail?.status ?? task.status).capitalized, Theme.accent)

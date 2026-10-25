@@ -339,6 +339,16 @@ public final class AppModel: ObservableObject {
         return sample
     }
 
+    /// The quota panel's reading: remaining share of the Claude and Codex windows. Nil when the Mac holds none.
+    public func quota() async -> QuotaSnapshot? {
+        try? await ask("inf:quota:snapshot") as QuotaSnapshot?
+    }
+
+    /// The model a card's task runs on: the card's own model id, else the one the board holds for that task.
+    public func modelName(for card: Card) -> String? {
+        modelPill(label: nil, id: card.model ?? board?.tasks.first { $0.id == card.taskId }?.model)
+    }
+
     /// The Mac's live feed over the tailnet (`MachineFeed`). Needs no pairing, so it also works while the phone is not connected.
     public func machineFeed() async -> MachineFeed.Outcome {
         let text = UserDefaults.standard.string(forKey: "machineFeedURL") ?? MachineFeed.defaultURL

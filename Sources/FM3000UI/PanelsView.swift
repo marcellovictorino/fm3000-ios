@@ -2,13 +2,14 @@ import FM3000Core
 import FM3000Model
 import SwiftUI
 
-/// Panels on the phone: the same two panels as the desktop (Machine load and Open pull requests), read from the Mac
+/// Panels on the phone: the same panels as the desktop (Quota, Machine load and Open pull requests), read from the Mac
 /// that runs Infinitary through the extensions' own stores and server actions.
 struct PanelsView: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
         List {
+            NavigationLink(value: OthersPage.quota) { Label("Quota", systemImage: "chart.bar.fill") }.infinitaryRow()
             NavigationLink(value: OthersPage.resources) { Label("Machine load", systemImage: "gauge.with.dots.needle.50percent") }.infinitaryRow()
             NavigationLink(value: OthersPage.pullRequests) { Label("Open pull requests", systemImage: "arrow.triangle.pull") }.infinitaryRow()
         }

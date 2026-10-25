@@ -62,7 +62,7 @@ function fixtureCards(now) {
         { id: "merge", label: "Merge", variant: "primary", default: true, effect: { kind: "settle", mode: "merge" } },
         { id: "later", label: "Not now", variant: "ghost" },
       ],
-      { taskId: "task-1", author: "crewmate", priority: 2 },
+      { taskId: "task-1", author: "crewmate", priority: 2, model: "claude-sonnet-5-5" },
     ),
     base(
       "card-question-1",
@@ -311,6 +311,13 @@ export async function startFakeMac(options = {}) {
   const handlers = {
     "inf:cards:list": () => state.cards,
     "inf:tasks:board": () => state.board,
+    "inf:quota:snapshot": () => {
+      const now = Date.now(), win = (id, label, left, seconds) => ({ id, label, percentRemaining: left, windowSeconds: seconds, resetsAtMs: now + seconds * 1000 * 0.4, pace: "on_pace" });
+      return { generatedAt: new Date(now).toISOString(), fetchedAt: now, providers: [
+        { provider: "claude", label: "Claude", plan: "team", status: "ok", stale: false, measuredAt: now, windows: [win("five_hour", "session", 78, 18000), win("seven_day", "week", 44, 604800)] },
+        { provider: "codex", label: "Codex", plan: "team", status: "ok", stale: false, measuredAt: now, windows: [win("five_hour", "session", 98, 18000), win("weekly", "week", 96, 604800)] },
+      ] };
+    },
     "inf:feed:recent": () => state.feed,
     "inf:plugins:db": ([query]) => {
       if (query.op !== "get" || query.extensionId !== "open-prs" || query.key !== "prs") return { value: null };
