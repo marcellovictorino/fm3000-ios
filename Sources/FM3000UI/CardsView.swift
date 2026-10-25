@@ -49,6 +49,10 @@ struct CardsView: View {
                             }
                         }
                         .infinitaryRow()
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) { Task { _ = await model.close(card) } } label: { Label("Close", systemImage: "xmark") }
+                                .tint(.red)
+                        }
                     }
                     .infinitaryScreen()
                 }
