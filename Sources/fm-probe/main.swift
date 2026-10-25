@@ -95,6 +95,12 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         await model.refreshFeed()
         guard model.feed.contains(where: { $0.text == "You chose Merge." }) else { fail("feed missing the choice") }
         step("feed read")
+        guard model.board?.tasks.first(where: { $0.id == "task-2" })?.notStarted == true else { fail("queued task not seen as not started") }
+        guard await model.steer("task-2", "hello") == false, model.steerProblem?.contains("has not started") == true else { fail("steer to a queued task: \(String(describing: model.steerProblem))") }
+        step("steering a queued task is refused with the Mac's reason")
+        guard await model.startTask("task-2"), model.board?.tasks.first(where: { $0.id == "task-2" })?.notStarted == false else { fail("start did not take") }
+        guard await model.steer("task-2", "hello") else { fail("steer refused after start: \(String(describing: model.steerProblem))") }
+        step("started the queued task, then the message went through")
 
         // The fake Mac pings every 0.4 s here (30 s on a real one): a live connection answers and is never dropped.
         var phases: [ConnectionPhase] = []
