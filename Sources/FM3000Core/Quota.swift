@@ -57,22 +57,30 @@ public struct QuotaSnapshot: Codable, Equatable {
     }
 }
 
-/// The short name for the model pill: the Mac's own label when it has one, else the model id made readable
-/// (`claude-sonnet-5-5` reads `Sonnet 5.5`, `gpt-5.5-codex` reads `GPT 5.5 Codex`). Nil when the Mac named none.
-public func modelPill(label: String?, id: String?) -> String? {
-    if let label, !label.trimmingCharacters(in: .whitespaces).isEmpty { return label }
-    guard var id, !id.isEmpty else { return nil }
-    if id.hasPrefix("claude-") { id.removeFirst("claude-".count) }
-    var words: [String] = []
-    var numbers: [String] = []
-    for part in id.split(whereSeparator: { $0 == "-" || $0 == " " }) {
-        if part.allSatisfy({ $0.isNumber }) { numbers.append(String(part)) }
-        else {
-            if !numbers.isEmpty { words.append(numbers.joined(separator: ".")); numbers = [] }
-            let text = String(part)
-            words.append(text.lowercased() == "gpt" ? "GPT" : text.prefix(1).uppercased() + text.dropFirst())
+/// The model pill's text: the model's own name without its provider, then the reasoning effort in brackets
+/// (`Claude Sonnet 5.5 (Medium)`). The Mac's label wins over the id; an id reads as a name (`claude-sonnet-5-5` reads
+/// `Claude Sonnet 5.5`, `gpt-5.5-codex` reads `GPT 5.5 Codex`). The effort is left out when the Mac sets none ("default", "off").
+/// Nil when the Mac named no model.
+public func modelPill(label: String?, id: String?, effort: String? = nil) -> String? {
+    var name: String
+    if let label, !label.trimmingCharacters(in: .whitespaces).isEmpty {
+        name = label.trimmingCharacters(in: .whitespaces)
+        for provider in ["Anthropic ", "OpenAI "] where name.hasPrefix(provider) { name.removeFirst(provider.count) }
+    } else {
+        guard let id, !id.isEmpty else { return nil }
+        var words: [String] = []
+        var numbers: [String] = []
+        for part in id.split(whereSeparator: { $0 == "-" || $0 == " " }) {
+            if part.allSatisfy({ $0.isNumber }) { numbers.append(String(part)) }
+            else {
+                if !numbers.isEmpty { words.append(numbers.joined(separator: ".")); numbers = [] }
+                let text = String(part)
+                words.append(text.lowercased() == "gpt" ? "GPT" : text.prefix(1).uppercased() + text.dropFirst())
+            }
         }
+        if !numbers.isEmpty { words.append(numbers.joined(separator: ".")) }
+        name = words.joined(separator: " ")
     }
-    if !numbers.isEmpty { words.append(numbers.joined(separator: ".")) }
-    return words.joined(separator: " ")
+    guard let effort, !["", "default", "off"].contains(effort) else { return name }
+    return "\(name) (\(effort.prefix(1).uppercased() + effort.dropFirst()))"
 }

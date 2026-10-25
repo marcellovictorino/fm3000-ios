@@ -119,7 +119,7 @@ function fixtureDetail(now) {
     ...t, goal: "Group the toggles on the settings page", workPosture: { state: "active", reason: "turn" },
     delivery: { mode: "direct-pr", prNumber: 42, prUrl: "https://example.com/fake/repo/pull/42", ci: "green",
       runChecks: { runId: 7, name: "CI / test", state: "passed", at: now } },
-    modelLabel: "Sonnet", intent: null, rigor: "standard", deliverable: "change", basis: null, skippedPlanBecause: null,
+    modelLabel: "Claude Sonnet 5.5", reasoning: { level: "medium" }, intent: null, rigor: "standard", deliverable: "change", basis: null, skippedPlanBecause: null,
     brief: "Group the toggles.", outcome: null, cards: [], events: [], activityLog: [], plan: null, closing: null, problem: null, asks: [],
   };
 }
