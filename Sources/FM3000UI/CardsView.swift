@@ -137,21 +137,18 @@ struct CardDetailView: View {
                         .font(.subheadline.weight(.medium)).foregroundStyle(Theme.accent)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(14)
                         .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                } else if !card.actions.isEmpty {
+                }
+                if !card.actions.isEmpty {
+                    let picked = model.answered[card.id]?.label
                     VStack(spacing: 8) {
                         ForEach(card.actions) { action in
                             let sending = model.choosing[card.id] == action.id
-                            Button { Task { await model.choose(action, on: card) } } label: {
-                                HStack(spacing: 8) {
-                                    if sending { ProgressView().controlSize(.small) }
-                                    Text(sending ? "Sending…" : action.label)
-                                }
-                                .frame(maxWidth: .infinity)
+                            let selected = sending || picked == action.label
+                            let settled = picked != nil || model.choosing[card.id] != nil
+                            CardActionButton(action: action, selected: selected, working: sending, dimmed: settled && !selected) {
+                                Task { await model.choose(action, on: card) }
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(action.variant == "danger" ? Theme.danger : (action.isDefault ? Theme.accentStrong : Theme.bg3))
-                            .disabled(!model.canChange || model.choosing[card.id] != nil)
-                            .opacity(model.choosing[card.id] != nil && !sending ? 0.5 : 1)
+                            .disabled(!model.canChange || settled)
                         }
                     }
                 }
@@ -178,6 +175,7 @@ struct CardDetailView: View {
         .toolbar { ToolbarItem(placement: .primaryAction) { ListenButton(text: card.title + ". " + HTMLText.plain(card.body), id: "card-" + card.id) } }
         .onDisappear { Speaker.shared.stop() }
         .task { await model.loadThread(of: card) }
+        .task { if DebugLaunch.has("-pickLast"), let last = card.actions.last { try? await Task.sleep(nanoseconds: 1_500_000_000); await model.choose(last, on: card) } }
     }
 }
 

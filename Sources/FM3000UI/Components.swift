@@ -87,3 +87,54 @@ struct ModelPill: View {
         }
     }
 }
+
+/// A card's choice button drawn like the desktop's `Button` (`design/core/Button.tsx`): the default is a filled accent button with
+/// dark text, the others are outlined (danger in red), ghost is bare text, and a press goes to the stronger fill. The choice that was
+/// picked reads as selected (filled, with a check), and the others step back.
+struct CardActionButton: View {
+    let action: CardAction
+    let selected: Bool
+    let working: Bool
+    let dimmed: Bool
+    let perform: () -> Void
+
+    private var variant: String { action.variant ?? (action.isDefault ? "primary" : "secondary") }
+
+    var body: some View {
+        Button(action: perform) {
+            HStack(spacing: 8) {
+                if working { ProgressView().controlSize(.small) }
+                else if selected { Image(systemName: "checkmark") }
+                Text(working ? "Sending…" : action.label)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(CardActionStyle(variant: variant, selected: selected))
+        .opacity(dimmed ? 0.45 : 1)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+private struct CardActionStyle: ButtonStyle {
+    let variant: String
+    let selected: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        let pressed = configuration.isPressed
+        let filled = selected || variant == "primary"
+        let tone: Color = variant == "danger" ? Theme.danger : Theme.accent
+        configuration.label
+            .font(.body.weight(.medium))
+            .foregroundStyle(filled ? Theme.bg0 : (variant == "danger" ? Theme.danger : (variant == "ghost" ? Theme.fg2 : Theme.fg1)))
+            .padding(.vertical, 12).padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(filled ? (pressed ? (variant == "danger" ? Theme.danger.opacity(0.8) : Theme.accentStrong) : tone)
+                                 : (pressed ? (variant == "danger" ? Theme.danger.opacity(0.15) : Theme.bg3) : .clear))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(filled || variant == "ghost" ? Color.clear : (variant == "danger" ? Theme.danger : Theme.line.opacity(2)), lineWidth: 1)
+            )
+    }
+}
