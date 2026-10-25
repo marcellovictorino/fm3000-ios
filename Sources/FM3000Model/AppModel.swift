@@ -364,14 +364,29 @@ public final class AppModel: ObservableObject {
     public func crewLive(_ id: String) async -> CrewLive? { try? await ask("inf:tasks:crewmate:live", [.string(id)]) }
 
     /// Tells the crewmate something: `inf:task:steer`. The Mac may refuse (nothing is running), and says why.
+    /// The Mac's reason when it refused, kept for the thread to show beside its input; nil after a message goes through.
+    @Published public private(set) var steerProblem: String?
+
     public func steer(_ taskId: String, _ text: String) async -> Bool {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty else { return false }
         do {
             let result: SteerResult = try await ask("inf:task:steer", [.string(taskId), .string(words)])
-            if !result.ok { notice = result.text ?? "The Mac did not take that." }
+            steerProblem = result.ok ? nil : (result.text ?? "The Mac did not take that.")
             return result.ok
-        } catch { notice = error.localizedDescription; return false }
+        } catch { steerProblem = error.localizedDescription; return false }
+    }
+
+    /// Starts a queued task (`inf:task:run`, the desktop's Start button); the Mac says why when it will not.
+    public func clearSteerProblem() { steerProblem = nil }
+
+    public func startTask(_ taskId: String) async -> Bool {
+        do {
+            let result: SteerResult = try await ask("inf:task:run", [.string(taskId), .string("start-task")])
+            steerProblem = result.ok ? nil : (result.text ?? "The Mac did not start that task.")
+            await refreshBoard()
+            return result.ok
+        } catch { steerProblem = error.localizedDescription; return false }
     }
 
     public func refreshFeed() async {

@@ -43,13 +43,13 @@ struct BoardView: View {
                 if case .connected = phase {
                     Task {
                         await model.refreshBoard()
-                        if DebugLaunch.has("-openTask"), path.isEmpty, let first = model.board?.tasks.first { path = [first] }
+                        if DebugLaunch.has("-openTask"), path.isEmpty, let first = DebugLaunch.has("-queuedTask") ? model.board?.tasks.first(where: \.notStarted) : model.board?.tasks.first { path = [first] }
                     }
                 }
             }
             .task {
                 await model.refreshBoard()
-                if DebugLaunch.has("-openTask"), path.isEmpty, let first = model.board?.tasks.first { path = [first] }
+                if DebugLaunch.has("-openTask"), path.isEmpty, let first = DebugLaunch.has("-queuedTask") ? model.board?.tasks.first(where: \.notStarted) : model.board?.tasks.first { path = [first] }
             }
         }
     }
@@ -211,7 +211,6 @@ struct TaskDetailView: View {
                 chip((detail?.status ?? task.status).capitalized, Theme.accent)
                 if let posture = detail?.workPosture { chip("\(posture.state.capitalized) · \(posture.reason)", posture.state == "active" ? Theme.accent : Theme.fg2) }
                 else if let activity = detail?.activity ?? task.activity { chip(activity.capitalized, Theme.fg2) }
-                if let name = detail?.modelLabel ?? detail?.model ?? task.model { chip(name, Theme.fg3) }
             }
             Text("Updated \(relativeTime(detail?.updatedAt ?? task.updatedAt))").font(.caption).foregroundStyle(Theme.fg3)
         }
@@ -291,6 +290,12 @@ struct TaskDetailView: View {
     }
 }
 
+private func problemLine(_ why: String) -> some View {
+    Label(why, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(Theme.warn)
+        .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16).padding(.vertical, 8)
+        .background(Theme.bg1)
+}
+
 /// The crewmate's thread: what it said and reported, and what you told it, as a chat with the composer pinned below.
 struct CrewThreadView: View {
     @ObservedObject var model: AppModel
@@ -299,10 +304,25 @@ struct CrewThreadView: View {
     @State private var text = ""
     @State private var sending = false
 
+    /// The board's newest word on this task, since the one handed in was read before Start was pressed.
+    private var notStartedNotice: some View {
+        HStack(spacing: 10) {
+            Text("This task has not started yet, so nobody can read messages. Start it first.").font(.footnote).foregroundStyle(Theme.fg2)
+            Spacer(minLength: 8)
+            Button { Task { _ = await model.startTask(task.id) } } label: { Text("Start") }
+                .buttonStyle(.borderedProminent).tint(Theme.accentStrong).disabled(!model.canChange)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 10).background(Theme.bg1)
+    }
+
+    private var current: BoardTask { model.board?.tasks.first { $0.id == task.id } ?? task }
+
     var body: some View {
-        ChatList(items: (log?.lines ?? []).compactMap(\.chatItem), empty: "Nothing said yet. Write below to tell the crewmate something.", typing: model.awaitingThreads.contains("crew-" + task.id) || DebugLaunch.has("-typing"))
+        ChatList(items: (log?.lines ?? []).compactMap(\.chatItem), empty: current.notStarted ? "Nothing yet: this task has not started." : "Nothing said yet. Write below to tell the crewmate something.", typing: model.awaitingThreads.contains("crew-" + task.id) || DebugLaunch.has("-typing"))
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            Composer(placeholder: "Tell \(task.key)’s crewmate…", text: $text, attachments: nil, enabled: model.canChange, sending: sending) {
+            VStack(spacing: 0) {
+                if current.notStarted { notStartedNotice } else if let why = model.steerProblem { problemLine(why) }
+            Composer(placeholder: current.notStarted ? "Not started yet" : "Tell \(task.key)’s crewmate…", text: $text, attachments: nil, enabled: model.canChange && !current.notStarted, sending: sending) {
                 let words = text
                 sending = true
                 Task {
@@ -310,9 +330,10 @@ struct CrewThreadView: View {
                     sending = false
                 }
             }
+            }
         }
         .navigationTitle("Thread").iOSInlineTitle()
-        .task { log = await model.crewLog(task.id) }
+        .task { model.clearSteerProblem(); log = await model.crewLog(task.id) }
         .task(id: model.awaitingThreads.contains("crew-" + task.id)) {
             // While the crewmate may answer, read its log again every few seconds; a line from it ends the dots.
             while model.awaitingThreads.contains("crew-" + task.id), !Task.isCancelled {

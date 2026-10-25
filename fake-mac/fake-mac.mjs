@@ -351,7 +351,16 @@ export async function startFakeMac(options = {}) {
     },
     "inf:tasks:crewmate": ([taskId]) => ({ taskId, earlier: 0, lines: [...state.crew], revision: `r${state.crew.length}` }),
     "inf:tasks:crewmate:live": ([taskId]) => ({ taskId, text: "Running the tests for the settings page.", since: AT() }),
+    "inf:task:run": ([taskId, verb]) => {
+      record({ ev: "run", taskId, verb });
+      const task = state.board.tasks.find((t) => t.id === taskId);
+      if (!task || verb !== "start-task") return { ok: false, text: "That is not something this fake Mac does." };
+      task.status = "active"; task.assignee = "crewmate"; task.activity = "running";
+      return { ok: true };
+    },
     "inf:task:steer": ([taskId, text]) => {
+      const task = state.board.tasks.find((t) => t.id === taskId);
+      if (task && task.status === "open" && !task.assignee) return { ok: false, text: `${task.key} has not started, so no crewmate can read this.` };
       record({ ev: "steer", taskId, text });
       state.crew.push({ kind: "sent", id: `l${state.crew.length + 1}`, at: AT(), from: "captain", text, queued: false, via: "other" });
       return { ok: true };

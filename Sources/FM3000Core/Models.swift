@@ -86,6 +86,11 @@ public struct BoardTask: Codable, Equatable, Identifiable, Hashable {
     }
 }
 
+public extension BoardTask {
+    /// Queued or waiting for the captain's go: no crewmate exists yet, so nobody could read a message.
+    var notStarted: Bool { status == "open" && assignee == nil && startAttempt == nil }
+}
+
 public struct BoardProject: Codable, Equatable, Identifiable {
     public struct Counts: Codable, Equatable { public let needsYou: Int; public let open: Int; public let active: Int }
     public let id: String
