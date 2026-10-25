@@ -22,6 +22,7 @@ public struct Card: Codable, Equatable, Identifiable {
     public let createdAt: Double
     public let holdsPlace: Bool?
     public let asking: Bool?
+    public let model: String?
 }
 
 public struct ThreadMessage: Codable, Equatable, Identifiable {

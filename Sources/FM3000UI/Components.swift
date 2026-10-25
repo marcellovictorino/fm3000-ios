@@ -73,3 +73,17 @@ func relativeTime(_ millis: Double) -> String {
     formatter.unitsStyle = .abbreviated
     return formatter.localizedString(for: Date(timeIntervalSince1970: millis / 1000), relativeTo: Date())
 }
+
+/// A small label for the model a task or card runs on, drawn at the top of the row; nothing when the Mac named none.
+struct ModelPill: View {
+    let name: String?
+
+    var body: some View {
+        if let name {
+            Text(name).font(.caption2.weight(.semibold)).foregroundStyle(Theme.accent)
+                .padding(.horizontal, 7).padding(.vertical, 2)
+                .background(Theme.accent.opacity(0.14), in: Capsule())
+                .accessibilityLabel("Model \(name)")
+        }
+    }
+}
