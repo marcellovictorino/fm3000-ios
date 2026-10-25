@@ -193,6 +193,18 @@ await check("cards strip: Working, Waiting on you and Queued follow the desktop'
     try expectEqual(filterCards(cards, by: .waiting, board: board).map(\.id), ["c1"])
     try expectEqual(filterCards(cards, by: nil, board: board).count, 3)
 }
+await check("machine load: the Mac's saved reading gives the GPU and the memory share the desktop panel shows") {
+    // The shape machine-load/server.ts saves each minute; values from the captain's laptop: GPU 7%, 10 of 24 GB used.
+    let gib = 1024.0 * 1024 * 1024, now = 1_700_000_000_000.0
+    let json = #"{"value":{"at":1700000000000,"gpu":7,"memory":{"usedBytes":10737418240,"totalBytes":25769803776}}}"#
+    let stored = try JSONDecoder().decode(StoreValue<MachineSample>.self, from: Data(json.utf8))
+    guard let sample = stored.value else { throw Failed(description: "no sample") }
+    try expectEqual(sample.gpu, 7); try expectEqual(Int((sample.memoryPercent ?? 0).rounded()), 42)
+    try expectEqual(sample.memory?.totalBytes, 24 * gib)
+    try expectEqual(sample.isFresh(now: now + 60_000), true); try expectEqual(sample.isFresh(now: now + 200_000), false)
+    let missing = try JSONDecoder().decode(StoreValue<MachineSample>.self, from: Data(#"{"value":null}"#.utf8))
+    try expectEqual(missing.value == nil, true)
+}
 await check("tasks: the board groups by status, and layout follows the toggle, else the phone's orientation") {
     func task(_ id: String, _ status: String, _ at: Double) -> BoardTask {
         BoardTask(id: id, key: id, projectId: "p", title: id, kind: "work", status: status, activity: nil, assignee: nil, model: nil, waitingCardId: nil, updatedAt: at)

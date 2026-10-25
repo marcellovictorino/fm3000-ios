@@ -321,10 +321,13 @@ public final class AppModel: ObservableObject {
         let _: JSONValue? = try? await ask("inf:plugins:invoke", [.string("open-prs"), .string("refresh"), .null])
     }
 
-    /// The `machine-load` panel's sample: GPU busy share and memory in use, measured on the Mac that runs Infinitary.
+    /// The `machine-load` panel's saved reading (GPU, and memory counted as the desktop panel counts it): the panel's Mac side keeps
+    /// it under `latest` in its own store, which is what the desktop panel draws. Nil when the Mac does not let this phone read the
+    /// store, holds none, or holds one more than three minutes old.
     public func machineSample() async -> MachineSample? {
-        guard let answer: InvokeResult<MachineSample> = try? await ask("inf:plugins:invoke", [.string("machine-load"), .string("sample"), .null]) else { return nil }
-        return answer.ok ? answer.result : nil
+        let args: [JSONValue] = [.object(["op": .string("get"), "extensionId": .string("machine-load"), "key": .string("latest")])]
+        guard let stored: StoreValue<MachineSample> = try? await ask("inf:plugins:db", args), let sample = stored.value, sample.isFresh() else { return nil }
+        return sample
     }
 
     public func crewLog(_ id: String) async -> CrewLog? { try? await ask("inf:tasks:crewmate", [.string(id)]) }

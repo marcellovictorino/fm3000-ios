@@ -86,11 +86,24 @@ public struct OpenPRs: Codable, Equatable {
     public var failedCount: Int { changes.filter { $0.checks == "failed" }.count }
 }
 
-/// What the `machine-load` panel's `sample` action reports: the GPU's busy share and memory used the way btop counts it.
+/// What the `machine-load` panel's Mac side saves under `latest` in its store every minute (its server.ts): the time of the reading,
+/// the GPU's busy share, and memory used the way btop counts it (active plus wired pages over physical RAM).
 public struct MachineSample: Codable, Equatable {
     public struct Memory: Codable, Equatable { public let usedBytes: Double; public let totalBytes: Double }
+    public let at: Double?
     public let gpu: Double?
     public let memory: Memory?
+
+    public init(at: Double?, gpu: Double?, memory: Memory?) { self.at = at; self.gpu = gpu; self.memory = memory }
+
+    /// Used memory as a percentage of the total.
+    public var memoryPercent: Double? { memory.map { $0.totalBytes > 0 ? 100 * $0.usedBytes / $0.totalBytes : 0 } }
+
+    /// The Mac saves a reading every minute; one older than three is the Mac's last word, not its present state.
+    public func isFresh(now: Double = Date().timeIntervalSince1970 * 1000) -> Bool {
+        guard let at else { return false }
+        return now - at < 180_000
+    }
 }
 
 /// The answer of `inf:plugins:invoke` for a panel's server action.
