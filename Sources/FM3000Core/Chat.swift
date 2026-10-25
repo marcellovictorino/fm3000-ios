@@ -54,3 +54,20 @@ public struct LastTurn: Codable, Equatable {
     public let you: String
     public let reply: Reply?
 }
+
+
+/// What the Message tab keeps: the last three hours, and each of the captain's posts with only the first answer to it.
+/// Anything further about a request happens on its task or card, so this view stays a short list of asks and answers.
+public enum ChatWindow {
+    public static let span: Double = 3 * 3600 * 1000
+
+    public static func visible(_ items: [ChatItem], now: Double) -> [ChatItem] {
+        var kept: [ChatItem] = []
+        var open = false  // a captain's post is waiting for its first answer
+        for item in items where item.at >= now - span {
+            if item.isMine { kept.append(item); open = true }
+            else if open { kept.append(item); open = false }  // the first answer; later ones, and answers to nothing, are dropped
+        }
+        return kept
+    }
+}
