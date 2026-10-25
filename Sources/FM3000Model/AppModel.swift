@@ -330,6 +330,16 @@ public final class AppModel: ObservableObject {
         return sample
     }
 
+    /// The Mac's live feed over the tailnet (`MachineFeed`). Needs no pairing, so it also works while the phone is not connected.
+    public func machineFeed() async -> MachineFeed.Outcome {
+        let text = UserDefaults.standard.string(forKey: "machineFeedURL") ?? MachineFeed.defaultURL
+        guard let url = URL(string: text) else { return .unreachable }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 4)
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        guard let (data, response) = try? await URLSession.shared.data(for: request), (response as? HTTPURLResponse)?.statusCode == 200 else { return .unreachable }
+        return MachineFeed.outcome(of: data)
+    }
+
     public func crewLog(_ id: String) async -> CrewLog? { try? await ask("inf:tasks:crewmate", [.string(id)]) }
 
     public func crewLive(_ id: String) async -> CrewLive? { try? await ask("inf:tasks:crewmate:live", [.string(id)]) }

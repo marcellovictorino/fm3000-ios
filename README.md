@@ -12,6 +12,7 @@ Built against Infinitary (the renamed Firstmate 3000), protocol 11.0.0 (`docs/co
 | `Sources/FM3000Model` | `AppModel`: pairing, connect and reconnect with cursor, every request the screens make |
 | `Sources/FM3000UI` | SwiftUI screens: Pair, Cards (detail, actions, reply), Message, Tasks, Feed, Mac |
 | `App/`, `project.yml` | The app shell; XcodeGen writes `FM3000.xcodeproj` from `project.yml` |
+| `mac-feed/` | The Mac-side Machine load job: a launchd agent samples CPU, GPU and memory every 3 seconds and `tailscale serve` publishes the latest JSON to your tailnet only. `./mac-feed/install.sh` starts it, `./mac-feed/uninstall.sh` removes it. Others > Panels > Machine load reads it (fresh within 15 s), and falls back to Infinitary's own readings with a visible note when it is unreachable or stale. The URL is `MachineFeed.defaultURL`, overridable by the `machineFeedURL` default |
 | `fake-mac/` | A fake Mac that follows the contract (every request and answer is checked against `contract.json`) |
 | `scripts/` | `test.sh`, `e2e.sh`, `doctor.sh`, `run-simulator.sh`, `install-device.sh`, `archive-testflight.sh` |
 

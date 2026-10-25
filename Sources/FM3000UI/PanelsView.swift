@@ -105,6 +105,8 @@ struct ResourcesView: View {
     @State private var memoryDetail: String?
     /// True while the numbers are the panel's saved reading; false when only the Mac's general reading reaches this phone.
     @State private var savedReading = false
+    /// Where the numbers came from this time, and why the live feed was not used when it was not.
+    @State private var feed: MachineFeed.Outcome = .unreachable
     @State private var observation: ComputerResources.Computer.Observation?
 
     private var macName: String {
@@ -119,11 +121,16 @@ struct ResourcesView: View {
                 Meter(label: "GPU", history: gpu).infinitaryRow()
                 Meter(label: "Memory", history: memory, detail: memoryDetail).infinitaryRow()
             } footer: {
-                if savedReading {
+                if case .live = feed {
+                    Text("Measured on \(macName), the Mac running Infinitary. Not this iPhone. Live from the Mac's own feed over Tailscale, read every few seconds.")
+                } else if savedReading {
                     Text("Measured on \(macName), the Mac running Infinitary. Not this iPhone. GPU and memory are the panel's reading, saved by the Mac every minute.")
                 } else {
                     Text("Measured on \(macName), the Mac running Infinitary. Not this iPhone. The Mac does not let the phone read the panel's saved GPU and memory yet, so GPU stays blank and memory is macOS's own count, which includes compressed and cached memory and reads higher than the desktop panel.")
                 }
+            }
+            if let note = feedNote {
+                Text(note).font(.caption).foregroundStyle(Theme.warn).infinitaryRow()
             }
             if let memory = observation?.memory {
                 Section("Memory details") {
@@ -146,7 +153,7 @@ struct ResourcesView: View {
         .navigationTitle("Machine load").iOSInlineTitle()
         .task {
             while !Task.isCancelled {
-                if model.phase.isConnected { await sample() }
+                await sample()
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
         }
@@ -157,11 +164,35 @@ struct ResourcesView: View {
         if list.count > Spark.capacity { list.removeFirst(list.count - Spark.capacity) }
     }
 
+    /// Why the live feed is not the source right now, in one calm line; nil while it is.
+    private var feedNote: String? {
+        switch feed {
+        case .live: nil
+        case .stale(let age): "The Mac's live feed stopped \(age) seconds ago (asleep, or the job stopped). Showing the best reading Infinitary has."
+        case .unreachable: "The Mac's live feed is not reachable (Tailscale off, Mac asleep, or the job not running). Showing the best reading Infinitary has."
+        }
+    }
+
+    /// Sources, best first: the Mac's live feed; else the panel's saved reading (GPU, memory) with Infinitary's CPU; else macOS's own count.
     private func sample() async {
-        let home = await model.resources()?.computers.first { $0.computerId == nil }
-        push(&cpu, home?.cpuUsed.map { $0 * 100 })
+        feed = await model.machineFeed()
+        let home = model.phase.isConnected ? await model.resources()?.computers.first { $0.computerId == nil } : nil
         observation = home?.reading.observation
-        if let machine = await model.machineSample() {
+        if case .live(let live) = feed {
+            savedReading = false
+            push(&cpu, live.cpu ?? home?.cpuUsed.map { $0 * 100 })
+            push(&gpu, live.gpu)
+            if let used = live.memory, let percent = live.memoryPercent {
+                push(&memory, percent)
+                memoryDetail = "\(gigabytes(used.usedBytes)) of \(gigabytes(used.totalBytes)) GB"
+            } else {
+                push(&memory, home?.memoryUsed.map { $0 * 100 })
+                memoryDetail = nil
+            }
+            return
+        }
+        push(&cpu, home?.cpuUsed.map { $0 * 100 })
+        if model.phase.isConnected, let machine = await model.machineSample() {
             savedReading = true
             push(&gpu, machine.gpu)
             if let used = machine.memory, let percent = machine.memoryPercent {
