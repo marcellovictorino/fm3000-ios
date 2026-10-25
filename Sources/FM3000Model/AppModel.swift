@@ -280,6 +280,15 @@ public final class AppModel: ObservableObject {
         } catch { notice = error.localizedDescription }
     }
 
+    /// Closes a card without choosing anything, like the close control on the Mac: the card leaves the stack and nothing runs.
+    public func close(_ card: Card) async -> Bool {
+        do {
+            let _: OkResult = try await ask("inf:cards:close", [.string(card.id)])
+            cards.removeAll { $0.id == card.id }
+            return true
+        } catch { notice = error.localizedDescription; return false }
+    }
+
     /// Replies under a card: `inf:cards:reply`. The words go as the captain's own.
     public func reply(_ text: String, to card: Card, attachments: [Attachment] = []) async -> Bool {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)

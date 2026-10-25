@@ -85,6 +85,10 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         step("choice kept: the card shows what was chosen and counts as closed")
         await until("card gone after action") { !model.cards.contains { $0.id == "card-merge-1" } }
 
+        if let other = model.cards.first(where: { $0.id == question.id }) {
+            guard await model.close(other), !model.cards.contains(where: { $0.id == question.id }) else { fail("closing a card did not take: \(model.notice ?? "")") }
+            step("card closed without a choice")
+        }
         await model.refreshBoard()
         guard model.board?.tasks.first?.key == "FM-1" else { fail("board missing FM-1") }
         step("task board read")

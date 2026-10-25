@@ -201,6 +201,7 @@ public extension CrewLine {
     }
 }
 
+public struct OkResult: Codable, Equatable { public let ok: Bool }
 public struct SteerResult: Codable, Equatable { public let ok: Bool; public let text: String? }
 
 public extension Board {

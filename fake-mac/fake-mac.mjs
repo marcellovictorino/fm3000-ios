@@ -367,6 +367,11 @@ export async function startFakeMac(options = {}) {
     },
     "inf:conversation:last-turn": () => state.lastTurn ?? null,
     "inf:cards:thread": ([cardId]) => ({ cardId, messages: [...(state.threads.get(cardId) ?? [])] }),
+    "inf:cards:close": ([cardId]) => {
+      record({ ev: "close", cardId });
+      state.cards = state.cards.filter((c) => c.id !== cardId);
+      return { ok: true };
+    },
     "inf:cards:act": ([cardId, actionId]) => {
       const card = state.cards.find((c) => c.id === cardId);
       if (!card) throw new Error("There is no such card.");
