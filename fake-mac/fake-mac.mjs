@@ -229,11 +229,15 @@ export async function startFakeMac(options = {}) {
     ws.send(JSON.stringify(frame));
   }
 
+  // A device whose hello does not say it reads `inf` is from before the rename: the Mac writes its pushes under `fm:` names.
+  const respelled = (frame, connection) =>
+    connection.readsInf ? frame : { ...frame, channel: frame.channel.replace(/^inf:/, "fm:") };
+
   function push(channel, payload) {
     assertValid(pushSchema(channel), payload, `push ${channel}`);
     const frame = { t: "push", seq: (journal.at(-1)?.seq ?? 0) + 1, channel, payload };
     journal.push(frame);
-    for (const connection of connections) if (connection.welcomed) send(connection.ws, frame);
+    for (const connection of connections) if (connection.welcomed) send(connection.ws, respelled(frame, connection));
     record({ ev: "push", channel, seq: frame.seq });
   }
 
@@ -461,6 +465,7 @@ export async function startFakeMac(options = {}) {
         if (connection.welcomed) return closeProtocol("second hello");
         clearTimeout(helloTimer);
         connection.welcomed = true;
+        connection.readsInf = Array.isArray(frame.spellings) && frame.spellings.includes("inf");
         connection.access = hasFullAccess(frame.protocolVersion) ? "full" : "read";
         const cursor = frame.cursor;
         const oldest = journal[0]?.seq ?? (journal.at(-1)?.seq ?? 0) + 1;
@@ -473,9 +478,9 @@ export async function startFakeMac(options = {}) {
         });
         send(ws, {
           t: "welcome", protocolVersion: contract.protocolVersion, epoch, seq: newest,
-          catchUp: replay ? "replay" : "reload", access: connection.access, name: pairName, spellings: ["fm"],
+          catchUp: replay ? "replay" : "reload", access: connection.access, name: pairName, spellings: ["fm", "inf"],
         });
-        if (replay) for (const missed of journal.filter((p) => p.seq > cursor.seq)) send(ws, missed);
+        if (replay) for (const missed of journal.filter((p) => p.seq > cursor.seq)) send(ws, respelled(missed, connection));
         return;
       }
       if (!connection.welcomed) return closeProtocol("request before hello");

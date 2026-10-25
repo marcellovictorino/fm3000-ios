@@ -50,7 +50,7 @@ function dial({ origin, identity = device, path = "/connection" } = {}) {
   });
 }
 const until = async (predicate) => { for (let i = 0; i < 100; i++) { if (predicate()) return; await new Promise((r) => setTimeout(r, 20)); } assert.fail("timeout"); };
-const hello = { t: "hello", protocolVersion: "11.0.0", as: "view", system: "ios", chip: "arm64" };
+const hello = { t: "hello", protocolVersion: "11.0.0", as: "view", system: "ios", chip: "arm64", spellings: ["inf"] };
 
 describe("pairing", () => {
   test("pins the home by its SPKI hash", () => {
@@ -114,6 +114,16 @@ describe("connection", () => {
     await until(() => conn.frames.some((f) => f.t === "push" && f.channel === "inf:cards"));
     const pushFrame = conn.frames.find((f) => f.t === "push");
     assert.ok(pushFrame.seq >= 1);
+    conn.ws.close();
+  });
+  test("a hello without spellings is from before the rename: its pushes arrive under fm: names", async () => {
+    const conn = await dial();
+    const { spellings, ...old } = hello;
+    conn.ws.send(JSON.stringify(old));
+    await until(() => conn.frames.some((f) => f.t === "welcome"));
+    conn.ws.send(JSON.stringify({ t: "invoke", id: 2, channel: "inf:converse", args: ["hello old"] }));
+    await until(() => conn.frames.some((f) => f.t === "push"));
+    assert.ok(conn.frames.filter((f) => f.t === "push").every((f) => f.channel.startsWith("fm:")));
     conn.ws.close();
   });
   test("a client written for a major two behind reads, and its change is refused", async () => {
