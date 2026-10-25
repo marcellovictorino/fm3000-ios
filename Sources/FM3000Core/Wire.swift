@@ -67,6 +67,8 @@ public enum HomeFrame: Equatable {
         var frame: [String: JSONValue] = [
             "t": .string("hello"), "protocolVersion": .string(protocolVersion),
             "as": .string("view"), "system": .string("ios"), "chip": .string("arm64"),
+            // Without this the Mac takes the phone for a build from before the rename and writes every push under the old `fm:` names.
+            "spellings": .array([.string("inf")]),
         ]
         if let cursor { frame["cursor"] = .object(["epoch": .string(cursor.epoch), "seq": .number(Double(cursor.seq))]) }
         return encode(.object(frame))
