@@ -308,11 +308,16 @@ public struct CardsTally: Equatable {
 
 public enum CardsFilter: String, CaseIterable { case working, waiting, queued }
 
-/// The cards a strip chip shows: waiting is every open decision card; the others are the cards of tasks in that group.
+/// The tasks a Working or Queued chip lists, newest change first: exactly the ones its count counts. Waiting lists cards, not tasks.
+public func tasksIn(_ filter: CardsFilter, board: Board?) -> [BoardTask] {
+    guard filter != .waiting, let board else { return [] }
+    let groups = nowGroups(board.tasks)
+    let want: NowGroup = filter == .working ? .working : .queued
+    return board.tasks.filter { groups[$0.id] == want }.sorted { $0.updatedAt > $1.updatedAt }
+}
+
+/// The cards the Cards list shows under a chip: Waiting is every open decision card; Working and Queued list tasks instead (`tasksIn`).
 public func filterCards(_ cards: [Card], by filter: CardsFilter?, board: Board?) -> [Card] {
     guard let filter else { return cards }
-    if filter == .waiting { return cards.filter { !$0.actions.isEmpty } }
-    let groups = nowGroups(board?.tasks ?? [])
-    let want: NowGroup = filter == .working ? .working : .queued
-    return cards.filter { card in card.taskId.flatMap { groups[$0] } == want }
+    return filter == .waiting ? cards.filter { !$0.actions.isEmpty } : []
 }

@@ -188,8 +188,10 @@ await check("cards strip: Working, Waiting on you and Queued follow the desktop'
     let cards = [card("c1", task: "ask", actions: 2), card("c2", task: "run", actions: 0), card("c3", task: "next", actions: 0)]
     let tally = CardsTally(cards: cards, board: board)
     try expectEqual(tally.working, 2); try expectEqual(tally.waiting, 1); try expectEqual(tally.queued, 2)
-    try expectEqual(filterCards(cards, by: .working, board: board).map(\.id), ["c2"])
-    try expectEqual(filterCards(cards, by: .queued, board: board).map(\.id), ["c3"])
+    // The captain's bug: Queued showed 2 and then listed nothing, because the chip listed cards and queued tasks have none.
+    try expectEqual(tasksIn(.queued, board: board).count, tally.queued); try expectEqual(Set(tasksIn(.queued, board: board).map(\.id)), ["starting", "next"])
+    try expectEqual(tasksIn(.working, board: board).count, tally.working); try expectEqual(Set(tasksIn(.working, board: board).map(\.id)), ["run", "live-child"])
+    try expectEqual(tasksIn(.waiting, board: board).count, 0)
     try expectEqual(filterCards(cards, by: .waiting, board: board).map(\.id), ["c1"])
     try expectEqual(filterCards(cards, by: nil, board: board).count, 3)
 }
