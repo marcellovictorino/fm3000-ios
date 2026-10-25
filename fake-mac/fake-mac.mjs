@@ -99,6 +99,15 @@ function fixtureBoard(now) {
         outcomeSummary: null, waitingCardId: "card-merge-1", createdAt: now, updatedAt: now,
         startedAt: now, closedAt: null,
       },
+      ...[["task-2", "FM-2", "Add the pictures to cards"], ["task-3", "FM-3", "Check the landscape layout"]].map(([id, key, title], index) => ({
+        id, key, projectId: "project-1", parentId: null, kind: "work",
+        title, goal: title, priority: 2, status: "open",
+        activity: null, closedReason: null, startPolicy: "when-ready",
+        flags: { blocked: false, held: false, needsYou: false, ready: true }, blockedBy: [], blocks: [], children: { total: 0, closed: 0 }, assignee: null,
+        model: null, tier: "medium", repo: { name: "fake/repo", branch: "fm/" + key.toLowerCase() }, delivery: { mode: "local-only", ci: "no-pr" },
+        outcomeSummary: null, waitingCardId: null, createdAt: now - 1000 * (index + 1), updatedAt: now - 1000 * (index + 1),
+        startedAt: null, closedAt: null,
+      })),
     ],
     links: [],
   };

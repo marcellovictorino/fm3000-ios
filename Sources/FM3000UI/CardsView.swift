@@ -5,16 +5,30 @@ import SwiftUI
 struct CardsView: View {
     @ObservedObject var model: AppModel
     @State private var path: [String] = []
-    @State private var filter: CardsFilter?
+    @State private var filter: CardsFilter? = DebugLaunch.has("-filterQueued") ? .queued : nil
 
     private var shown: [Card] { filterCards(model.cards, by: filter, board: model.board) }
+    /// Under Working or Queued the list holds tasks (what those chips count), not cards.
+    private var shownTasks: [BoardTask] { filter.map { tasksIn($0, board: model.board) } ?? [] }
 
     var body: some View {
         NavigationStack(path: $path) {
             Group {
-                if shown.isEmpty, let filter {
+                if let filter, filter != .waiting, !shownTasks.isEmpty {
+                    List(shownTasks) { task in
+                        NavigationLink { TaskDetailView(model: model, task: task) } label: {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(task.title).font(.headline)
+                                Text("\(task.key) · \(Self.title(filter))\(task.activity.map { " · " + $0 } ?? "")").font(.caption).foregroundStyle(Theme.fg3)
+                            }
+                        }
+                        .infinitaryRow()
+                    }
+                    .infinitaryScreen()
+                    .refreshable { await model.refreshBoard() }
+                } else if shown.isEmpty, let filter {
                     VStack(spacing: 6) {
-                        Text("No cards under \(Self.title(filter))").font(.headline)
+                        Text(filter == .waiting ? "No decision cards wait on you" : "Nothing is \(Self.title(filter).lowercased())").font(.headline)
                         Text("Tap the chip again to see every card.").font(.footnote).foregroundStyle(Theme.fg2)
                     }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if model.cards.isEmpty {
