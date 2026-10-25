@@ -207,6 +207,16 @@ await check("machine load: the Mac's saved reading gives the GPU and the memory 
     let missing = try JSONDecoder().decode(StoreValue<MachineSample>.self, from: Data(#"{"value":null}"#.utf8))
     try expectEqual(missing.value == nil, true)
 }
+await check("machine feed: a reading from the Mac's job is live for 15 seconds, then stale, and junk is unreachable") {
+    // The shape mac-feed/machine_load_feed.py serves, taken from the captain's laptop: CPU 42.5%, GPU 98%, 17 of 24 GB used.
+    let json = #"{"at": 1700000000000, "intervalMs": 3000, "cpu": 42.5, "gpu": 98, "memory": {"usedBytes": 18332925952, "totalBytes": 25769803776}}"#
+    let now = 1_700_000_000_000.0
+    guard case .live(let sample) = MachineFeed.outcome(of: Data(json.utf8), now: now + 4_000) else { throw Failed(description: "not live") }
+    try expectEqual(sample.cpu, 42.5); try expectEqual(sample.gpu, 98); try expectEqual(Int((sample.memoryPercent ?? 0).rounded()), 71)
+    try expectEqual(MachineFeed.outcome(of: Data(json.utf8), now: now + 60_000), .stale(ageSeconds: 60))
+    try expectEqual(MachineFeed.outcome(of: Data("<html>".utf8), now: now), .unreachable)
+    try expectEqual(MachineFeed.outcome(of: Data("{}".utf8), now: now), .unreachable)
+}
 await check("tasks: the board groups by status, and layout follows the toggle, else the phone's orientation") {
     func task(_ id: String, _ status: String, _ at: Double) -> BoardTask {
         BoardTask(id: id, key: id, projectId: "p", title: id, kind: "work", status: status, activity: nil, assignee: nil, model: nil, waitingCardId: nil, updatedAt: at)

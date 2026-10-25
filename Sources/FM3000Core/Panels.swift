@@ -93,16 +93,42 @@ public struct MachineSample: Codable, Equatable {
     public let at: Double?
     public let gpu: Double?
     public let memory: Memory?
+    /// CPU busy share, 0-100. Only the live feed carries it; the panel's saved reading has none.
+    public let cpu: Double?
 
-    public init(at: Double?, gpu: Double?, memory: Memory?) { self.at = at; self.gpu = gpu; self.memory = memory }
+    public init(at: Double?, gpu: Double?, memory: Memory?, cpu: Double? = nil) { self.at = at; self.gpu = gpu; self.memory = memory; self.cpu = cpu }
 
     /// Used memory as a percentage of the total.
     public var memoryPercent: Double? { memory.map { $0.totalBytes > 0 ? 100 * $0.usedBytes / $0.totalBytes : 0 } }
 
     /// The Mac saves a reading every minute; one older than three is the Mac's last word, not its present state.
-    public func isFresh(now: Double = Date().timeIntervalSince1970 * 1000) -> Bool {
+    public func isFresh(now: Double = Date().timeIntervalSince1970 * 1000, within: Double = 180_000) -> Bool {
         guard let at else { return false }
-        return now - at < 180_000
+        return now - at < within
+    }
+}
+
+/// The Mac's live feed: a launchd job (`mac-feed/`) samples CPU, GPU and memory every few seconds and `tailscale serve` publishes
+/// the latest reading as JSON on the tailnet. The phone reads it directly, so the reading does not depend on Infinitary's channels.
+public enum MachineFeed {
+    /// The Mac's tailnet address, port 8443, as `mac-feed/install.sh` prints it. `UserDefaults` key `machineFeedURL` overrides it.
+    public static let defaultURL = "https://my-mac.example-tailnet.ts.net:8443/machine-load.json"
+    /// The job writes every 3 seconds; five missed readings means the Mac stopped sampling (asleep, job stopped).
+    public static let freshWithin: Double = 15_000
+
+    public enum Outcome: Equatable {
+        case live(MachineSample)
+        /// The Mac answered, but its newest reading is older than `freshWithin`, so it is not the present state.
+        case stale(ageSeconds: Int)
+        /// No answer: the job is not running, the Mac is asleep or the phone is off the tailnet.
+        case unreachable
+    }
+
+    /// Decodes the feed's JSON and judges its age against `now` (milliseconds since 1970).
+    public static func outcome(of data: Data, now: Double = Date().timeIntervalSince1970 * 1000) -> Outcome {
+        guard let sample = try? JSONDecoder().decode(MachineSample.self, from: data), let at = sample.at else { return .unreachable }
+        if sample.isFresh(now: now, within: freshWithin) { return .live(sample) }
+        return .stale(ageSeconds: max(0, Int((now - at) / 1000)))
     }
 }
 
