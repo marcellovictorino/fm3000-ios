@@ -416,6 +416,22 @@ await check("model: when the Mac removes this phone (4401) the app forgets the M
 
 
 // The captain asked for the desktop's Open pull requests panel on the phone: same groups and age buckets as its panel.tsx.
+await check("message view: keeps three hours, and only the first answer to each post") {
+    let now = 1_000_000_000_000.0
+    let h = 3600_000.0
+    func item(_ id: String, _ who: String, ago: Double) -> ChatItem { ChatItem(id: id, who: who, text: id, at: now - ago * h) }
+    let items = [
+        item("old-ask", "captain", ago: 3.5), item("old-answer", "firstmate", ago: 3.4),   // past the cutoff
+        item("ask1", "captain", ago: 2.9), item("answer1", "firstmate", ago: 2.8),
+        item("followup", "firstmate", ago: 2.7),                                           // second answer to ask1
+        item("ask2", "captain", ago: 1), item("ask3", "captain", ago: 0.9),                // ask2 never answered
+        item("answer3", "firstmate", ago: 0.8), item("extra3", "firstmate", ago: 0.7),
+    ]
+    try expectEqual(ChatWindow.visible(items, now: now).map(\.id), ["ask1", "answer1", "ask2", "ask3", "answer3"])
+    try expectEqual(ChatWindow.visible([item("edge", "captain", ago: 3)], now: now).count, 1, "exactly three hours old is kept")
+    try expectEqual(ChatWindow.visible([item("orphan", "firstmate", ago: 1)], now: now).count, 0, "an answer to a post already pruned is dropped")
+}
+
 await check("open pull requests: grouped and aged like the desktop panel") {
     let stored = """
     {"status":"ok","changes":[

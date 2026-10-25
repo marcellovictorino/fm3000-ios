@@ -31,6 +31,7 @@ public final class AppModel: ObservableObject {
     private let retryDelays: [TimeInterval]
     private var client: HomeClient?
     private var loop: Task<Void, Never>?
+    private var pruner: Task<Void, Never>?
     private var cursor: Cursor?
 
     public init(
@@ -97,12 +98,21 @@ public final class AppModel: ObservableObject {
         }
         loop?.cancel()
         loop = Task { [weak self] in await self?.run() }
+        pruner?.cancel()
+        pruner = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                self?.pruneChat()
+            }
+        }
     }
 
     /// Stops while the app is in the background: iOS closes the socket anyway.
     public func stop() {
         loop?.cancel()
         loop = nil
+        pruner?.cancel()
+        pruner = nil
         let old = client
         client = nil
         Task { await old?.close() }
@@ -205,20 +215,19 @@ public final class AppModel: ObservableObject {
     private func addChat(_ who: String, _ text: String, problem: Bool = false) {
         if who == "firstmate" { awaitingReply = false }
         chatCounter += 1
-        chat.append(ChatItem(id: "c\(chatCounter)", who: who, text: text, at: Date().timeIntervalSince1970 * 1000, problem: problem))
+        let now = Date().timeIntervalSince1970 * 1000
+        chat = ChatWindow.visible(chat + [ChatItem(id: "c\(chatCounter)", who: who, text: text, at: now, problem: problem)], now: now)
     }
 
-    private func loadLastTurn() async {
-        guard chat.isEmpty, let turn = try? await ask("inf:conversation:last-turn") as LastTurn? else { return }
-        let now = Date().timeIntervalSince1970 * 1000
-        chat = [ChatItem(id: "last-you", who: "captain", text: turn.you, at: now - 1)]
-        if let reply = turn.reply { chat.append(ChatItem(id: "last-reply", who: "firstmate", text: reply.text, at: now, problem: reply.problem ?? false)) }
+    /// Drops what is older than three hours; run on a timer, since an idle tab adds nothing to trigger it.
+    public func pruneChat() {
+        let kept = ChatWindow.visible(chat, now: Date().timeIntervalSince1970 * 1000)
+        if kept != chat { chat = kept }
     }
 
     private func reload() async throws {
         let list: [Card] = try await ask("inf:cards:list")
         cards = list
-        await loadLastTurn()
         for card in list { threads[card.id] = threads[card.id] ?? [] }
     }
 
