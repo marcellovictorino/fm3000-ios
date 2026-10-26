@@ -71,3 +71,35 @@ public enum ChatWindow {
         return kept
     }
 }
+
+/// What this phone sent to the first mate, until the Mac's `user_turn` echo of it arrives. The Mac sends that echo before
+/// it answers `inf:converse`, so it can reach the phone first; without this the post showed twice in the Message tab.
+/// A `user_turn` no send here explains came from another device and shows as a post of its own.
+public struct OwnPosts {
+    struct Sent { let words: String; let attached: Bool; let at: Double }
+    private var sent: [Sent] = []
+    /// An echo comes within a second; a send the Mac never echoed stops claiming others' words after this.
+    public static let span: Double = 60_000
+
+    public init() {}
+
+    public mutating func sending(_ words: String, attached: Bool, at now: Double) {
+        sent.append(Sent(words: words, attached: attached, at: now))
+    }
+
+    /// The send failed: the Mac took nothing, so nothing will echo.
+    public mutating func failed(_ words: String) {
+        if let i = sent.lastIndex(where: { $0.words == words }) { sent.remove(at: i) }
+    }
+
+    /// True when `text` is the echo of a send from this phone, which is then spent. The Mac appends pasted files to the
+    /// words (`[attached file: name]` after a blank line), so a send with attachments matches on its words first.
+    public mutating func isEcho(_ text: String, at now: Double) -> Bool {
+        sent.removeAll { $0.at < now - Self.span }
+        guard let i = sent.firstIndex(where: { s in
+            s.words == text || (s.attached && (s.words.isEmpty ? text.isEmpty || text.hasPrefix("[attached file") : text.hasPrefix(s.words + "\n\n")))
+        }) else { return false }
+        sent.remove(at: i)
+        return true
+    }
+}
