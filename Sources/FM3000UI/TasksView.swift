@@ -98,12 +98,12 @@ private struct TaskListView: View {
         List {
             ForEach(board.projects.filter { !$0.archived }) { project in
                 Section("\(project.name) · \(project.counts.needsYou) need you") {
-                    ForEach(board.tasks.filter { $0.projectId == project.id && ($0.status == "open" || $0.status == "active") }) { task in
+                    ForEach(foldPrograms(board.tasks).filter { $0.projectId == project.id && ($0.status == "open" || $0.status == "active") }) { task in
                         NavigationLink(value: task) {
                             VStack(alignment: .leading, spacing: 2) {
                                 ModelPill(name: names[task.id] ?? modelPill(label: nil, id: task.model))
                                 Text("\(task.key)  \(task.title)").font(.headline)
-                                Text([task.status, task.activity, task.assignee].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(Theme.fg2)
+                                Text([task.status, task.activity, task.assignee, task.partsLine].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(Theme.fg2)
                             }
                         }
                         .infinitaryRow()
@@ -152,7 +152,7 @@ private struct KanbanCard: View {
             ModelPill(name: name)
             Text(task.key).font(.caption.monospaced()).foregroundStyle(Theme.accent)
             Text(task.title).font(.subheadline).multilineTextAlignment(.leading)
-            if let line = [task.activity, task.assignee].compactMap({ $0 }).joined(separator: " · ") as String?, !line.isEmpty {
+            if let line = [task.activity, task.assignee, task.partsLine].compactMap({ $0 }).joined(separator: " · ") as String?, !line.isEmpty {
                 Text(line).font(.caption).foregroundStyle(Theme.fg2)
             }
         }

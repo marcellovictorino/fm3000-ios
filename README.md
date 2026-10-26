@@ -1,6 +1,6 @@
 # Infinitary for iPhone
 
-A single-user iPhone app that attaches to your running Infinitary over Tailscale. It shows the open cards, lets you choose a card's action, reply under it, send Firstmate a message, and read the task board and feed. It is a paired device of your Mac, as another Mac's window is: no relay, no account, no hosted service.
+A single-user iPhone app that attaches to your running Infinitary over Tailscale. It shows the open cards, lets you choose a card's action (with words from the "anything to add?" field), reply under it, put a card aside for later (swipe right, or the button in the card; the same fact the Mac keeps, so it leaves the Mac's stack too and returns when its crewmate changes it), send Firstmate a message, and read the task board (a program is one tile) and feed. It learns the Mac's updated private-network addresses on each connection. It is a paired device of your Mac, as another Mac's window is: no relay, no account, no hosted service.
 
 Built against Infinitary (the renamed Firstmate 3000), protocol 11.0.0 (`docs/contract.json` inside the app bundle). The Mac now gives full access only to its own protocol major (`majorsBehind` is 0): after a major Infinitary update the app drops to read-only until it is updated to the new contract.
 
@@ -44,8 +44,8 @@ On the Mac: Infinitary > Settings > Devices > remove the phone. It is cut off at
 
 Run everything that needs no phone: `./scripts/test.sh`.
 
-- **Fake Mac against the contract** (`fake-mac`, 11 tests): the pairing statuses, Origin refusal (403), 401 for an unpaired key, 404, hello and welcome, replay by cursor, read access for an older major, argument checks, all against `contract.json`.
-- **Swift checks** (`fm-checks`, 29 checks): link parsing as the Mac builds it, the SPKI pin against openssl's, the phone's certificate verified by openssl, chunked `/pair` answers, wire frames, the client's request matching, push de-duplication, 4401 handling and the app forgetting the Mac.
+- **Fake Mac against the contract** (`fake-mac`, 16 tests): the pairing statuses, Origin refusal (403), 401 for an unpaired key, 404, hello and welcome, replay by cursor, read access for an older major, argument checks, all against `contract.json`.
+- **Swift checks** (`fm-checks`, 42 checks): link parsing as the Mac builds it, the SPKI pin against openssl's, the phone's certificate verified by openssl, chunked `/pair` answers, wire frames, the client's request matching, push de-duplication, 4401 handling and the app forgetting the Mac.
 - **End to end** (`scripts/e2e.sh`): the app's own model pairs with the fake Mac and runs cards, act, reply, converse, board, feed, a pushed card, reconnect with replay, unpair, over real TLS 1.3 and a real WebSocket through Network.framework. The fake confirms: TLS 1.3, client certificate pin, hello `8.3.0 / view / ios / arm64`, and no Origin header on any request.
 - **Simulator**: `./scripts/run-simulator.sh` builds the app for the iOS simulator, installs it and pairs it with the fake Mac. It paired and showed the cards.
 

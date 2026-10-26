@@ -98,11 +98,16 @@ public struct BoardTask: Codable, Equatable, Identifiable, Hashable {
     public let minimizedCardId: String?
     public let requiredAction: RequiredAction?
     public let startAttempt: StartAttempt?
+    /// A program folds its parts into one tile (Infinitary's board); its parts name it as their `parentId`.
+    public let program: Bool?
+    public struct Children: Codable, Equatable, Hashable { public let total: Int; public let closed: Int }
+    public let children: Children?
 
     public init(id: String, key: String, projectId: String, title: String, kind: String, status: String, activity: String?,
                 assignee: String?, model: String?, waitingCardId: String?, updatedAt: Double,
                 parentId: String? = nil, startPolicy: String? = nil, minimizedCardId: String? = nil,
-                requiredAction: RequiredAction? = nil, startAttempt: StartAttempt? = nil) {
+                requiredAction: RequiredAction? = nil, startAttempt: StartAttempt? = nil, program: Bool? = nil, children: Children? = nil) {
+        self.program = program; self.children = children
         self.parentId = parentId; self.startPolicy = startPolicy; self.minimizedCardId = minimizedCardId
         self.requiredAction = requiredAction; self.startAttempt = startAttempt
         self.id = id; self.key = key; self.projectId = projectId; self.title = title; self.kind = kind; self.status = status
@@ -143,9 +148,25 @@ public struct BoardColumn: Equatable, Identifiable {
     public var id: String { status }
 }
 
+/// The tasks the board draws: a program is one tile and its parts fold into it (`boardTilesOf` in src/panels/now/boardTiles.ts).
+/// Only a program folds its parts; an ordinary task's children stay on the board.
+public func foldPrograms(_ tasks: [BoardTask]) -> [BoardTask] {
+    let programs = Set(tasks.filter { $0.program == true }.map(\.id))
+    return tasks.filter { $0.parentId.map(programs.contains) != true }
+}
+
+public extension BoardTask {
+    /// "2 of 3 parts done" on a program's tile.
+    var partsLine: String? {
+        guard program == true, let children, children.total > 0 else { return nil }
+        return "\(children.closed) of \(children.total) parts done"
+    }
+}
+
 /// Columns Open, Active and Done always; Dropped only when something was dropped. Newest change first in each.
 public func boardColumns(_ tasks: [BoardTask]) -> [BoardColumn] {
     let order: [(String, String, Bool)] = [("open", "Open", true), ("active", "Active", true), ("done", "Done", true), ("dropped", "Dropped", false)]
+    let tasks = foldPrograms(tasks)
     return order.compactMap { status, title, always in
         let inColumn = tasks.filter { $0.status == status }.sorted { $0.updatedAt > $1.updatedAt }
         return always || !inColumn.isEmpty ? BoardColumn(status: status, title: title, tasks: inColumn) : nil
@@ -332,7 +353,7 @@ public extension BoardTask {
     func withMinimizedCard(_ id: String?) -> BoardTask {
         BoardTask(id: self.id, key: key, projectId: projectId, title: title, kind: kind, status: status, activity: activity, assignee: assignee,
                   model: model, waitingCardId: waitingCardId, updatedAt: updatedAt, parentId: parentId, startPolicy: startPolicy, minimizedCardId: id,
-                  requiredAction: requiredAction, startAttempt: startAttempt)
+                  requiredAction: requiredAction, startAttempt: startAttempt, program: program, children: children)
     }
 }
 
