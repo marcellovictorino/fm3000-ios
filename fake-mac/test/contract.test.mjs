@@ -166,3 +166,38 @@ describe("connection", () => {
     second.ws.close();
   });
 });
+
+// Intent (the captain, SCR-348): put a card aside from the phone, shared with the Mac as one fact, and have it come back by itself
+// when its crewmate answers it, as Infinitary does (INF-926).
+describe("put aside", () => {
+  test("inf:cards:minimize sets and clears the shared fact, and every device is told", async () => {
+    const conn = await dial();
+    conn.ws.send(JSON.stringify(hello));
+    await until(() => conn.frames.some((f) => f.t === "welcome"));
+    const result = (id) => conn.frames.find((f) => f.t === "result" && f.id === id);
+    conn.ws.send(JSON.stringify({ t: "invoke", id: 20, channel: "inf:cards:minimize", args: ["card-question-1", true] }));
+    await until(() => result(20));
+    assert.deepEqual(result(20).value, { ok: true });
+    assert.equal(mac.state.cards.find((c) => c.id === "card-question-1").minimized, true);
+    await until(() => conn.frames.some((f) => f.t === "push" && f.channel === "inf:cards" && f.payload.find((c) => c.id === "card-question-1")?.minimized === true));
+    conn.ws.send(JSON.stringify({ t: "invoke", id: 21, channel: "inf:cards:minimize", args: ["card-question-1", false] }));
+    await until(() => result(21));
+    assert.equal(mac.state.cards.find((c) => c.id === "card-question-1").minimized, undefined);
+    conn.ws.send(JSON.stringify({ t: "invoke", id: 22, channel: "inf:cards:minimize", args: ["no-such-card", true] }));
+    await until(() => result(22));
+    assert.equal(result(22).ok, false);
+    conn.ws.close();
+  });
+  test("a put-aside card whose crewmate answers a reply comes back, and says it is answering meanwhile", async () => {
+    const conn = await dial();
+    conn.ws.send(JSON.stringify(hello));
+    await until(() => conn.frames.some((f) => f.t === "welcome"));
+    const cardsPush = () => conn.frames.filter((f) => f.t === "push" && f.channel === "inf:cards").map((f) => f.payload.find((c) => c.id === "card-question-1"));
+    conn.ws.send(JSON.stringify({ t: "invoke", id: 30, channel: "inf:cards:minimize", args: ["card-question-1", true] }));
+    await until(() => cardsPush().some((c) => c?.minimized === true));
+    conn.ws.send(JSON.stringify({ t: "invoke", id: 31, channel: "inf:cards:reply", args: ["card-question-1", "Call it Bridge"] }));
+    await until(() => cardsPush().some((c) => c?.awaiting === "answer"));
+    await until(() => cardsPush().at(-1)?.awaiting === undefined && cardsPush().at(-1)?.minimized === undefined);
+    conn.ws.close();
+  });
+});

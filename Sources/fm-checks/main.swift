@@ -195,6 +195,42 @@ await check("cards strip: Working, Waiting on you and Queued follow the desktop'
     try expectEqual(filterCards(cards, by: .waiting, board: board).map(\.id), ["c1"])
     try expectEqual(filterCards(cards, by: nil, board: board).count, 3)
 }
+// The captain's ask (SCR-348): park a card for later, still visible and easy to get back, never counted as waiting on you.
+await check("put aside: a card put aside leaves Waiting on you and the main list, and the Put aside chip counts and lists it") {
+    func card(_ id: String, task: String? = nil, aside: Bool = false, awaiting: String? = nil, sentBack: Double? = nil, at: Double = 1) -> Card {
+        var c = Card(id: id, taskId: task, author: "crewmate", priority: 1, title: id, meta: "", body: "",
+                     actions: [CardAction(id: "a", label: "A", variant: nil, default: nil, keepsOpen: nil)], status: "ready", createdAt: at, holdsPlace: nil, asking: nil, model: nil)
+        c.minimized = aside ? true : nil; c.awaiting = awaiting; c.sentBackAt = sentBack
+        return c
+    }
+    let cards = [card("now"), card("parked-old", aside: true, at: 1), card("parked-new", aside: true, at: 2),
+                 card("answering", awaiting: "answer", sentBack: 5), card("closing-out", awaiting: "close-out")]
+    let tally = CardsTally(cards: cards, board: nil)
+    try expectEqual(tally.aside, 2); try expectEqual(tally.waiting, 1)   // answering and parked cards are not the captain's turn
+    try expectEqual(filterCards(cards, by: .aside, board: nil).map(\.id), ["parked-new", "parked-old"])
+    try expectEqual(filterCards(cards, by: .waiting, board: nil).map(\.id), ["now"])
+    try expectEqual(filterCards(cards, by: nil, board: nil).map(\.id), ["now", "answering"])   // off the stage until its author closes out
+}
+await check("put aside: a task whose card is put aside waits on you, unless its crewmate still works or owes a reply") {
+    func task(_ id: String, activity: String?) -> BoardTask {
+        BoardTask(id: id, key: id, projectId: "p", title: id, kind: "work", status: "active", activity: activity, assignee: "crewmate", model: nil, waitingCardId: nil, updatedAt: 1)
+    }
+    func card(_ id: String, task: String, awaiting: String? = nil) -> Card {
+        var c = Card(id: id, taskId: task, author: "crewmate", priority: 1, title: id, meta: "", body: "", actions: [], status: "ready", createdAt: 1, holdsPlace: nil, asking: nil, model: nil)
+        c.minimized = true; c.awaiting = awaiting
+        return c
+    }
+    let board = Board(projects: [], tasks: [task("idle", activity: "idle"), task("running", activity: "running"), task("owes", activity: "idle")])
+    let cards = [card("c1", task: "idle"), card("c2", task: "running"), card("c3", task: "owes", awaiting: "answer")]
+    let groups = nowGroups(presentTasks(board.tasks, cards: cards))
+    try expectEqual(groups["idle"], .waiting); try expectEqual(groups["running"], .working); try expectEqual(groups["owes"], .working)
+    try expectEqual(Set(tasksIn(.working, board: board, cards: cards).map(\.id)), ["running", "owes"])
+}
+await check("wire: a card the Mac put aside, or is waiting on its author for, decodes with both facts") {
+    let json = #"[{"id":"c1","author":"crewmate","priority":2,"title":"t","meta":"m","body":"","actions":[],"status":"ready","createdAt":1,"minimized":true,"awaiting":"answer","sentBackAt":9}]"#
+    let card = try JSONDecoder().decode(JSONValue.self, from: Data(json.utf8)).decoded([Card].self)[0]
+    try expect(card.isPutAside && card.authorIsAnswering && card.onStage)
+}
 await check("machine load: the Mac's saved reading gives the GPU and the memory share the desktop panel shows") {
     // The shape machine-load/server.ts saves each minute; values from the captain's laptop: GPU 7%, 10 of 24 GB used.
     let gib = 1024.0 * 1024 * 1024, now = 1_700_000_000_000.0
