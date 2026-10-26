@@ -257,7 +257,10 @@ final class Dictation: ObservableObject {
         task = nil
     }
 
+    /// Ends dictation. When none is running it does nothing: Send calls it every time, and touching the microphone
+    /// or the audio session then would pause the phone's music for a typed message.
     func stop() {
+        guard listening || request != nil else { return }
         generation += 1
         teardown()
         listening = false
