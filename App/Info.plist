@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Firstmate</string>
+	<string>Infinitary</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -37,7 +37,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo to attach to a message for your Mac.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Firstmate connects to your Mac, which may be on your local network.</string>
+	<string>Infinitary connects to your Mac, which may be on your local network.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Dictate a message: your speech is turned into text on this phone.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

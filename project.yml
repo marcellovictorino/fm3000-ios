@@ -25,10 +25,10 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: Firstmate
+        CFBundleDisplayName: Infinitary
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
-        NSLocalNetworkUsageDescription: Firstmate connects to your Mac, which may be on your local network.
+        NSLocalNetworkUsageDescription: Infinitary connects to your Mac, which may be on your local network.
         NSCameraUsageDescription: Take a photo to attach to a message for your Mac.
         NSPhotoLibraryUsageDescription: Choose a photo to attach to a message for your Mac.
         NSMicrophoneUsageDescription: Dictate a message: your speech is turned into text on this phone.
