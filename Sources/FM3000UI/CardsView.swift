@@ -207,7 +207,7 @@ struct CardThreadView: View {
     @State private var attachments: [Attachment] = []
 
     var body: some View {
-        ChatList(items: (model.threads[card.id] ?? []).map(\.chatItem), empty: "No replies yet. Write the first one below.", typing: model.awaitingThreads.contains(card.id) || DebugLaunch.has("-typing"))
+        ChatList(items: (model.threads[card.id] ?? []).map(\.chatItem), empty: "No replies yet. Write the first one below.", typing: model.cards.first { $0.id == card.id }?.authorIsAnswering == true || DebugLaunch.has("-typing"))
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if model.isClosed(card) {
                 VStack(spacing: 8) {

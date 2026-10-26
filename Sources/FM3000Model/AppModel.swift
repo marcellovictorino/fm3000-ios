@@ -168,7 +168,7 @@ public final class AppModel: ObservableObject {
     @Published public private(set) var chat: [ChatItem] = []
     /// True from a sent message until the first mate's reply arrives (or three minutes pass): the "typing" dots.
     @Published public private(set) var awaitingReply = false
-    /// Cards whose thread is waiting for an answer to what the captain just wrote there: the "typing" dots under that card.
+    /// Crewmate threads (`crew-<task id>`) waiting for an answer, by the 3-minute guess: a task has no Mac signal. A card thread follows the card's `awaiting`.
     @Published public private(set) var awaitingThreads: Set<String> = []
     private var threadAwaitingSince: [String: Date] = [:]
     private var chatCounter = 0
@@ -312,7 +312,8 @@ public final class AppModel: ObservableObject {
         do {
             let thread: CardThread = try await ask("inf:cards:reply", [.string(card.id), Attachments.payload(text: words, attachments: attachments)])
             setThread(card.id, thread.messages)
-            expectThreadReply(card.id)
+            // The Mac says the card's author owes an answer (`awaiting`): the typing dots follow that, not a timer.
+            if let list: [Card] = try? await ask("inf:cards:list") { cards = list }
             return true
         } catch { notice = error.localizedDescription; return false }
     }
