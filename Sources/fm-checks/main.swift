@@ -549,6 +549,22 @@ await check("message view: keeps three hours, and only the first answer to each 
     try expectEqual(ChatWindow.visible([item("orphan", "firstmate", ago: 1)], now: now).count, 0, "an answer to a post already pruned is dropped")
 }
 
+// The captain, 26 Oct: "I can see duplicate messages (sent by me) in the Messages view". The Mac's user_turn echo of a send
+// reaches the phone before the answer to inf:converse; the phone shows its own post once and another device's post still.
+await check("a post sent from this phone shows once, whichever of the echo or the answer comes first") {
+    var own = OwnPosts()
+    own.sending("ship it", attached: false, at: 0)
+    try expect(own.isEcho("ship it", at: 200), "the Mac's echo of this phone's post is not shown again")
+    try expect(!own.isEcho("ship it", at: 400), "the same words again come from another device and show")
+    own.sending("see notes", attached: true, at: 1_000)
+    try expect(own.isEcho("see notes\n\n[attached file: notes.txt]\nbody", at: 1_100), "the Mac appends pasted files to the words")
+    own.sending("late", attached: false, at: 2_000)
+    try expect(!own.isEcho("late", at: 2_000 + OwnPosts.span + 1), "a send never echoed stops hiding others' posts")
+    own.sending("refused", attached: false, at: 3_000)
+    own.failed("refused")
+    try expect(!own.isEcho("refused", at: 3_100), "a failed send hides nothing")
+}
+
 await check("open pull requests: grouped and aged like the desktop panel") {
     let stored = """
     {"status":"ok","changes":[

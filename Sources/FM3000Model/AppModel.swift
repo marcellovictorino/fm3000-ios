@@ -173,6 +173,7 @@ public final class AppModel: ObservableObject {
     @Published public private(set) var awaitingThreads: Set<String> = []
     private var threadAwaitingSince: [String: Date] = [:]
     private var chatCounter = 0
+    private var ownPosts = OwnPosts()
     private var awaitingSince = Date.distantPast
 
     private func expectReply(to words: String) {
@@ -256,8 +257,8 @@ public final class AppModel: ObservableObject {
         case "inf:event":
             guard case .object(let o) = push.payload, case .string(let type)? = o["type"], case .string(let text)? = o["text"] else { break }
             if type == "firstmate_reply" { addChat("firstmate", text, problem: o["problem"] == .bool(true)) }
-            // Another device's message shows too; one this phone just sent is already there.
-            else if type == "user_turn", !(chat.last(where: { $0.isMine })?.text == text && Date().timeIntervalSince1970 * 1000 - (chat.last?.at ?? 0) < 30_000) { addChat("captain", text); expectReply(to: text) }
+            // Another device's message shows too; one this phone sent shows once, from `send`.
+            else if type == "user_turn", !ownPosts.isEcho(text, at: Date().timeIntervalSince1970 * 1000) { addChat("captain", text); expectReply(to: text) }
         case "inf:tasks", "inf:tasks:delta":
             Task { await refreshBoard() }
         default:
@@ -342,12 +343,13 @@ public final class AppModel: ObservableObject {
     public func send(_ text: String, attachments: [Attachment] = []) async -> Bool {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty || !attachments.isEmpty else { return false }
+        ownPosts.sending(words, attached: !attachments.isEmpty, at: Date().timeIntervalSince1970 * 1000)
         do {
             let _: JSONValue = try await ask("inf:converse", [Attachments.payload(text: words, attachments: attachments)])
             addChat("captain", words.isEmpty ? "(\(attachments.count) attachment\(attachments.count == 1 ? "" : "s"))" : words)
             expectReply(to: words)
             return true
-        } catch { notice = error.localizedDescription; return false }
+        } catch { ownPosts.failed(words); notice = error.localizedDescription; return false }
     }
 
     public func refreshBoard() async {

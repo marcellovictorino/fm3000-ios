@@ -447,6 +447,8 @@ export async function startFakeMac(options = {}) {
     "inf:converse": ([input]) => {
       const text = typeof input === "string" ? input : (input.text ?? "");
       record({ ev: "converse", text, images: input.images?.length ?? 0, files: input.files?.length ?? 0 });
+      // The Mac's receipt: it goes out before the answer to this request, as on the Mac (firstmateAgent.converse).
+      push("inf:event", { type: "user_turn", text: text.trim() });
       state.feed = [...state.feed, { kind: "you", text, at: AT(), event: "replied" }];
       const answer = { you: text, reply: { text: `Got it: ${text}`, eligibility: "completed" } };
       // "quiet:" is a reply that no push announces: only the saved last turn has it, as when a push misses a phone.
