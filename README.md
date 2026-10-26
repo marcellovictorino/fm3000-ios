@@ -26,7 +26,7 @@ A free Apple ID gives a "Personal Team". Xcode signs the app with it and install
 4. Install the Tailscale app on the iPhone, sign in to the same tailnet as the Mac, and switch it on.
 5. Make the project: `FM3000_BUNDLE_ID=com.yourname.fm3000 ./scripts/generate-project.sh` (the bundle id must be one nobody else has used; the default is `com.<your user>.fm3000`).
 6. Open `FM3000.xcodeproj`. Select the FM3000 target > Signing & Capabilities > Team: your Personal Team. Choose your iPhone at the top and press Run. (Or from a terminal: `FM3000_TEAM_ID=<id> ./scripts/install-device.sh`.)
-7. First launch: on the phone open Settings > General > VPN & Device Management > your Apple ID > Trust, then open Firstmate.
+7. First launch: on the phone open Settings > General > VPN & Device Management > your Apple ID > Trust, then open Infinitary.
 8. Every 7 days press Run again before it expires. Your pairing survives a re-install over the old app; if iOS removes the app you pair again.
 
 ### Pair it with your Mac
