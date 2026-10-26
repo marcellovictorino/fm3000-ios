@@ -23,6 +23,6 @@
 	<key>WKApplication</key>
 	<true/>
 	<key>WKCompanionAppBundleIdentifier</key>
-	<string>com.example.fm3000</string>
+	<string>$(FM3000_COMPANION_ID)</string>
 </dict>
 </plist>
