@@ -1,5 +1,8 @@
 import Foundation
 
+/// How a window's use compares with an even spread over its time: within pace, up to ten points ahead, or further.
+public enum QuotaPace: Equatable { case withinPace, slightlyAhead, wellAhead, unknown }
+
 /// Subscription allowance as the Mac's quota panel keeps it (`inf:quota:snapshot`): per provider, the share of each window left.
 public struct QuotaSnapshot: Codable, Equatable {
     public struct Window: Codable, Equatable, Identifiable {
@@ -12,6 +15,37 @@ public struct QuotaSnapshot: Codable, Equatable {
         public init(id: String, label: String, percentRemaining: Double? = nil, resetText: String? = nil, resetsAtMs: Double? = nil, windowSeconds: Double? = nil) {
             self.id = id; self.label = label; self.percentRemaining = percentRemaining; self.resetText = resetText
             self.resetsAtMs = resetsAtMs; self.windowSeconds = windowSeconds
+        }
+
+        /// A limit on one model (`model:fable`) or model family (`seven_day_opus`), not the account's own allowance.
+        var isModelScoped: Bool { id.hasPrefix("model:") || id.hasPrefix("seven_day_") }
+
+        /// The share of the window already used, 0 to 100.
+        public var percentUsed: Double? { percentRemaining.map { min(max(100 - $0, 0), 100) } }
+
+        /// Where use would sit now if it were spread evenly over the window: the share of the window's time gone.
+        public func idealUsedPercent(nowMs: Double) -> Double? {
+            guard let resetsAtMs, let windowSeconds, windowSeconds > 0 else { return nil }
+            let left = (resetsAtMs - nowMs) / 1000
+            return min(max(100 * (windowSeconds - left) / windowSeconds, 0), 100)
+        }
+
+        /// Use against that even spread. Within a point either side is on pace, as the Mac's own pace reads it.
+        public func pace(nowMs: Double) -> QuotaPace {
+            guard let used = percentUsed, let ideal = idealUsedPercent(nowMs: nowMs) else { return .unknown }
+            let over = used - ideal
+            return over <= 1 ? .withinPace : (over <= 10 ? .slightlyAhead : .wellAhead)
+        }
+
+        /// Time until the window resets, in its two largest units: `1d 3h`, `3h 05m`, `12 min`, `now`.
+        public func resetsIn(nowMs: Double) -> String? {
+            guard let resetsAtMs else { return nil }
+            let minutes = Int(((resetsAtMs - nowMs) / 60_000).rounded(.down))
+            if minutes <= 0 { return "now" }
+            if minutes < 60 { return "\(minutes) min" }
+            let hours = minutes / 60
+            if hours < 24 { return String(format: "%dh %02dm", hours, minutes % 60) }
+            return "\(hours / 24)d \(hours % 24)h"
         }
     }
 
@@ -30,10 +64,16 @@ public struct QuotaSnapshot: Codable, Equatable {
             self.reason = reason; self.measuredAt = measuredAt; self.windows = windows
         }
 
-        /// The rolling five-hour window, found by its length (the vendors name it differently).
-        public var fiveHour: Window? { windows.first { $0.windowSeconds == 18_000 || $0.id == "five_hour" } }
-        /// The weekly window.
-        public var weekly: Window? { windows.first { $0.windowSeconds == 604_800 || $0.id == "seven_day" || $0.id == "weekly" } }
+        /// The rolling five-hour window: its own id first, then any account-wide window of that length.
+        public var fiveHour: Window? { window(ids: ["five_hour", "session"], seconds: 18_000) }
+        /// The account's weekly window. The Mac sorts windows by id, so a model-scoped week (`model:fable`, also
+        /// 604,800 seconds) comes before `seven_day`; matching on length alone showed that model's 100% instead.
+        public var weekly: Window? { window(ids: ["seven_day", "weekly"], seconds: 604_800) }
+
+        private func window(ids: [String], seconds: Double) -> Window? {
+            for id in ids { if let match = windows.first(where: { $0.id == id }) { return match } }
+            return windows.first { $0.windowSeconds == seconds && !$0.isModelScoped }
+        }
 
         /// Why there is no figure, in one calm line; nil when the windows are the answer.
         public var unavailable: String? {

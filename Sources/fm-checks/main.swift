@@ -314,6 +314,30 @@ await check("quota: the Mac's snapshot gives Claude and Codex their five-hour an
     let claude = snapshot.shown[0]
     try expectEqual(claude.fiveHour == nil && claude.weekly == nil, true); try expectEqual(claude.unavailable, "Sign in again on the Mac")
 }
+await check("quota: the week is the account's own window, not a model's, and reads as used against an even pace (captain: weekly showed 100% left at 65% used)") {
+    // The Mac's reading on 26 October 2026, ids sorted as the Mac sorts them: Fable's own week comes before seven_day.
+    let nowMs = 1_793_014_200_000.0 // 26 Oct 2026 11:30 UTC
+    let resetMs = 1_793_170_800_000.0 // 28 Oct 2026 07:00 UTC
+    let json = """
+    {"generatedAt":"x","fetchedAt":1,"providers":[{"provider":"claude","label":"Claude","plan":"team","status":"ok","stale":false,"windows":[\
+    {"id":"extra_usage","label":"Extra usage","percentRemaining":79},\
+    {"id":"five_hour","label":"Session","percentRemaining":87,"resetsAtMs":1793040000000,"windowSeconds":18000},\
+    {"id":"model:fable","label":"Fable weekly","percentRemaining":100,"resetsAtMs":\(resetMs),"windowSeconds":604800},\
+    {"id":"seven_day","label":"Weekly","percentRemaining":35,"resetsAtMs":\(resetMs),"windowSeconds":604800}]}]}
+    """
+    let claude = try JSONDecoder().decode(QuotaSnapshot.self, from: Data(json.utf8)).shown[0]
+    guard let week = claude.weekly else { throw Failed(description: "no weekly window") }
+    try expectEqual(week.id, "seven_day"); try expectEqual(week.percentUsed, 65)
+    try expectEqual(claude.fiveHour?.id, "five_hour")
+    try expectEqual(week.resetsIn(nowMs: nowMs), "1d 19h")
+    // 1d 19h of 7 days left: 74% of the week gone, so 65% used is within pace.
+    try expectEqual(Int((week.idealUsedPercent(nowMs: nowMs) ?? 0).rounded()), 74)
+    try expectEqual(week.pace(nowMs: nowMs), .withinPace)
+    let ahead = { (left: Double) in QuotaSnapshot.Window(id: "seven_day", label: "Weekly", percentRemaining: left, resetsAtMs: resetMs, windowSeconds: 604_800).pace(nowMs: nowMs) }
+    try expectEqual(ahead(20), .slightlyAhead); try expectEqual(ahead(10), .wellAhead)
+    try expectEqual(QuotaSnapshot.Window(id: "x", label: "x", resetsAtMs: nowMs + 5 * 60_000 + 30_000).resetsIn(nowMs: nowMs), "5 min")
+    try expectEqual(QuotaSnapshot.Window(id: "x", label: "x", resetsAtMs: nowMs + 3 * 3_600_000 + 5 * 60_000).resetsIn(nowMs: nowMs), "3h 05m")
+}
 await check("model pill: the Mac's label wins, an id reads as a name, and no model shows no pill") {
     try expectEqual(modelPill(label: "Sonnet", id: "claude-sonnet-5-5"), "Sonnet")
     try expectEqual(modelPill(label: "Anthropic Claude Sonnet 5.5", id: nil, effort: "medium"), "Claude Sonnet 5.5 (Medium)")

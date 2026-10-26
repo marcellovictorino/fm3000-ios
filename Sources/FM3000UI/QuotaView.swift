@@ -2,7 +2,7 @@ import FM3000Core
 import FM3000Model
 import SwiftUI
 
-/// What is left of the Claude and Codex subscriptions, five-hour and weekly windows, as the Mac's quota panel measured it.
+/// How much of the Claude and Codex subscriptions is used, five-hour and weekly windows, as the Mac's quota panel measured it.
 struct QuotaView: View {
     @ObservedObject var model: AppModel
     @State private var snapshot: QuotaSnapshot?
@@ -48,40 +48,69 @@ private struct QuotaRow: View {
     let window: QuotaSnapshot.Window?
     let stale: Bool
 
-    private var left: Double? { window?.percentRemaining }
-    private var tint: Color {
-        guard let left else { return Theme.fg3 }
-        return left < 15 ? Theme.danger : (left < 40 ? Theme.warn : Theme.accent)
+    /// Green within pace, amber up to ten points ahead of it, red beyond.
+    static func tint(_ pace: QuotaPace) -> Color {
+        switch pace {
+        case .withinPace: return Theme.ok
+        case .slightlyAhead: return Theme.warn
+        case .wellAhead: return Theme.danger
+        case .unknown: return Theme.accent
+        }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title).font(.subheadline).foregroundStyle(Theme.fg2)
-                Spacer()
-                Text(left.map { "\(Int($0.rounded()))% left" } ?? "No figure").font(.title3.monospacedDigit()).foregroundStyle(tint)
-            }
-            GeometryReader { box in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.bg3)
-                    if let left { Capsule().fill(tint).frame(width: box.size.width * CGFloat(min(max(left, 0), 100)) / 100) }
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let now = context.date.timeIntervalSince1970 * 1000
+            let used = window?.percentUsed
+            let ideal = window?.idealUsedPercent(nowMs: now)
+            let tint = used == nil ? Theme.fg3 : Self.tint(window?.pace(nowMs: now) ?? .unknown)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title).font(.subheadline).foregroundStyle(Theme.fg2)
+                    Spacer()
+                    Text(used.map { "\(Int($0.rounded()))% used" } ?? "No figure").font(.title3.monospacedDigit()).foregroundStyle(tint)
                 }
-            }.frame(height: 6)
-            if let reset = window?.resetsAtMs {
-                Text("Resets \(Self.resetText(reset))").font(.caption).foregroundStyle(Theme.fg3)
-            } else if let text = window?.resetText {
-                Text(text).font(.caption).foregroundStyle(Theme.fg3)
+                PaceBar(used: used, ideal: ideal, tint: tint)
+                HStack {
+                    if let reset = window?.resetsIn(nowMs: now) {
+                        Text(reset == "now" ? "Resets now" : "Resets in \(reset)")
+                    } else if let text = window?.resetText {
+                        Text(text)
+                    }
+                    Spacer()
+                    if let ideal { Text("Even pace \(Int(ideal.rounded()))%") }
+                }
+                .font(.caption.monospacedDigit()).foregroundStyle(Theme.fg3)
+            }
+            .padding(.vertical, 4)
+            .opacity(stale ? 0.6 : 1)
+            .accessibilityElement(children: .combine)
+        }
+    }
+}
+
+/// The used share as a filled bar, with a white tick and arrow where even use would be by now: a fill past the
+/// tick is use ahead of pace.
+private struct PaceBar: View {
+    let used: Double?
+    let ideal: Double?
+    let tint: Color
+
+    var body: some View {
+        GeometryReader { box in
+            let width = box.size.width
+            ZStack(alignment: .topLeading) {
+                Capsule().fill(Theme.bg3).frame(height: 8).offset(y: 9)
+                if let used { Capsule().fill(tint).frame(width: max(width * CGFloat(used) / 100, 8), height: 8).offset(y: 9) }
+                if let ideal {
+                    let x = width * CGFloat(ideal) / 100
+                    Image(systemName: "arrowtriangle.down.fill").font(.system(size: 9)).foregroundStyle(Theme.fg1)
+                        .frame(width: 12, height: 9).offset(x: x - 6, y: -1)
+                    Rectangle().fill(Theme.fg1).frame(width: 2, height: 14).offset(x: x - 1, y: 6)
+                }
             }
         }
-        .padding(.vertical, 4)
-        .opacity(stale ? 0.6 : 1)
-    }
-
-    static func resetText(_ ms: Double) -> String {
-        let date = Date(timeIntervalSince1970: ms / 1000)
-        let seconds = date.timeIntervalSinceNow
-        if seconds <= 0 { return "now" }
-        if seconds < 24 * 3600 { return "in " + (seconds < 3600 ? "\(Int(seconds / 60)) min" : String(format: "%dh %02dm", Int(seconds / 3600), Int(seconds) % 3600 / 60)) }
-        return date.formatted(.dateTime.weekday(.wide).hour().minute())
+        .frame(height: 20)
+        .accessibilityHidden(true)
     }
 }
