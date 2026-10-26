@@ -226,6 +226,21 @@ public final class AppModel: ObservableObject {
         if kept != chat { chat = kept }
     }
 
+    /// Reads the cards from the Mac now, for a caller (the watch) that cannot wait for a push. Keeps the old list when the read fails.
+    public func refreshCards() async {
+        if let list: [Card] = try? await ask("inf:cards:list") { cards = list }
+    }
+
+    /// True once connected, false if that did not happen in time.
+    public func waitUntilConnected(seconds: Double) async -> Bool {
+        let deadline = Date().addingTimeInterval(seconds)
+        while true {
+            if case .connected = phase { return true }
+            if Date() > deadline || phase == .unpaired { return false }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+    }
+
     private func reload() async throws {
         let list: [Card] = try await ask("inf:cards:list")
         cards = list

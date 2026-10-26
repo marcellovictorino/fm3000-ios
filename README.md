@@ -11,6 +11,8 @@ Built against Infinitary (the renamed Firstmate 3000), protocol 11.0.0 (`docs/co
 | `Sources/FM3000Core` | Pairing link, SPKI pin, the phone's own ECDSA P-256 key and self-signed certificate, TLS 1.3 dial with pin check, `/pair`, the `/connection` WebSocket, wire models |
 | `Sources/FM3000Model` | `AppModel`: pairing, connect and reconnect with cursor, every request the screens make |
 | `Sources/FM3000UI` | SwiftUI screens: Pair, Cards (detail, actions, reply), Message, Tasks, Feed, Mac |
+| `Sources/FM3000WatchLink` | What the phone and the Apple Watch say to each other: the cards waiting on you as plain text, and three requests (list, choose, put aside) |
+| `WatchApp/` | The Apple Watch app: lists the cards waiting on you, shows each body as text to scroll, one button per choice and Put aside. It asks the phone over WatchConnectivity, never the Mac; no words, alerts or complication |
 | `App/`, `project.yml` | The app shell; XcodeGen writes `FM3000.xcodeproj` from `project.yml` |
 | `mac-feed/` | The Mac-side Machine load job: a launchd agent samples CPU, GPU and memory every 3 seconds and `tailscale serve` publishes the latest JSON to your tailnet only. `./mac-feed/install.sh` starts it, `./mac-feed/uninstall.sh` removes it. Others > Panels > Machine load reads it (fresh within 15 s), and falls back to Infinitary's own readings with a visible note when it is unreachable or stale. The URL is `MachineFeed.defaultURL`, overridable by the `machineFeedURL` default |
 | `fake-mac/` | A fake Mac that follows the contract (every request and answer is checked against `contract.json`) |
@@ -45,8 +47,9 @@ On the Mac: Infinitary > Settings > Devices > remove the phone. It is cut off at
 Run everything that needs no phone: `./scripts/test.sh`.
 
 - **Fake Mac against the contract** (`fake-mac`, 16 tests): the pairing statuses, Origin refusal (403), 401 for an unpaired key, 404, hello and welcome, replay by cursor, read access for an older major, argument checks, all against `contract.json`.
-- **Swift checks** (`fm-checks`, 42 checks): link parsing as the Mac builds it, the SPKI pin against openssl's, the phone's certificate verified by openssl, chunked `/pair` answers, wire frames, the client's request matching, push de-duplication, 4401 handling and the app forgetting the Mac.
+- **Swift checks** (`fm-checks`, 46 checks): link parsing as the Mac builds it, the SPKI pin against openssl's, the phone's certificate verified by openssl, chunked `/pair` answers, wire frames, the client's request matching, push de-duplication, 4401 handling and the app forgetting the Mac.
 - **End to end** (`scripts/e2e.sh`): the app's own model pairs with the fake Mac and runs cards, act, reply, converse, board, feed, a pushed card, reconnect with replay, unpair, over real TLS 1.3 and a real WebSocket through Network.framework. The fake confirms: TLS 1.3, client certificate pin, hello `8.3.0 / view / ios / arm64`, and no Origin header on any request.
+- **Apple Watch** (simulators, Xcode 27.1): an iPhone 17 and an Apple Watch Series 12 simulator, paired with `xcrun simctl pair`, against the fake Mac. The watch listed both waiting cards through the phone, showed a body as text, put a card aside and chose Merge; the fake Mac logged each. The phone's side of the service also runs in `fm-probe`. Debug builds take `-openCard <n>`, `-scrollEnd`, `-pressChoice <n>` and `-pressAside` on the watch, since a script cannot tap a simulated watch.
 - **Simulator**: `./scripts/run-simulator.sh` builds the app for the iOS simulator, installs it and pairs it with the fake Mac. It paired and showed the cards.
 
 Not verified, because it needs your real Mac or your phone:
@@ -56,6 +59,7 @@ Not verified, because it needs your real Mac or your phone:
 - iOS WebSocket Origin behaviour on a real iOS device. Network.framework sent no Origin on macOS and in the simulator; a real phone uses the same stack.
 - Whether iOS reaches the Mac's `100.x` address without a local network prompt (it should not ask). The app declares a local network usage string in case it does.
 - Card pictures, live forms and scripts. Card bodies are drawn as HTML with the desktop stylesheet (headings, colours, tables, SVG), without scripts or pictures. Actions that open a window on the Mac (settings, browser) answer "needs your Mac's window".
+- A real Apple Watch (Series 9, watchOS 27.0.1): it needs Developer Mode on the watch (Settings > Privacy & Security) and Trust, then the iPhone install above also installs the watch app. Whether a watch message wakes the phone app in the background was not shown: in the simulator the phone app has to be running.
 - The identity lookup on a real iPhone (the simulator exercises the same code).
 
 ## TestFlight (optional, needs the paid Apple Developer Program)
