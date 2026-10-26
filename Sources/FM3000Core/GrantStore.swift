@@ -35,7 +35,7 @@ public final class FileGrantStore: GrantStore {
 /// The app's grant in the iOS Keychain, readable after the first unlock so a restart can reconnect.
 public final class KeychainGrantStore: GrantStore {
     private let service: String
-    public init(service: String = "ai.tasman.fm3000.grant") { self.service = service }
+    public init(service: String = "dev.fm3000.grant") { self.service = service }
 
     private var base: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "grant"]

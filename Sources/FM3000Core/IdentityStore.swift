@@ -34,7 +34,7 @@ public final class KeychainIdentityStore: IdentityStore {
     private let scratch: SecKeychain?
     #endif
 
-    public init(tag: String = "ai.tasman.fm3000.device") {
+    public init(tag: String = "dev.fm3000.device") {
         self.tag = tag
         #if os(macOS)
         self.scratch = nil
@@ -43,7 +43,7 @@ public final class KeychainIdentityStore: IdentityStore {
 
     #if os(macOS)
     /// Uses only the given keychain file, created if it does not exist.
-    public init(tag: String = "ai.tasman.fm3000.device", scratchKeychainPath path: String) throws {
+    public init(tag: String = "dev.fm3000.device", scratchKeychainPath path: String) throws {
         self.tag = tag
         var keychain: SecKeychain?
         var status = SecKeychainOpen(path, &keychain)

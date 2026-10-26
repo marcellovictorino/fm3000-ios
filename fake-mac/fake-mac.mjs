@@ -16,11 +16,13 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:https";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import { WebSocketServer } from "ws";
 
+/** The committed copy of the Mac's contract; `FM3000_CONTRACT` points the fake at another one, such as the installed app's. */
 export const DEFAULT_CONTRACT =
-  "/Applications/Infinitary.app/Contents/Resources/self-source/docs/contract.json";
+  process.env.FM3000_CONTRACT ?? fileURLToPath(new URL("./fixtures/contract.json", import.meta.url));
 
 const b64url = (buffer) => Buffer.from(buffer).toString("base64url");
 const sha256 = (buffer) => createHash("sha256").update(buffer).digest();
