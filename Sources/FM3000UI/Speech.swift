@@ -14,6 +14,11 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     /// The voice now reading, so the button can say whose voice it is.
     @Published private(set) var voiceName: String?
     private let synthesizer = AVSpeechSynthesizer()
+    /// The utterance this speaker owns now; the delegate ignores an older one that ends after a newer one began.
+    private var current: AVSpeechUtterance?
+    /// True only between claiming the audio session to read and handing it back, so stopping when nothing is
+    /// read never touches the session (and never pauses the phone's music).
+    private var holdsSession = false
 
     override init() {
         super.init()
@@ -25,10 +30,7 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         stop()
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty else { return }
-        #if os(iOS)
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
-        try? AVAudioSession.sharedInstance().setActive(true)
-        #endif
+        claimSession()
         let utterance = AVSpeechUtterance(string: words)
         // The language the text is written in, so Portuguese or French is not read in an English accent.
         let language = NSLinguisticTagger.dominantLanguage(for: words) ?? AVSpeechSynthesisVoice.currentLanguageCode()
@@ -39,6 +41,7 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         voiceName = voice.map { "\($0.name) (\(qualityName($0)))" }
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         speaking = id
+        current = utterance
         synthesizer.speak(utterance)
     }
 
@@ -53,12 +56,10 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     /// Speaks a sample in one voice, so it can be judged before it is chosen.
     func preview(_ voice: AVSpeechSynthesisVoice) {
         stop()
-        #if os(iOS)
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
-        try? AVAudioSession.sharedInstance().setActive(true)
-        #endif
+        claimSession()
         let utterance = AVSpeechUtterance(string: "Hello, I am \(voice.name). This is how I read your cards.")
         utterance.voice = voice
+        current = utterance
         synthesizer.speak(utterance)
     }
 
@@ -73,16 +74,37 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         voice.quality.rawValue * 10 + (voice.language == AVSpeechSynthesisVoice.currentLanguageCode() ? 1 : 0)
     }
 
+    /// Stops reading; the session is handed back when the synthesiser reports the cancelled utterance.
     func stop() {
+        current = nil
         synthesizer.stopSpeaking(at: .immediate)
         speaking = nil
     }
 
+    /// Reading is the one time the speaker takes the audio: other apps' sound pauses while a card is read.
+    private func claimSession() {
+        #if os(iOS)
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        holdsSession = true
+        #endif
+    }
+
+    /// Hands the audio back once nothing is being read, so music paused for the reading resumes.
+    private func ended(_ utterance: AVSpeechUtterance) {
+        if current === utterance { current = nil; speaking = nil }
+        guard current == nil, holdsSession else { return }
+        holdsSession = false
+        #if os(iOS)
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        #endif
+    }
+
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.speaking = nil }
+        Task { @MainActor in self.ended(utterance) }
     }
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.speaking = nil }
+        Task { @MainActor in self.ended(utterance) }
     }
 }
 
