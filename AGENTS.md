@@ -31,7 +31,7 @@ The watch lists cards waiting on the captain (`WatchCard.waiting`), buttons only
 
 ## Simulator launch flags (Debug only)
 
-`-pairLink <link>`, `-startTab <n>`, `-openDetails` (opens a card body's expandable sections), `-openCard`, `-openThread`, `-openTask`, `-layout board`. Reset a stale pairing with `xcrun simctl keychain <udid> reset`.
+`-pairLink <link>`, `-startTab <n>`, `-openDetails` (opens a card body's expandable sections), `-askClose` (shows the Close question), `-openCard`, `-openThread`, `-openTask`, `-layout board`. Reset a stale pairing with `xcrun simctl keychain <udid> reset`.
 
 ## Hard limits
 
