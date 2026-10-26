@@ -11,7 +11,7 @@ iPhone client for Infinitary (a paired view of the user's Mac). `README.md` cove
 
 ## Layers
 
-`FM3000Core` (wire, models, TLS, pairing) → `FM3000Model` (`AppModel`, every request, `WatchService`, the phone side of the watch) → `FM3000UI` (SwiftUI). `FM3000WatchLink` (Foundation only) is the message set shared with `WatchApp/`, the watchOS target; the watch never talks to the Mac, it asks the phone. `App/` and `project.yml` are a thin shell; `FM3000.xcodeproj` is generated and gitignored.
+`FM3000Core` (wire, models, TLS, pairing) → `FM3000Model` (`AppModel`, every request, `WatchService`, the phone side of the watch) → `FM3000UI` (SwiftUI). `FM3000CardWeb` (WebKit only) sets up the card body's web view and reports its content height, so a check can load a real page; `FM3000WatchLink` (Foundation only) is the message set shared with `WatchApp/`, the watchOS target; the watch never talks to the Mac, it asks the phone. `App/` and `project.yml` are a thin shell; `FM3000.xcodeproj` is generated and gitignored.
 
 ## Contract
 
@@ -31,7 +31,7 @@ The watch lists cards waiting on the captain (`WatchCard.waiting`), buttons only
 
 ## Simulator launch flags (Debug only)
 
-`-pairLink <link>`, `-startTab <n>`, `-openCard`, `-openThread`, `-openTask`, `-layout board`. Reset a stale pairing with `xcrun simctl keychain <udid> reset`.
+`-pairLink <link>`, `-startTab <n>`, `-openDetails` (opens a card body's expandable sections), `-openCard`, `-openThread`, `-openTask`, `-layout board`. Reset a stale pairing with `xcrun simctl keychain <udid> reset`.
 
 ## Hard limits
 

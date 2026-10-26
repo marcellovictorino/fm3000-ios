@@ -1,8 +1,10 @@
 @testable import FM3000Core
+import FM3000CardWeb
 import FM3000Model
 import FM3000WatchLink
 import Foundation
 import Security
+import WebKit
 
 // The test suite, as a plain executable: this Mac has no XCTest or Swift Testing runtime
 // (command line tools only). Run it with scripts/test.sh. Each check names the intent it keeps.
@@ -227,6 +229,33 @@ await check("put aside: a task whose card is put aside waits on you, unless its 
     try expectEqual(groups["idle"], .waiting); try expectEqual(groups["running"], .working); try expectEqual(groups["owes"], .working)
     try expectEqual(Set(tasksIn(.working, board: board, cards: cards).map(\.id)), ["running", "owes"])
 }
+// The captain's bug report: "From a card, when clicking on the expansible section to see more details, I can see the text box is
+// expanding, but I can't scroll down to actually read it." The card body's web view sat at the height it had when it loaded, so an
+// opened section grew inside a frame that was too short. It must report its height again whenever the content changes.
+@MainActor func cardBodyHeights() async throws {   // WebKit needs the main thread, and its messages arrive while this waits
+    let log = (1...20).map { "<p>Test group \($0): 12 tests ran and all of them passed with no warnings.</p>" }.joined()
+    let html = """
+    <!doctype html><html><head><meta charset="utf-8"><style>body { margin: 0; font-size: 15px; }</style></head><body>
+    <p>The <strong>settings page</strong> change is green and ready.</p><ul><li>Checks passed</li><li>Risk: low</li></ul>
+    <details><summary>Full test log</summary>\(log)</details>
+    <script>document.body.style.height = '9000px'</script></body></html>
+    """
+    var heights: [CGFloat] = []
+    let view = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 40), configuration: CardPage.configuration { heights.append($0) })
+    func settle(until condition: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(10)
+        while !condition() { if Date() > deadline { throw Failed(description: "the page reported \(heights)") }; try await Task.sleep(nanoseconds: 50_000_000) }
+    }
+    view.loadHTMLString(html, baseURL: nil)
+    try await settle { !heights.isEmpty }
+    try expect(heights[0] < 400, "the page's own script ran: \(heights[0])")
+    let closed = heights[0]
+    try await view.evaluateJavaScript("document.querySelector('details').open = true")
+    try await settle { (heights.last ?? 0) > closed + 300 }
+    try await view.evaluateJavaScript("document.querySelector('details').open = false")
+    try await settle { heights.last == closed }
+}
+await check("card body: the web view reports a taller height when an expandable section opens, and the old one when it closes") { try await cardBodyHeights() }
 // The captain's ask (SCR-345): the watch lists only the cards waiting on them, readable as text, with buttons and nothing to type.
 func watchFixture(_ id: String, body: String = "<p>Ready.</p>", at: Double = 1, aside: Bool = false, awaiting: String? = nil, asking: Bool? = nil, buttons: Bool = true) -> Card {
     var c = Card(id: id, taskId: "t", author: "crewmate", priority: 1, title: "Title \(id)", meta: "FM-1 · crewmate", body: body,
