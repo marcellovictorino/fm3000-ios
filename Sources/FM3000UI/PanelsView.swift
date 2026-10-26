@@ -109,6 +109,17 @@ struct ResourcesView: View {
     /// Where the numbers came from this time, and why the live feed was not used when it was not.
     @State private var feed: MachineFeed.Outcome = .unreachable
     @State private var observation: ComputerResources.Computer.Observation?
+    /// The address `mac-feed/install.sh` prints; read by `AppModel.machineFeed()` under the same key.
+    @AppStorage("machineFeedURL") private var feedAddress = MachineFeed.defaultURL
+
+    private var feedField: some View {
+        let field = TextField("https://your-mac.your-tailnet.ts.net:8443/machine-load.json", text: $feedAddress).autocorrectionDisabled()
+        #if os(iOS)
+        return field.textInputAutocapitalization(.never).keyboardType(.URL)
+        #else
+        return field
+        #endif
+    }
 
     private var macName: String {
         if case .connected(let mac, _) = model.phase { return mac }
@@ -132,6 +143,13 @@ struct ResourcesView: View {
             }
             if let note = feedNote {
                 Text(note).font(.caption).foregroundStyle(Theme.warn).infinitaryRow()
+            }
+            Section {
+                feedField.infinitaryRow()
+            } header: {
+                Text("Live feed address")
+            } footer: {
+                Text("The address `mac-feed/install.sh` prints on your Mac. Leave it empty to use Infinitary's own readings.")
             }
             if let memory = observation?.memory {
                 Section("Memory details") {
