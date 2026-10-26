@@ -128,8 +128,8 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         step("model pill for a card and a task")
         guard let first = model.board?.tasks.first, model.modelName(for: first) == "Claude Sonnet 5.5 (Medium)" else { fail("task pill is \(String(describing: model.board?.tasks.first.flatMap { model.modelName(for: $0) }))") }
         step("task pill carries the reasoning effort")
-        guard let quota = await model.quota(), let claude = quota.shown.first, claude.fiveHour?.percentRemaining == 78, claude.weekly?.percentRemaining == 44 else { fail("quota snapshot not read") }
-        step("quota read: Claude 78% / 44% left")
+        guard let quota = await model.quota(), let claude = quota.shown.first, claude.fiveHour?.percentUsed == 22, claude.weekly?.percentUsed == 56 else { fail("quota snapshot not read") }
+        step("quota read: Claude 22% / 56% used, the week past the Fable model's own week")
         await model.refreshFeed()
         guard model.feed.contains(where: { $0.text == "You chose Merge." }) else { fail("feed missing the choice") }
         step("feed read")

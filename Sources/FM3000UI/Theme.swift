@@ -27,6 +27,8 @@ enum Theme {
     static let accentGradient = LinearGradient(colors: [Color(hex: 0x7FE3FF), Color(hex: 0x2F8FFF)], startPoint: .topLeading, endPoint: .bottomTrailing)
     /// The first mate's own mark: a rank-stripe gold, used sparingly.
     static let gold = Color(hex: 0xE8B04A)
+    /// Within pace on the quota meters.
+    static let ok = Color(hex: 0x5FD38D)
     static let warn = Color(hex: 0xFFA257)
     static let danger = Color(hex: 0xFF6B52)
 }

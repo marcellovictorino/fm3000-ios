@@ -337,9 +337,10 @@ export async function startFakeMac(options = {}) {
     "inf:cards:list": () => state.cards,
     "inf:tasks:board": () => state.board,
     "inf:quota:snapshot": () => {
+      // Ids sorted as the Mac sorts them, so a model-scoped weekly window comes before the account's own week.
       const now = Date.now(), win = (id, label, left, seconds) => ({ id, label, percentRemaining: left, windowSeconds: seconds, resetsAtMs: now + seconds * 1000 * 0.4, pace: "on_pace" });
       return { generatedAt: new Date(now).toISOString(), fetchedAt: now, providers: [
-        { provider: "claude", label: "Claude", plan: "team", status: "ok", stale: false, measuredAt: now, windows: [win("five_hour", "session", 78, 18000), win("seven_day", "week", 44, 604800)] },
+        { provider: "claude", label: "Claude", plan: "team", status: "ok", stale: false, measuredAt: now, windows: [win("five_hour", "session", 78, 18000), win("model:fable", "Fable weekly", 100, 604800), win("seven_day", "week", 44, 604800)] },
         { provider: "codex", label: "Codex", plan: "team", status: "ok", stale: false, measuredAt: now, windows: [win("five_hour", "session", 98, 18000), win("weekly", "week", 96, 604800)] },
       ] };
     },
