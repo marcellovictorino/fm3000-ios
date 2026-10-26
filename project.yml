@@ -63,10 +63,11 @@ targets:
       properties:
         CFBundleDisplayName: Infinitary
         WKApplication: true
-        WKCompanionAppBundleIdentifier: ${FM3000_BUNDLE_ID}
+        WKCompanionAppBundleIdentifier: "$(FM3000_COMPANION_ID)"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ${FM3000_BUNDLE_ID}.watchkitapp
+        FM3000_COMPANION_ID: ${FM3000_BUNDLE_ID}
         DEVELOPMENT_TEAM: ${FM3000_TEAM_ID}
         CODE_SIGN_STYLE: Automatic
         MARKETING_VERSION: 0.1.0
