@@ -18,6 +18,8 @@ public struct Welcome: Equatable {
     public let catchUp: String
     public let access: Access
     public let name: String?
+    /// Where the Mac listens now, as `host:port` (its private-network addresses): the phone keeps the ones it can use for next time.
+    public var addresses: [String] = []
 }
 
 public struct Push: Equatable {
@@ -45,12 +47,13 @@ public enum HomeFrame: Equatable {
               case .string(let t)? = o["t"] else { throw WireError.notAFrame }
         func int(_ key: String) -> Int? { if case .number(let n)? = o[key] { return Int(exactly: n) } else { return nil } }
         func string(_ key: String) -> String? { if case .string(let s)? = o[key] { return s } else { return nil } }
+        func strings(_ key: String) -> [String] { if case .array(let a)? = o[key] { return a.compactMap { if case .string(let s) = $0 { return s } else { return nil } } } else { return [] } }
         switch t {
         case "welcome":
             guard let version = string("protocolVersion"), let epoch = string("epoch"), let seq = int("seq"),
                   let catchUp = string("catchUp"), let accessText = string("access"), let access = Access(rawValue: accessText)
             else { throw WireError.notAFrame }
-            return .welcome(Welcome(protocolVersion: version, epoch: epoch, seq: seq, catchUp: catchUp, access: access, name: string("name")))
+            return .welcome(Welcome(protocolVersion: version, epoch: epoch, seq: seq, catchUp: catchUp, access: access, name: string("name"), addresses: strings("addresses")))
         case "push":
             guard let seq = int("seq"), let channel = string("channel") else { throw WireError.notAFrame }
             return .push(Push(seq: seq, channel: channel, payload: o["payload"] ?? .null))

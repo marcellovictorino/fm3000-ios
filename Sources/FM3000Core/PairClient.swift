@@ -10,6 +10,21 @@ public struct Grant: Codable, Equatable {
     public var kind: DeviceKind
     public var name: String
     public var addresses: [DialAddress] { [at] + also }
+
+    /// The grant after the Mac says where it listens now: addresses a phone can reach (not loopback, link-local or a wildcard) join
+    /// the others, newest first, so a Mac that moved on its private network is found at its new address. The address that paired
+    /// stays first; the list keeps at most six others.
+    public func learning(_ offered: [String]) -> Grant {
+        let usable = offered.compactMap(DialAddress.init).filter { address in
+            let host = address.host.lowercased()
+            return !(host.hasPrefix("127.") || host == "::1" || host == "localhost" || host == "0.0.0.0" || host == "::" || host.hasPrefix("169.254.") || host.hasPrefix("fe80:"))
+        }
+        var kept: [DialAddress] = []
+        for address in usable + also where address != at && !kept.contains(address) { kept.append(address) }
+        var grant = self
+        grant.also = Array(kept.prefix(6))
+        return grant
+    }
 }
 
 public enum PairError: Error, LocalizedError, Equatable {

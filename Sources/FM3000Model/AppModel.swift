@@ -132,6 +132,7 @@ public final class AppModel: ObservableObject {
                 let welcome = try await client.connect()
                 self.client = client
                 attempt = 0
+                if let grant = grants.load() { let learned = grant.learning(welcome.addresses); if learned != grant { try? grants.save(learned) } }
                 phase = .connected(mac: welcome.name ?? "your Mac", access: welcome.access)
                 notice = nil
                 try await reload()
