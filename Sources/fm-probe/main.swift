@@ -95,7 +95,7 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         }
 
         guard let action = merge.actions.first(where: { $0.isDefault }) else { fail("no default action") }
-        await model.choose(action, on: merge)
+        await model.choose(action, on: merge, words: "Ship it after lunch")
         guard model.answered[merge.id]?.label == action.label, model.isClosed(merge), model.choosing[merge.id] == nil else { fail("the choice was not kept as answered and closed") }
         step("choice kept: the card shows what was chosen and counts as closed")
         await until("card gone after action") { !model.cards.contains { $0.id == "card-merge-1" } }

@@ -50,6 +50,7 @@ const checks = [
   ["every connection was TLSv1.3", by("upgrade").length >= 2 && by("upgrade").every((e) => e.tls === "TLSv1.3")],
   ["the second hello asked to catch up and got a replay", by("hello").some((e) => e.cursor && e.catchUp === "replay")],
   ["no invoke was refused for its shape", by("invoke-refused").length === 0],
+  ["the words typed beside a choice went with it, as the Mac footer sends them", by("card-acted").some((e) => e.words === "Ship it after lunch")],
   ["the phone left", by("left").length === 1],
 ];
 let bad = 0;

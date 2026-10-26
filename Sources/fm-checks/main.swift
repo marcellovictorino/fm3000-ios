@@ -231,6 +231,12 @@ await check("wire: a card the Mac put aside, or is waiting on its author for, de
     let card = try JSONDecoder().decode(JSONValue.self, from: Data(json.utf8)).decoded([Card].self)[0]
     try expect(card.isPutAside && card.authorIsAnswering && card.onStage)
 }
+await check("choice words: what the captain adds goes with the choice as the Mac's one more answer, and nothing when there is nothing") {
+    try expect(choiceValue(words: "  \n ") == nil)
+    try expectEqual(choiceValue(words: " Ship it after lunch \n"), .object(["answers": .array([.object(["name": .string("anything_else"), "values": .array([]), "changed": .bool(true), "written": .string("Ship it after lunch")])])]))
+    guard case .object(let o)? = choiceValue(words: String(repeating: "x", count: 5_000)), case .array(let answers)? = o["answers"], case .object(let a)? = answers.first, case .string(let w)? = a["written"] else { throw Failed(description: "no value") }
+    try expectEqual(w.count, 4_000)   // a reply is one message, not a document: the Mac refuses longer
+}
 await check("machine load: the Mac's saved reading gives the GPU and the memory share the desktop panel shows") {
     // The shape machine-load/server.ts saves each minute; values from the captain's laptop: GPU 7%, 10 of 24 GB used.
     let gib = 1024.0 * 1024 * 1024, now = 1_700_000_000_000.0

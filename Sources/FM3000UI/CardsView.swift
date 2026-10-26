@@ -149,20 +149,7 @@ struct CardDetailView: View {
                         .frame(maxWidth: .infinity, alignment: .leading).padding(14)
                         .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
-                if !card.actions.isEmpty {
-                    let picked = model.answered[card.id]?.label
-                    VStack(spacing: 8) {
-                        ForEach(card.actions) { action in
-                            let sending = model.choosing[card.id] == action.id
-                            let selected = sending || picked == action.label
-                            let settled = picked != nil || model.choosing[card.id] != nil
-                            CardActionButton(action: action, selected: selected, working: sending, dimmed: settled && !selected) {
-                                Task { await model.choose(action, on: card) }
-                            }
-                            .disabled(!model.canChange || settled)
-                        }
-                    }
-                }
+                CardChoices(model: model, card: card)
                 if !card.actions.isEmpty, !model.isClosed(card) {
                     Button { Task { if await model.putAside(card) { dismiss() } } } label: {
                         Label("Put aside for later", systemImage: "tray.and.arrow.down").frame(maxWidth: .infinity)
@@ -231,5 +218,35 @@ struct CardThreadView: View {
         .navigationTitle("Thread")
         .iOSInlineTitle()
         .task { await model.loadThread(of: card) }
+    }
+}
+
+/// A card's buttons with the "anything to add?" field above them: what is written there goes with the choice, as on the Mac.
+struct CardChoices: View {
+    @ObservedObject var model: AppModel
+    let card: Card
+    @State private var words = ""
+
+    var body: some View {
+        if !card.actions.isEmpty {
+            let picked = model.answered[card.id]?.label
+            let settled = picked != nil || model.choosing[card.id] != nil
+            VStack(spacing: 8) {
+                if picked == nil {
+                    TextField("anything to add?", text: $words, axis: .vertical)
+                        .lineLimit(1...4).padding(12).disabled(settled)
+                        .background(Theme.bg2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Theme.line.opacity(0.6), lineWidth: 0.5))
+                }
+                ForEach(card.actions) { action in
+                    let sending = model.choosing[card.id] == action.id
+                    let selected = sending || picked == action.label
+                    CardActionButton(action: action, selected: selected, working: sending, dimmed: settled && !selected) {
+                        Task { await model.choose(action, on: card, words: words) }
+                    }
+                    .disabled(!model.canChange || settled)
+                }
+            }
+        }
     }
 }

@@ -224,16 +224,7 @@ struct TaskDetailView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(card.title).font(.headline)
                 CardBody(html: card.body)
-                let picked = model.answered[card.id]?.label
-                ForEach(card.actions) { action in
-                    let sending = model.choosing[card.id] == action.id
-                    let selected = sending || picked == action.label
-                    let settled = picked != nil || model.choosing[card.id] != nil
-                    CardActionButton(action: action, selected: selected, working: sending, dimmed: settled && !selected) {
-                        Task { await model.choose(action, on: card) }
-                    }
-                    .disabled(!model.canChange || settled)
-                }
+                CardChoices(model: model, card: card)
                 NavigationLink { CardThreadView(model: model, card: card) } label: {
                     rowLabel("bubble.left", repliesLabel((model.threads[card.id] ?? []).count))
                 }.buttonStyle(.plain)
