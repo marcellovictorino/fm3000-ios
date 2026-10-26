@@ -116,6 +116,17 @@ function fixtureBoard(now) {
         outcomeSummary: null, waitingCardId: null, createdAt: now - 1000 * (index + 1), updatedAt: now - 1000 * (index + 1),
         startedAt: null, closedAt: null,
       })),
+      // A program and its two parts: the board folds the parts into the program's one tile.
+      ...[["task-4", "FM-4", "Ship the settings program", null, { program: true, children: { total: 2, closed: 1 } }],
+          ["task-5", "FM-5", "Settings: group the toggles", "task-4", {}], ["task-6", "FM-6", "Settings: add search", "task-4", {}]].map(([id, key, title, parentId, extra], index) => ({
+        id, key, projectId: "project-1", parentId, kind: "work",
+        title, goal: title, priority: 2, status: "open",
+        activity: null, closedReason: null, startPolicy: "on-request",
+        flags: { blocked: false, held: false, needsYou: false, ready: false }, blockedBy: [], blocks: [], children: { total: 0, closed: 0 }, assignee: null,
+        model: null, tier: "medium", repo: { name: "fake/repo", branch: "fm/" + key.toLowerCase() }, delivery: { mode: "local-only", ci: "no-pr" },
+        outcomeSummary: null, waitingCardId: null, createdAt: now - 5000 - 1000 * index, updatedAt: now - 5000 - 1000 * index,
+        startedAt: null, closedAt: null, ...extra,
+      })),
     ],
     links: [],
   };

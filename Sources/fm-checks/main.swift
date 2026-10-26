@@ -247,6 +247,18 @@ await check("addresses: a Mac that moved is found at its new address; loopback a
     guard case .welcome(let w) = welcome else { throw Failed(description: "not a welcome") }
     try expectEqual(w.addresses, ["100.64.0.9:47623"])
 }
+await check("programs: a program is one tile and its parts fold into it; an ordinary task's children stay") {
+    func t(_ id: String, parent: String? = nil, program: Bool? = nil, children: BoardTask.Children? = nil) -> BoardTask {
+        BoardTask(id: id, key: id, projectId: "p", title: id, kind: "work", status: "open", activity: nil, assignee: nil, model: nil, waitingCardId: nil, updatedAt: 1,
+                  parentId: parent, program: program, children: children)
+    }
+    let tasks = [t("prog", program: true, children: .init(total: 3, closed: 1)), t("part-1", parent: "prog"), t("part-2", parent: "prog"), t("plain"), t("child", parent: "plain")]
+    try expectEqual(foldPrograms(tasks).map(\.id), ["prog", "plain", "child"])
+    try expectEqual(boardColumns(tasks).first { $0.status == "open" }?.tasks.count, 3)
+    try expectEqual(tasks[0].partsLine, "1 of 3 parts done"); try expectEqual(tasks[3].partsLine, nil)
+    let json = #"{"projects":[],"tasks":[{"id":"a","key":"A-1","projectId":"p","title":"t","kind":"work","status":"open","updatedAt":1,"program":true,"children":{"total":2,"closed":0}}]}"#
+    try expectEqual(try JSONDecoder().decode(JSONValue.self, from: Data(json.utf8)).decoded(Board.self).tasks.first?.partsLine, "0 of 2 parts done")
+}
 await check("machine load: the Mac's saved reading gives the GPU and the memory share the desktop panel shows") {
     // The shape machine-load/server.ts saves each minute; values from the captain's laptop: GPU 7%, 10 of 24 GB used.
     let gib = 1024.0 * 1024 * 1024, now = 1_700_000_000_000.0

@@ -109,6 +109,8 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         await model.refreshBoard()
         guard model.board?.tasks.first?.key == "FM-1" else { fail("board missing FM-1") }
         step("task board read")
+        guard let program = model.board?.tasks.first(where: { $0.program == true }), let all = model.board?.tasks, foldPrograms(all).count == all.count - 2, program.partsLine == "1 of 2 parts done" else { fail("the program's parts were not folded into its tile") }
+        step("a program's two parts fold into its one tile")
         guard model.board?.tasks.first?.model == "sonnet" else { fail("board task lost its model") }
         step("model pill for a card and a task")
         guard let first = model.board?.tasks.first, model.modelName(for: first) == "Claude Sonnet 5.5 (Medium)" else { fail("task pill is \(String(describing: model.board?.tasks.first.flatMap { model.modelName(for: $0) }))") }
