@@ -430,7 +430,7 @@ export async function startFakeMac(options = {}) {
           return rest;
         });
         push("inf:cards", state.cards);
-      }, 50);
+      }, 150);
       return result;
     },
     "inf:converse": ([input]) => {

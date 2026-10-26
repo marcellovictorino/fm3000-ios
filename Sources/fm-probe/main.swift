@@ -84,11 +84,11 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         guard await model.putAside(question) else { fail("put aside before the reply: \(model.notice ?? "")") }
         await until("put aside before the reply") { model.cards.first { $0.id == question.id }?.isPutAside == true }
         guard await model.reply("Call it Bridge", to: question) else { fail("reply refused: \(model.notice ?? "")") }
-        guard model.awaitingThreads.contains(question.id) else { fail("no typing indicator after replying in the card thread") }
+        guard model.cards.first(where: { $0.id == question.id })?.authorIsAnswering == true else { fail("the Mac did not say the card awaits its author after the reply") }
         step("typing indicator on while the thread waits")
         await until("own reply in thread") { model.threads[question.id]?.contains { $0.who == "captain" && $0.text == "Call it Bridge" } == true }
         await until("pushed thread message") { model.threads[question.id]?.contains { $0.who == "firstmate" && $0.text == "Noted: Call it Bridge" } == true }
-        guard !model.awaitingThreads.contains(question.id) else { fail("typing indicator stayed after the answer arrived") }
+        await until("the Mac stops saying the card awaits its author") { model.cards.first(where: { $0.id == question.id })?.authorIsAnswering != true }
         step("typing indicator off once answered")
         await until("the put-aside card comes back by itself when its crewmate answers") {
             model.cards.first { $0.id == question.id }?.isPutAside == false && CardsTally(cards: model.cards, board: model.board).aside == 0
