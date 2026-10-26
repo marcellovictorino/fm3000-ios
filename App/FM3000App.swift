@@ -8,10 +8,17 @@ import UIKit
 
 @main
 struct FM3000App: App {
-    @StateObject private var model = AppModel(
-        grants: KeychainGrantStore(), identities: KeychainIdentityStore(), deviceName: Self.deviceName()
-    )
+    @StateObject private var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
+    /// Answers the Apple Watch, which asks this phone because it cannot reach the Mac itself.
+    private let watchBridge: PhoneWatchBridge
+
+    init() {
+        let model = AppModel(grants: KeychainGrantStore(), identities: KeychainIdentityStore(), deviceName: Self.deviceName())
+        _model = StateObject(wrappedValue: model)
+        watchBridge = PhoneWatchBridge(model: model)
+        watchBridge.activate()
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -30,6 +37,7 @@ struct FM3000App: App {
                 }
                 .onChange(of: scenePhase) { _, phase in
                     // iOS closes sockets in the background; the app catches up with its cursor on return.
+                    watchBridge.appIsActive = phase == .active
                     if phase == .active { model.start() } else if phase == .background { model.stop() }
                 }
         }
