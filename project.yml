@@ -31,7 +31,7 @@ targets:
         NSLocalNetworkUsageDescription: Infinitary connects to your Mac, which may be on your local network.
         NSCameraUsageDescription: Take a photo to attach to a message for your Mac.
         NSPhotoLibraryUsageDescription: Choose a photo to attach to a message for your Mac.
-        NSMicrophoneUsageDescription: Dictate a message: your speech is turned into text on this phone.
+        NSMicrophoneUsageDescription: "Dictate a message: your speech is turned into text on this phone."
         NSSpeechRecognitionUsageDescription: Turn what you say into text for a message to your Mac.
         ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
