@@ -111,8 +111,8 @@ public struct MachineSample: Codable, Equatable {
 /// The Mac's live feed: a launchd job (`mac-feed/`) samples CPU, GPU and memory every few seconds and `tailscale serve` publishes
 /// the latest reading as JSON on the tailnet. The phone reads it directly, so the reading does not depend on Infinitary's channels.
 public enum MachineFeed {
-    /// The Mac's tailnet address, port 8443, as `mac-feed/install.sh` prints it. `UserDefaults` key `machineFeedURL` overrides it.
-    public static let defaultURL = "https://my-mac.example-tailnet.ts.net:8443/machine-load.json"
+    /// Empty until set: the Mac's tailnet address, port 8443, as `mac-feed/install.sh` prints it, goes in the `UserDefaults` key `machineFeedURL`.
+    public static let defaultURL = ""
     /// The job writes every 3 seconds; five missed readings means the Mac stopped sampling (asleep, job stopped).
     public static let freshWithin: Double = 15_000
 

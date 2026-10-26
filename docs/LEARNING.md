@@ -8,7 +8,7 @@ A guided read for someone new to iOS and Swift. Each step says what to run and w
 ./scripts/test.sh
 ```
 
-You should see three sections, ending in `passed 11, failed 0` for the fake Mac, then the Swift checks, then `PASS` lines for the end-to-end run. This proves the pairing, the secure connection and every request work against a stand-in Mac.
+You should see three sections, ending in `pass 16` for the fake Mac, `ALL 48 CHECKS PASSED` for the Swift checks, then `passed 12, failed 0`. This proves the pairing, the secure connection and every request work against a stand-in Mac.
 
 ## 2. Meet the pieces
 
