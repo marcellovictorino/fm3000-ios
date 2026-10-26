@@ -358,6 +358,16 @@ await check("machine feed: a reading from the Mac's job is live for 15 seconds, 
     try expectEqual(MachineFeed.outcome(of: Data("<html>".utf8), now: now), .unreachable)
     try expectEqual(MachineFeed.outcome(of: Data("{}".utf8), now: now), .unreachable)
 }
+await check("machine feed: with no address typed in, the phone finds the feed at the paired Mac's tailnet name, port 8443") {
+    // The captain's ask: "it should find it by itself, without the manual copy/paste path". The Mac's welcome lists its private
+    // addresses, home network first, then its Tailscale one; MagicDNS names that one, as it did for the captain's laptop.
+    let addresses = ["192.168.1.24:47623", "100.64.0.9:47623"].compactMap(DialAddress.init)
+    let magicDNS = ["100.64.0.9": "my-mac.example-tailnet.ts.net."]
+    try expectEqual(MachineFeed.url(addresses: addresses, name: { magicDNS[$0] })?.absoluteString,
+                    "https://my-mac.example-tailnet.ts.net:8443/machine-load.json")
+    try expectEqual(MachineFeed.url(addresses: Array(addresses.prefix(1)), name: { magicDNS[$0] }), nil)
+    try expectEqual(MachineFeed.url(addresses: addresses, name: { _ in nil }), nil)
+}
 await check("tasks: the board groups by status, and layout follows the toggle, else the phone's orientation") {
     func task(_ id: String, _ status: String, _ at: Double) -> BoardTask {
         BoardTask(id: id, key: id, projectId: "p", title: id, kind: "work", status: status, activity: nil, assignee: nil, model: nil, waitingCardId: nil, updatedAt: at)

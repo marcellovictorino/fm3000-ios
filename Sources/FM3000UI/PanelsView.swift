@@ -109,11 +109,11 @@ struct ResourcesView: View {
     /// Where the numbers came from this time, and why the live feed was not used when it was not.
     @State private var feed: MachineFeed.Outcome = .unreachable
     @State private var observation: ComputerResources.Computer.Observation?
-    /// The address `mac-feed/install.sh` prints; read by `AppModel.machineFeed()` under the same key.
+    /// Empty: `AppModel.machineFeed()` finds the feed from the paired Mac. An address typed here, as `mac-feed/install.sh` prints it, wins.
     @AppStorage("machineFeedURL") private var feedAddress = MachineFeed.defaultURL
 
     private var feedField: some View {
-        let field = TextField("https://your-mac.your-tailnet.ts.net:8443/machine-load.json", text: $feedAddress).autocorrectionDisabled()
+        let field = TextField("Found from the paired Mac; type an address to override", text: $feedAddress).autocorrectionDisabled()
         #if os(iOS)
         return field.textInputAutocapitalization(.never).keyboardType(.URL)
         #else
