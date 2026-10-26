@@ -30,6 +30,7 @@ final class Speaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         stop()
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty else { return }
+        UsageLog.shared.record("listen_play")
         claimSession()
         let utterance = AVSpeechUtterance(string: words)
         // The language the text is written in, so Portuguese or French is not read in an English accent.
@@ -202,6 +203,7 @@ final class Dictation: ObservableObject {
                 guard status == .authorized else { self.problem = "Allow speech recognition in Settings to dictate."; return }
                 self.askMicrophone { granted in
                     guard granted else { self.problem = "Allow the microphone in Settings to dictate."; return }
+                    UsageLog.shared.record("dictation_start")
                     self.begin(into: text)
                 }
             }

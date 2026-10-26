@@ -55,6 +55,40 @@ struct FeedView: View {
     }
 }
 
+/// What the person used, counted on this phone: event totals for 7 or 30 days, and the file to share. Counts only, never content.
+struct UsageView: View {
+    @State private var days = 7
+    @State private var totals: [(event: String, count: Int)] = []
+    @State private var export: URL?
+
+    var body: some View {
+        List {
+            Picker("Period", selection: $days) { Text("7 days").tag(7); Text("30 days").tag(30) }
+                .pickerStyle(.segmented).listRowBackground(Color.clear)
+            Section {
+                if totals.isEmpty { Text("Nothing counted yet.").foregroundStyle(Theme.fg2) }
+                ForEach(totals, id: \.event) { row in LabeledContent(row.event, value: row.event == "foreground_seconds" ? clock(row.count) : "\(row.count)") }
+            } footer: {
+                Text("Counts only: no messages, titles or names. They stay on this phone for \(UsageLog.keepDays) days unless you share them.")
+            }
+            .infinitaryRow()
+            if let export { ShareLink("Export as JSON", item: export).listRowBackground(Theme.bg2) }
+        }
+        .infinitaryScreen()
+        .navigationTitle("Usage").iOSInlineTitle()
+        .onAppear(perform: reload)
+        .onChange(of: days) { _ in reload() }
+    }
+
+    private func reload() {
+        totals = UsageLog.shared.totals(days: days)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("fm3000-usage.json")
+        export = (try? UsageLog.shared.exportJSON().write(to: url, options: .atomic)) != nil ? url : nil
+    }
+
+    private func clock(_ seconds: Int) -> String { seconds >= 3600 ? "\(seconds / 3600) h \(seconds % 3600 / 60) min" : "\(seconds / 60) min" }
+}
+
 struct MacView: View {
     @ObservedObject var model: AppModel
     @State private var confirming = false
@@ -90,7 +124,7 @@ struct MacView: View {
 }
 
 /// Feed and Mac, behind one "Others" tab so the bottom bar keeps room for the screens used most.
-enum OthersPage: Hashable { case panels, quota, resources, pullRequests, feed, voice, mac }
+enum OthersPage: Hashable { case panels, quota, resources, pullRequests, feed, voice, mac, usage }
 
 struct OthersView: View {
     @ObservedObject var model: AppModel
@@ -99,6 +133,7 @@ struct OthersView: View {
         : DebugLaunch.has("-openQuota") ? [.panels, .quota]
         : DebugLaunch.has("-openPRs") ? [.panels, .pullRequests]
         : DebugLaunch.has("-openPanels") ? [.panels]
+        : DebugLaunch.has("-openUsage") ? [.usage]
         : DebugLaunch.has("-openVoice") ? [.voice] : []
 
     var body: some View {
@@ -108,18 +143,22 @@ struct OthersView: View {
                 NavigationLink(value: OthersPage.feed) { Label("Activity feed", systemImage: "list.bullet") }.infinitaryRow()
                 NavigationLink(value: OthersPage.voice) { Label("Reading voice", systemImage: "speaker.wave.2") }.infinitaryRow()
                 NavigationLink(value: OthersPage.mac) { Label("Mac connection", systemImage: "desktopcomputer") }.infinitaryRow()
+                NavigationLink(value: OthersPage.usage) { Label("Usage", systemImage: "chart.bar.xaxis") }.infinitaryRow()
             }
             .infinitaryScreen()
             .navigationTitle("Others").iOSInlineTitle()
             .navigationDestination(for: OthersPage.self) { page in
-                switch page {
-                case .panels: PanelsView(model: model)
-                case .quota: QuotaView(model: model)
-                case .resources: ResourcesView(model: model)
-                case .pullRequests: PullRequestsView(model: model)
-                case .feed: FeedView(model: model)
-                case .voice: VoicePickerView()
-                case .mac: MacView(model: model)
+                Group {
+                    switch page {
+                    case .panels: PanelsView(model: model)
+                    case .quota: QuotaView(model: model)
+                    case .resources: ResourcesView(model: model).onAppear { UsageLog.shared.record("page_view.machine_load") }
+                    case .pullRequests: PullRequestsView(model: model).onAppear { UsageLog.shared.record("page_view.prs") }
+                    case .feed: FeedView(model: model).onAppear { UsageLog.shared.record("page_view.feed") }
+                    case .voice: VoicePickerView().onAppear { UsageLog.shared.record("page_view.voice") }
+                    case .mac: MacView(model: model).onAppear { UsageLog.shared.record("page_view.mac") }
+                    case .usage: UsageView()
+                    }
                 }
             }
         }
@@ -130,6 +169,8 @@ public struct RootView: View {
     @ObservedObject var model: AppModel
     @State private var tab = DebugLaunch.tab
     public init(model: AppModel) { self.model = model; Theme.applyBars() }
+
+    private func recordTab() { UsageLog.shared.record("tab_view.\(["cards", "message", "tasks", "others"][min(max(tab, 0), 3)])") }
 
     public var body: some View {
         if model.phase == .unpaired {
@@ -142,7 +183,8 @@ public struct RootView: View {
                 OthersView(model: model).tag(3).tabItem { Label("Others", systemImage: "ellipsis") }
             }
             .infinitaryRoot()
-            .onChange(of: tab) { _ in dismissKeyboard() }
+            .onChange(of: tab) { _ in dismissKeyboard(); recordTab() }
+            .onAppear { recordTab() }
             .onChange(of: model.requestedTab) { wanted in
                 if let wanted { tab = wanted; model.requestedTab = nil }
             }

@@ -111,7 +111,7 @@ private struct KPIStrip: View {
 
     private func chip(_ kind: CardsFilter, _ label: String, _ count: Int) -> some View {
         let on = filter == kind
-        return Button { filter = on ? nil : kind } label: {
+        return Button { if !on { UsageLog.shared.record("chip_filter") }; filter = on ? nil : kind } label: {
             HStack(spacing: 4) {
                 Text(label)
                 Text("\(count)").fontWeight(.semibold).monospacedDigit()
@@ -178,7 +178,7 @@ struct CardDetailView: View {
         .navigationDestination(isPresented: $showThread) { CardThreadView(model: model, card: card) }
         .toolbar { ToolbarItem(placement: .primaryAction) { ListenButton(text: card.title + ". " + HTMLText.plain(card.body), id: "card-" + card.id) } }
         .onDisappear { Speaker.shared.stop() }
-        .task { await model.loadThread(of: card) }
+        .task { UsageLog.shared.record("card_open"); await model.loadThread(of: card) }
         // Opening a card that was put aside brings it back, as on the Mac; Put aside above parks it again.
         .task { if model.canChange, let held = model.cards.first(where: { $0.id == card.id }), held.isPutAside { _ = await model.putAside(held, false) } }
         .task { if DebugLaunch.has("-pickLast"), let last = card.actions.last { try? await Task.sleep(nanoseconds: 1_500_000_000); await model.choose(last, on: card) } }

@@ -73,7 +73,7 @@ private struct ProjectPills: View {
     }
 
     private func pill(_ title: String, count: Int, isOn: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button { UsageLog.shared.record("project_pill"); action() } label: {
             HStack(spacing: 6) {
                 Text(title).font(.subheadline.weight(.medium)).lineLimit(1)
                 Text("\(count)").font(.caption2.weight(.semibold))
