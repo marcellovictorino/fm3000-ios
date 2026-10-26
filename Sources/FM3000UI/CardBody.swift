@@ -1,11 +1,12 @@
+import FM3000CardWeb
 import FM3000Core
 import SwiftUI
 import WebKit
 
 /// A card body drawn the way the Mac draws it: the body's HTML in a web view that carries Infinitary's own
 /// stylesheet, so headings, colours, tables, code and SVG diagrams look the same. The page runs no scripts and
-/// loads nothing from the network; links do not navigate. It grows to its content's height, so the screen's own
-/// scroll view does the scrolling.
+/// loads nothing from the network; links do not navigate. It follows its content's height as it changes (an expandable
+/// section opening, a picture loading), so the screen's own scroll view does the scrolling.
 struct CardBody: View {
     let html: String
     @State private var height: CGFloat = 40
@@ -33,18 +34,16 @@ private struct CardWebView: UIViewRepresentable {
     let html: String
     @Binding var height: CGFloat
 
-    func makeCoordinator() -> Coordinator { Coordinator(height: $height) }
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> WKWebView {
-        let configuration = WKWebViewConfiguration()
-        configuration.defaultWebpagePreferences.allowsContentJavaScript = false
-        let view = WKWebView(frame: .zero, configuration: configuration)
+        let height = $height
+        let view = WKWebView(frame: .zero, configuration: CardPage.configuration { new in if height.wrappedValue != new { height.wrappedValue = new } })
         view.isOpaque = false
         view.backgroundColor = .clear
         view.scrollView.backgroundColor = .clear
         view.scrollView.isScrollEnabled = false
         view.navigationDelegate = context.coordinator
-        context.coordinator.view = view
         return view
     }
 
@@ -52,22 +51,19 @@ private struct CardWebView: UIViewRepresentable {
         guard context.coordinator.loaded != html else { return }
         context.coordinator.loaded = html
         view.loadHTMLString(CardBody.document(html), baseURL: nil)
+        #if DEBUG
+        // Simulator runs: `-openDetails` opens every expandable section after the page loads, as a tap on its summary would.
+        if ProcessInfo.processInfo.arguments.contains("-openDetails") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { view.evaluateJavaScript("document.querySelectorAll('details').forEach(d => d.open = true)") }
+        }
+        #endif
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
-        var height: Binding<CGFloat>
         var loaded = ""
-        weak var view: WKWebView?
-        init(height: Binding<CGFloat>) { self.height = height }
 
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
             action.navigationType == .other ? .allow : .cancel
-        }
-
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            webView.evaluateJavaScript("document.documentElement.scrollHeight") { [height] value, _ in
-                if let value = value as? Double, value > 0 { DispatchQueue.main.async { height.wrappedValue = ceil(value) } }
-            }
         }
     }
 }

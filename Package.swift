@@ -7,6 +7,7 @@ import PackageDescription
 //               end-to-end run drives the real thing.
 // FM3000WatchLink - what the phone and the Apple Watch say to each other (plain Codable messages, Foundation only), so the
 //               watch app links nothing else.
+// FM3000CardWeb - the card body's web view set-up and height reporting (WebKit only, no SwiftUI), so a check can load a real page.
 // FM3000UI    - the SwiftUI screens. Needs Xcode's toolchain (SwiftUI's macros); the rest does not.
 // fm-checks   - the test suite as a plain executable (this Mac has no XCTest).
 // fm-probe    - a command line client built from the same core, for the fake Mac and for
@@ -18,14 +19,16 @@ let package = Package(
         .library(name: "FM3000Core", targets: ["FM3000Core"]),
         .library(name: "FM3000Model", targets: ["FM3000Model"]),
         .library(name: "FM3000UI", targets: ["FM3000UI"]),
+        .library(name: "FM3000CardWeb", targets: ["FM3000CardWeb"]),
         .library(name: "FM3000WatchLink", targets: ["FM3000WatchLink"]),
     ],
     targets: [
         .target(name: "FM3000Core"),
         .target(name: "FM3000WatchLink"),
         .target(name: "FM3000Model", dependencies: ["FM3000Core", "FM3000WatchLink"]),
-        .target(name: "FM3000UI", dependencies: ["FM3000Core", "FM3000Model"]),
-        .executableTarget(name: "fm-checks", dependencies: ["FM3000Core", "FM3000Model", "FM3000WatchLink"]),
+        .target(name: "FM3000CardWeb"),
+        .target(name: "FM3000UI", dependencies: ["FM3000Core", "FM3000Model", "FM3000CardWeb"]),
+        .executableTarget(name: "fm-checks", dependencies: ["FM3000Core", "FM3000Model", "FM3000WatchLink", "FM3000CardWeb"]),
         .executableTarget(name: "fm-probe", dependencies: ["FM3000Core", "FM3000Model", "FM3000WatchLink"]),
     ]
 )
