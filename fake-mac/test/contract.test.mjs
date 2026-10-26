@@ -201,3 +201,18 @@ describe("put aside", () => {
     conn.ws.close();
   });
 });
+
+// Intent (the captain, SCR-348): the words typed beside a choice go with it, as the Mac's "anything to add?" field sends them.
+describe("words with a choice", () => {
+  test("inf:cards:act takes the answers in its fourth argument", async () => {
+    const conn = await dial();
+    conn.ws.send(JSON.stringify(hello));
+    await until(() => conn.frames.some((f) => f.t === "welcome"));
+    const value = { answers: [{ name: "anything_else", values: [], changed: true, written: "Ship it after lunch" }] };
+    conn.ws.send(JSON.stringify({ t: "invoke", id: 40, channel: "inf:cards:act", args: ["card-merge-1", "later", "chrome", value] }));
+    await until(() => conn.frames.some((f) => f.t === "result" && f.id === 40));
+    assert.equal(conn.frames.find((f) => f.id === 40).ok, true);
+    assert.equal(mac.events.findLast((e) => e.ev === "card-acted").words, "Ship it after lunch");
+    conn.ws.close();
+  });
+});

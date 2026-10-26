@@ -267,13 +267,13 @@ public final class AppModel: ObservableObject {
     /// True once a card is closed: answered here, or gone from the Mac's list.
     public func isClosed(_ card: Card) -> Bool { answered[card.id] != nil || !cards.contains { $0.id == card.id } }
 
-    /// Chooses one of a card's buttons: `inf:cards:act`.
-    public func choose(_ action: CardAction, on card: Card) async {
+    /// Chooses one of a card's buttons: `inf:cards:act`, with the words from the "anything to add?" field when there are any.
+    public func choose(_ action: CardAction, on card: Card, words: String = "") async {
         guard choosing[card.id] == nil else { return }
         choosing[card.id] = action.id
         defer { choosing[card.id] = nil }
         do {
-            let result: ActResult = try await ask("inf:cards:act", [.string(card.id), .string(action.id), .string("chrome")])
+            let result: ActResult = try await ask("inf:cards:act", [.string(card.id), .string(action.id), .string("chrome")] + (choiceValue(words: words).map { [$0] } ?? []))
             if let refusal = result.refusal { notice = refusal; return }
             if result.effect != nil { notice = "\(action.label) needs your Mac's window: it opens something there." }
             if action.keepsOpen != true { answered[card.id] = AnsweredCard(card: card, label: action.label) }

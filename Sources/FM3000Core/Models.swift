@@ -9,6 +9,14 @@ public struct CardAction: Codable, Equatable, Identifiable {
     public var isDefault: Bool { `default` == true }
 }
 
+/// The words the captain wrote in a card's "anything to add?" field travel with a choice as one more answer, the way the Mac's
+/// footer sends them (`withAnythingElse` in src/shared/cards.ts): `inf:cards:act`'s fourth argument. Nil when there is nothing to add.
+public func choiceValue(words: String) -> JSONValue? {
+    let written = String(words.trimmingCharacters(in: .whitespacesAndNewlines).prefix(4_000))
+    guard !written.isEmpty else { return nil }
+    return .object(["answers": .array([.object(["name": .string("anything_else"), "values": .array([]), "changed": .bool(true), "written": .string(written)])])])
+}
+
 public struct Card: Codable, Equatable, Identifiable {
     public let id: String
     public let taskId: String?
