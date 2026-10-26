@@ -584,5 +584,30 @@ await check("open pull requests: grouped and aged like the desktop panel") {
     try expectEqual(OpenPRs(status: "signed-out", changes: []).blocked, "Sign in to GitHub's command line on this Mac")
 }
 
+await check("usage: counts per day, 7 and 30 day totals, 90-day roll-off, kept across restarts, counts only (SCR-321 spec)") {
+    let file = FileManager.default.temporaryDirectory.appendingPathComponent("usage-\(UUID().uuidString).json")
+    defer { try? FileManager.default.removeItem(at: file) }
+    var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(identifier: "Europe/Paris")!
+    let now = ISO8601DateFormatter().date(from: "2026-10-26T09:00:00Z")!
+    func ago(_ days: Int) -> Date { calendar.date(byAdding: .day, value: -days, to: now)! }
+    let log = UsageLog(file: file)
+    log.record("message_send", now: ago(100), calendar: calendar)   // older than 90 days: rolls off on the next write
+    log.record("message_send", now: ago(20), calendar: calendar)
+    log.record("tab_view.cards", now: ago(3), calendar: calendar)
+    log.record("tab_view.cards", now: ago(0), calendar: calendar)
+    log.record("tab_view.cards", now: ago(0), calendar: calendar)
+    log.record("foreground_seconds", count: 125, now: ago(0), calendar: calendar)
+    func flat(_ t: [(event: String, count: Int)]) -> [String] { t.map { "\($0.event)=\($0.count)" } }
+    try expectEqual(flat(log.totals(days: 7, now: now, calendar: calendar)), ["foreground_seconds=125", "tab_view.cards=3"])
+    try expectEqual(flat(log.totals(days: 30, now: now, calendar: calendar)), ["foreground_seconds=125", "tab_view.cards=3", "message_send=1"])
+    // A phone restart reads the same counts back, and the export holds only day, event name and number.
+    let reopened = UsageLog(file: file)
+    try expectEqual(flat(reopened.totals(days: 30, now: now, calendar: calendar)), flat(log.totals(days: 30, now: now, calendar: calendar)))
+    let exported = try JSONDecoder().decode([String: [String: Int]].self, from: reopened.exportJSON())
+    try expectEqual(Set(exported.keys), ["2026-10-06", "2026-10-23", "2026-10-26"], "the 100-day-old day is gone")
+    try expectEqual(exported["2026-10-26"]?["tab_view.cards"], 2)
+    try expectEqual(UsageLog.dayKey(ISO8601DateFormatter().date(from: "2026-10-25T23:30:00Z")!, calendar: calendar), "2026-10-26", "the day is the phone's own, not UTC")
+}
+
 print(failures.isEmpty ? "ALL \(ran) CHECKS PASSED" : "\(failures.count) of \(ran) FAILED: \(failures.joined(separator: "; "))")
 exit(failures.isEmpty ? 0 : 1)

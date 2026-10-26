@@ -176,6 +176,7 @@ struct Composer: View {
     private func append(_ item: Attachment) throws {
         guard (attachments?.wrappedValue.count ?? 0) < Attachment.maxPerMessage else { throw AttachmentError.tooMany }
         attachments?.wrappedValue.append(item)
+        UsageLog.shared.record("attachment_add")
         problem = nil
     }
 }

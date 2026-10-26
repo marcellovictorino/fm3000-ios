@@ -80,3 +80,7 @@ Only if you later want builds that do not expire after 7 days or want to share t
 ## Licence
 
 MIT, see `LICENSE`. `Sources/FM3000UI/CardStyle.swift` is generated from Infinitary's design styles.
+
+## Usage counters
+
+The app counts what you use, on the phone only: `usage.json` in the app's Application Support folder holds `{day: {event: count}}` (no text, titles, names or ids), kept 90 days. Others > Usage shows 7 or 30 days and exports the file as JSON. Events are recorded with `UsageLog.shared.record("name")`.

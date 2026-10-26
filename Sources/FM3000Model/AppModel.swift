@@ -33,6 +33,7 @@ public final class AppModel: ObservableObject {
     private var loop: Task<Void, Never>?
     private var pruner: Task<Void, Never>?
     private var cursor: Cursor?
+    private var foregroundSince: Date?
 
     public init(
         grants: GrantStore, identities: IdentityStore, deviceName: String,
@@ -96,6 +97,7 @@ public final class AppModel: ObservableObject {
             default: break
             }
         }
+        if foregroundSince == nil { foregroundSince = Date(); UsageLog.shared.record("session_start") }
         loop?.cancel()
         loop = Task { [weak self] in await self?.run() }
         pruner?.cancel()
@@ -109,6 +111,7 @@ public final class AppModel: ObservableObject {
 
     /// Stops while the app is in the background: iOS closes the socket anyway.
     public func stop() {
+        if let since = foregroundSince { UsageLog.shared.record("foreground_seconds", count: Int(Date().timeIntervalSince(since))); foregroundSince = nil }
         loop?.cancel()
         loop = nil
         pruner?.cancel()
@@ -288,6 +291,7 @@ public final class AppModel: ObservableObject {
     public func choose(_ action: CardAction, on card: Card, words: String = "") async {
         guard choosing[card.id] == nil else { return }
         choosing[card.id] = action.id
+        UsageLog.shared.record("card_action")
         defer { choosing[card.id] = nil }
         do {
             let result: ActResult = try await ask("inf:cards:act", [.string(card.id), .string(action.id), .string("chrome")] + (choiceValue(words: words).map { [$0] } ?? []))
@@ -326,6 +330,7 @@ public final class AppModel: ObservableObject {
     public func reply(_ text: String, to card: Card, attachments: [Attachment] = []) async -> Bool {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty || !attachments.isEmpty else { return false }
+        UsageLog.shared.record("card_reply")
         do {
             let thread: CardThread = try await ask("inf:cards:reply", [.string(card.id), Attachments.payload(text: words, attachments: attachments)])
             setThread(card.id, thread.messages)
@@ -344,6 +349,7 @@ public final class AppModel: ObservableObject {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty || !attachments.isEmpty else { return false }
         ownPosts.sending(words, attached: !attachments.isEmpty, at: Date().timeIntervalSince1970 * 1000)
+        UsageLog.shared.record("message_send")
         do {
             let _: JSONValue = try await ask("inf:converse", [Attachments.payload(text: words, attachments: attachments)])
             addChat("captain", words.isEmpty ? "(\(attachments.count) attachment\(attachments.count == 1 ? "" : "s"))" : words)
@@ -438,6 +444,7 @@ public final class AppModel: ObservableObject {
     public func steer(_ taskId: String, _ text: String) async -> Bool {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty else { return false }
+        UsageLog.shared.record("steer_send")
         do {
             let result: SteerResult = try await ask("inf:task:steer", [.string(taskId), .string(words)])
             steerProblem = result.ok ? nil : (result.text ?? "The Mac did not take that.")
