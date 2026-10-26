@@ -256,6 +256,14 @@ await check("put aside: a task whose card is put aside waits on you, unless its 
     try await settle { heights.last == closed }
 }
 await check("card body: the web view reports a taller height when an expandable section opens, and the old one when it closes") { try await cardBodyHeights() }
+// The captain's ask: Close from inside a card. Like the Mac (docs/card-authoring.md, "Closing a card while the captain's reply is the
+// newest line"), it asks first only when the captain's own reply has no answer yet.
+await check("close from a card: asks first only when the captain's reply is the newest line on the thread") {
+    func message(_ who: String, _ at: Double) -> ThreadMessage { ThreadMessage(id: at, cardId: "c", who: who, text: "…", at: at) }
+    try expect(!closeNeedsQuestion(thread: []), "an untouched card asked")
+    try expect(!closeNeedsQuestion(thread: [message("captain", 1), message("firstmate", 2)]), "an answered reply asked")
+    try expect(closeNeedsQuestion(thread: [message("firstmate", 1), message("captain", 2)]), "an unanswered reply did not ask")
+}
 // The captain's ask (SCR-345): the watch lists only the cards waiting on them, readable as text, with buttons and nothing to type.
 func watchFixture(_ id: String, body: String = "<p>Ready.</p>", at: Double = 1, aside: Bool = false, awaiting: String? = nil, asking: Bool? = nil, buttons: Bool = true) -> Card {
     var c = Card(id: id, taskId: "t", author: "crewmate", priority: 1, title: "Title \(id)", meta: "FM-1 · crewmate", body: body,

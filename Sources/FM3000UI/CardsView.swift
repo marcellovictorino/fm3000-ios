@@ -55,9 +55,9 @@ struct CardsView: View {
                             Button { Task { _ = await model.putAside(card, !card.isPutAside) } } label: {
                                 card.isPutAside ? Label("Bring back", systemImage: "arrow.uturn.backward") : Label("Put aside", systemImage: "tray.and.arrow.down")
                             }
-                            .tint(Theme.accentStrong)
+                            .tint(Theme.warn)
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {   // a full swipe cannot be undone, so Close takes a tap on the revealed button
                             Button(role: .destructive) { Task { _ = await model.close(card) } } label: { Label("Close", systemImage: "xmark") }
                                 .tint(.red)
                         }
@@ -134,6 +134,7 @@ struct CardDetailView: View {
     @ObservedObject var model: AppModel
     let card: Card
     @State private var showThread = DebugLaunch.has("-openThread")
+    @State private var askClose = DebugLaunch.has("-askClose")
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -176,12 +177,36 @@ struct CardDetailView: View {
         .navigationTitle(card.title)
         .iOSInlineTitle()
         .navigationDestination(isPresented: $showThread) { CardThreadView(model: model, card: card) }
-        .toolbar { ToolbarItem(placement: .primaryAction) { ListenButton(text: card.title + ". " + HTMLText.plain(card.body), id: "card-" + card.id) } }
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                ListenButton(text: card.title + ". " + HTMLText.plain(card.body), id: "card-" + card.id)
+                if !model.isClosed(card) {
+                    // The Mac's card chrome: a minus to put the card aside, a cross to close it. Both in the app's accent colour.
+                    Button { Task { if await model.putAside(card) { dismiss() } } } label: { Label("Put aside", systemImage: "minus") }
+                        .accessibilityLabel("Put aside for later").disabled(!model.canChange)
+                    Button { requestClose() } label: { Label("Close", systemImage: "xmark") }
+                        .accessibilityLabel("Close this card").disabled(!model.canChange)
+                }
+            }
+        }
+        .confirmationDialog("You replied and have no answer yet", isPresented: $askClose, titleVisibility: .visible) {
+            Button("Put aside") { Task { if await model.putAside(card) { dismiss() } } }
+            Button("Close anyway", role: .destructive) { Task { if await model.close(card) { dismiss() } } }
+            Button("Keep reading", role: .cancel) {}
+        } message: { Text("Put aside keeps the card and brings it back when its author answers. A closed card's answer stays on its task's record.") }
         .onDisappear { Speaker.shared.stop() }
         .task { UsageLog.shared.record("card_open"); await model.loadThread(of: card) }
         // Opening a card that was put aside brings it back, as on the Mac; Put aside above parks it again.
         .task { if model.canChange, let held = model.cards.first(where: { $0.id == card.id }), held.isPutAside { _ = await model.putAside(held, false) } }
         .task { if DebugLaunch.has("-pickLast"), let last = card.actions.last { try? await Task.sleep(nanoseconds: 1_500_000_000); await model.choose(last, on: card) } }
+    }
+}
+
+extension CardDetailView {
+    /// Close from the card: at once, or after the Mac's question when the captain's reply is the newest line on its thread.
+    fileprivate func requestClose() {
+        if closeNeedsQuestion(thread: model.threads[card.id] ?? []) { askClose = true }
+        else { Task { if await model.close(card) { dismiss() } } }
     }
 }
 

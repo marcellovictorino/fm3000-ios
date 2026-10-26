@@ -62,6 +62,10 @@ public struct CardThread: Codable, Equatable {
     public let messages: [ThreadMessage]
 }
 
+/// The Mac's rule for closing a card (`replyUnanswered`, docs/card-authoring.md): it asks first when the captain's own reply is the newest
+/// line on the card's thread, because a closed crewmate card's answer goes to the task's record and the captain would not see it here.
+public func closeNeedsQuestion(thread: [ThreadMessage]) -> Bool { thread.last?.who == "captain" }
+
 /// What `inf:cards:act` answers: the effect only a Mac window can show, or the Mac's refusal.
 public struct ActResult: Codable, Equatable {
     public struct Effect: Codable, Equatable { public let kind: String; public let target: String? }
