@@ -136,7 +136,7 @@ public struct RootView: View {
             PairView(model: model).infinitaryRoot()
         } else {
             TabView(selection: $tab) {
-                CardsView(model: model).tag(0).tabItem { Label("Cards", systemImage: "rectangle.stack") }.badge(model.cards.count)
+                CardsView(model: model).tag(0).tabItem { Label("Cards", systemImage: "rectangle.stack") }.badge(filterCards(model.cards, by: nil, board: nil).count)
                 MessageView(model: model).tag(1).tabItem { Label("Message", systemImage: "bubble.left") }
                 BoardView(model: model).tag(2).tabItem { Label("Tasks", systemImage: "checklist") }
                 OthersView(model: model).tag(3).tabItem { Label("Others", systemImage: "ellipsis") }

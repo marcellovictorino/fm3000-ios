@@ -5,7 +5,7 @@ import SwiftUI
 struct CardsView: View {
     @ObservedObject var model: AppModel
     @State private var path: [String] = []
-    @State private var filter: CardsFilter? = DebugLaunch.has("-filterQueued") ? .queued : nil
+    @State private var filter: CardsFilter? = DebugLaunch.has("-filterQueued") ? .queued : (DebugLaunch.has("-filterAside") ? .aside : nil)
 
     private var shown: [Card] { filterCards(model.cards, by: filter, board: model.board) }
     /// Under Working or Queued the list holds tasks (what those chips count), not cards.
@@ -32,11 +32,13 @@ struct CardsView: View {
                         Text(filter == .waiting ? "No decision cards wait on you" : "Nothing is \(Self.title(filter).lowercased())").font(.headline)
                         Text("Tap the chip again to see every card.").font(.footnote).foregroundStyle(Theme.fg2)
                     }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if model.cards.isEmpty {
+                } else if shown.isEmpty {
+                    let parked = CardsTally(cards: model.cards, board: model.board).aside
                     VStack(spacing: 8) {
                         Image(systemName: "checkmark.circle").font(.largeTitle).foregroundStyle(Theme.fg2)
                         Text("Nothing waits for you").font(.headline)
-                        Text("Cards from Infinitary appear here the moment they are raised.").font(.footnote).foregroundStyle(Theme.fg2)
+                        Text(parked > 0 ? "\(parked) put aside for later. Tap Put aside to see \(parked == 1 ? "it" : "them")." : "Cards from Infinitary appear here the moment they are raised.")
+                            .font(.footnote).foregroundStyle(Theme.fg2).multilineTextAlignment(.center)
                     }.padding().frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List(shown) { card in
@@ -49,6 +51,12 @@ struct CardsView: View {
                             }
                         }
                         .infinitaryRow()
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            Button { Task { _ = await model.putAside(card, !card.isPutAside) } } label: {
+                                card.isPutAside ? Label("Bring back", systemImage: "arrow.uturn.backward") : Label("Put aside", systemImage: "tray.and.arrow.down")
+                            }
+                            .tint(Theme.accentStrong)
+                        }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) { Task { _ = await model.close(card) } } label: { Label("Close", systemImage: "xmark") }
                                 .tint(.red)
@@ -83,8 +91,8 @@ extension CardsView {
     }
 }
 
-/// One thin line of chips above the cards: how many tasks are Working, how many decision cards wait on you, how many are Queued,
-/// counted as the desktop counts them. A tap filters the list to that chip; a second tap clears it.
+/// One thin line of chips above the cards: how many tasks are Working, how many decision cards wait on you, how many are put aside
+/// (a softer, dashed chip: parked for later, never counted as waiting), how many are Queued, counted as the desktop counts them. A tap filters the list to that chip; a second tap clears it.
 private struct KPIStrip: View {
     let tally: CardsTally
     @Binding var filter: CardsFilter?
@@ -93,6 +101,7 @@ private struct KPIStrip: View {
         HStack(spacing: 6) {
             chip(.working, "Working", tally.working)
             chip(.waiting, "Waiting on you", tally.waiting)
+            chip(.aside, "Put aside", tally.aside)
             chip(.queued, "Queued", tally.queued)
             Spacer(minLength: 0)
         }
@@ -108,10 +117,11 @@ private struct KPIStrip: View {
                 Text("\(count)").fontWeight(.semibold).monospacedDigit()
             }
             .font(.caption2)
-            .foregroundStyle(on ? Theme.bg0 : (kind == .waiting && count > 0 ? Theme.accent : Theme.fg2))
+            .foregroundStyle(on ? Theme.bg0 : (kind == .waiting && count > 0 ? Theme.accent : (kind == .aside ? Theme.fg3 : Theme.fg2)))
             .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(on ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.bg2), in: Capsule())
-            .overlay(Capsule().stroke(Theme.line.opacity(on ? 0 : 0.7), lineWidth: 0.5))
+            .background(on ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(kind == .aside ? Color.clear : Theme.bg2), in: Capsule())
+            .overlay(Capsule().stroke(kind == .aside ? Theme.fg3 : Theme.line.opacity(on ? 0 : 0.7), style: StrokeStyle(lineWidth: kind == .aside ? 1 : 0.5, dash: kind == .aside && !on ? [3, 2] : []))
+                .opacity(on && kind != .aside ? 0 : 1))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(label) \(count)")
@@ -124,6 +134,7 @@ struct CardDetailView: View {
     @ObservedObject var model: AppModel
     let card: Card
     @State private var showThread = DebugLaunch.has("-openThread")
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
@@ -152,6 +163,12 @@ struct CardDetailView: View {
                         }
                     }
                 }
+                if !card.actions.isEmpty, !model.isClosed(card) {
+                    Button { Task { if await model.putAside(card) { dismiss() } } } label: {
+                        Label("Put aside for later", systemImage: "tray.and.arrow.down").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered).tint(Theme.fg2).disabled(!model.canChange)
+                }
                 NavigationLink {
                     CardThreadView(model: model, card: card)
                 } label: {
@@ -175,6 +192,8 @@ struct CardDetailView: View {
         .toolbar { ToolbarItem(placement: .primaryAction) { ListenButton(text: card.title + ". " + HTMLText.plain(card.body), id: "card-" + card.id) } }
         .onDisappear { Speaker.shared.stop() }
         .task { await model.loadThread(of: card) }
+        // Opening a card that was put aside brings it back, as on the Mac; Put aside above parks it again.
+        .task { if model.canChange, let held = model.cards.first(where: { $0.id == card.id }), held.isPutAside { _ = await model.putAside(held, false) } }
         .task { if DebugLaunch.has("-pickLast"), let last = card.actions.last { try? await Task.sleep(nanoseconds: 1_500_000_000); await model.choose(last, on: card) } }
     }
 }
