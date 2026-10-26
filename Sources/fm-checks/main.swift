@@ -237,6 +237,16 @@ await check("choice words: what the captain adds goes with the choice as the Mac
     guard case .object(let o)? = choiceValue(words: String(repeating: "x", count: 5_000)), case .array(let answers)? = o["answers"], case .object(let a)? = answers.first, case .string(let w)? = a["written"] else { throw Failed(description: "no value") }
     try expectEqual(w.count, 4_000)   // a reply is one message, not a document: the Mac refuses longer
 }
+await check("addresses: a Mac that moved is found at its new address; loopback and link-local ones are not kept, the paired one stays first") {
+    let grant = Grant(at: DialAddress("100.64.0.5:47623")!, also: [DialAddress("192.168.1.20:47623")!], homeKey: realisticPin, deviceId: "d", kind: .mac, name: "iPhone")
+    let learned = grant.learning(["127.0.0.1:47623", "100.64.0.9:47623", "[fe80::1]:47623", "100.64.0.5:47623", "not an address", "192.168.1.20:47623"])
+    try expectEqual(learned.at, grant.at)
+    try expectEqual(learned.also.map(\.description), ["100.64.0.9:47623", "192.168.1.20:47623"])
+    try expectEqual(grant.learning([]), grant)   // an older Mac that says nothing changes nothing
+    let welcome = try HomeFrame.parse(#"{"t":"welcome","protocolVersion":"11.0.0","epoch":"e","seq":1,"catchUp":"reload","access":"full","addresses":["100.64.0.9:47623"]}"#)
+    guard case .welcome(let w) = welcome else { throw Failed(description: "not a welcome") }
+    try expectEqual(w.addresses, ["100.64.0.9:47623"])
+}
 await check("machine load: the Mac's saved reading gives the GPU and the memory share the desktop panel shows") {
     // The shape machine-load/server.ts saves each minute; values from the captain's laptop: GPU 7%, 10 of 24 GB used.
     let gib = 1024.0 * 1024 * 1024, now = 1_700_000_000_000.0

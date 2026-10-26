@@ -508,6 +508,8 @@ export async function startFakeMac(options = {}) {
         send(ws, {
           t: "welcome", protocolVersion: contract.protocolVersion, epoch, seq: newest,
           catchUp: replay ? "replay" : "reload", access: connection.access, name: pairName, spellings: ["fm", "inf"],
+          // Where this Mac listens now: its loopback and a private-network address of a Mac that moved.
+          addresses: [`127.0.0.1:${server.address().port}`, `100.64.0.9:${server.address().port}`],
         });
         if (replay) for (const missed of journal.filter((p) => p.seq > cursor.seq)) send(ws, respelled(missed, connection));
         return;

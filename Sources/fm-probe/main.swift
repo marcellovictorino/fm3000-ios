@@ -57,6 +57,8 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         guard model.isPaired else { fail("not paired") }
         model.start()
         await until("connected with full access") { model.phase == .connected(mac: "fake home", access: .full) }
+        guard let learned = FileGrantStore(url: URL(fileURLWithPath: stateDir + "/grant.json")).load(), learned.also.contains(where: { $0.host == "100.64.0.9" }), !learned.addresses.contains(where: { $0.host == "127.0.0.1" && $0 != learned.at }) else { fail("the Mac's updated private-network address was not learned") }
+        step("learned the Mac's updated private-network address, not its loopback")
         await until("two open cards listed") { model.cards.count == 2 }
         guard let merge = model.cards.first(where: { $0.id == "card-merge-1" }), let question = model.cards.first(where: { $0.id == "card-question-1" }) else { fail("fixture cards missing") }
         guard HTMLText.plain(merge.body).contains("• Checks passed") else { fail("card body did not read as text: \(HTMLText.plain(merge.body))") }
