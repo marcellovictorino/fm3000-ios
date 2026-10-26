@@ -111,8 +111,35 @@ public struct MachineSample: Codable, Equatable {
 /// The Mac's live feed: a launchd job (`mac-feed/`) samples CPU, GPU and memory every few seconds and `tailscale serve` publishes
 /// the latest reading as JSON on the tailnet. The phone reads it directly, so the reading does not depend on Infinitary's channels.
 public enum MachineFeed {
-    /// Empty until set: the Mac's tailnet address, port 8443, as `mac-feed/install.sh` prints it, goes in the `UserDefaults` key `machineFeedURL`.
+    /// Empty: the phone finds the feed itself (`url(addresses:name:)`). An address typed into the `UserDefaults` key `machineFeedURL` wins.
     public static let defaultURL = ""
+
+    /// Where `mac-feed/install.sh` publishes the feed: the paired Mac's tailnet name, port 8443. The Mac lists its Tailscale address
+    /// (100.64.0.0/10) among those it listens at; `name` turns it into the name the feed's certificate carries, or nil when it cannot.
+    public static func url(addresses: [DialAddress], name: (String) -> String?) -> URL? {
+        for address in addresses {
+            let parts = address.host.split(separator: ".").compactMap { UInt8($0) }
+            guard parts.count == 4, parts[0] == 100, (64...127).contains(parts[1]), let found = name(address.host) else { continue }
+            let host = found.hasSuffix(".") ? String(found.dropLast()) : found
+            return URL(string: "https://\(host):8443/machine-load.json")
+        }
+        return nil
+    }
+
+    /// The name MagicDNS gives a tailnet address (a reverse lookup), or nil off the tailnet.
+    public static func tailnetName(_ ip: String) -> String? {
+        var address = sockaddr_in()
+        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        address.sin_family = sa_family_t(AF_INET)
+        guard inet_pton(AF_INET, ip, &address.sin_addr) == 1 else { return nil }
+        var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+        let status = withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                getnameinfo($0, socklen_t(MemoryLayout<sockaddr_in>.size), &host, socklen_t(host.count), nil, 0, NI_NAMEREQD)
+            }
+        }
+        return status == 0 ? String(cString: host) : nil
+    }
     /// The job writes every 3 seconds; five missed readings means the Mac stopped sampling (asleep, job stopped).
     public static let freshWithin: Double = 15_000
 

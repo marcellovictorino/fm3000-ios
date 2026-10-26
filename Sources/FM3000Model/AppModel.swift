@@ -423,10 +423,13 @@ public final class AppModel: ObservableObject {
         return modelPill(label: nil, id: card.model ?? board?.tasks.first { $0.id == card.taskId }?.model)
     }
 
-    /// The Mac's live feed over the tailnet (`MachineFeed`). Needs no pairing, so it also works while the phone is not connected.
+    /// The Mac's live feed over the tailnet (`MachineFeed`): the address typed in, else the one found from the paired Mac's addresses.
+    /// Needs no connection, so it also works while the phone is not connected.
     public func machineFeed() async -> MachineFeed.Outcome {
-        let text = UserDefaults.standard.string(forKey: "machineFeedURL") ?? MachineFeed.defaultURL
-        guard let url = URL(string: text) else { return .unreachable }
+        let typed = UserDefaults.standard.string(forKey: "machineFeedURL") ?? MachineFeed.defaultURL
+        let addresses = grants.load()?.addresses ?? []
+        let found = typed.isEmpty ? await Task.detached { MachineFeed.url(addresses: addresses, name: MachineFeed.tailnetName) }.value : URL(string: typed)
+        guard let url = found else { return .unreachable }
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 4)
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         guard let (data, response) = try? await URLSession.shared.data(for: request), (response as? HTTPURLResponse)?.statusCode == 200 else { return .unreachable }
