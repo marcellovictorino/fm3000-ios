@@ -53,7 +53,7 @@ function fixtureCards(now) {
     id, author: "firstmate", priority: 1, title, meta: "Fake home", body, actions,
     status: "ready", createdAt: now, ...extra,
   });
-  return [
+  const cards = [
     base(
       "card-merge-1",
       "Merge the settings page change?",
@@ -75,6 +75,14 @@ function fixtureCards(now) {
       { asking: true },
     ),
   ];
+  // FM_PUT_ASIDE=1 starts with two cards already put aside, to try the Put aside chip on a phone or simulator.
+  if (process.env.FM_PUT_ASIDE) {
+    cards.push(
+      base("card-later-1", "Rename the build script?", "<p>The script is called <code>go.sh</code> today.</p>", [{ id: "yes", label: "Rename it", variant: "primary", default: true }, { id: "no", label: "Keep it", variant: "secondary" }], { author: "crewmate", taskId: "task-2", createdAt: now - 3_600_000, minimized: true }),
+      base("card-later-2", "Which icon for the new tab?", "<p>Pick one when you have a minute.</p>", [{ id: "a", label: "Tray", variant: "secondary" }, { id: "b", label: "Clock", variant: "secondary" }], { createdAt: now - 7_200_000, minimized: true }),
+    );
+  }
+  return cards;
 }
 
 function fixtureBoard(now) {
