@@ -23,6 +23,22 @@ public struct Card: Codable, Equatable, Identifiable {
     public let holdsPlace: Bool?
     public let asking: Bool?
     public let model: String?
+    /// Put aside on a Mac or a phone: the card stays open, off the stack, until its crewmate changes it or someone brings it back.
+    public var minimized: Bool?
+    /// What the card waits on while it is off the stage: its author's `answer` to a reply, or its `close-out`.
+    public var awaiting: String?
+    /// Set while the author answers a reply under the card: the card stays on the stage meanwhile.
+    public var sentBackAt: Double?
+}
+
+public extension Card {
+    var isPutAside: Bool { minimized == true }
+    /// The Mac's rule (`onStage` in src/shared/cards.ts): every card but one awaiting its author's first close-out stays on the stage.
+    var onStage: Bool { awaiting == nil || sentBackAt != nil }
+    /// A decision that is the captain's turn: it has choices, its author owes nothing, and it is not put aside (`isReadyDecision`).
+    var waitsOnYou: Bool { !actions.isEmpty && awaiting == nil && !isPutAside }
+    /// Its author owes the captain an answer to a reply: the phone's typing dots.
+    var authorIsAnswering: Bool { awaiting == "answer" }
 }
 
 public struct ThreadMessage: Codable, Equatable, Identifiable {
@@ -304,29 +320,56 @@ public func nowGroups(_ tasks: [BoardTask]) -> [String: NowGroup] {
     return result
 }
 
-/// What the Cards strip counts: tasks Working and Queued as the desktop groups them; Waiting on you is the open decision cards.
+public extension BoardTask {
+    func withMinimizedCard(_ id: String?) -> BoardTask {
+        BoardTask(id: self.id, key: key, projectId: projectId, title: title, kind: kind, status: status, activity: activity, assignee: assignee,
+                  model: model, waitingCardId: waitingCardId, updatedAt: updatedAt, parentId: parentId, startPolicy: startPolicy, minimizedCardId: id,
+                  requiredAction: requiredAction, startAttempt: startAttempt)
+    }
+}
+
+/// The board as the Mac's window presents it (`presentTask` in src/shared/taskWaiting.ts). The core never sends `minimizedCardId`; a
+/// window derives it from the cards. A task whose card is put aside waits on you, unless its crewmate still works or owes a reply.
+public func presentTasks(_ tasks: [BoardTask], cards: [Card]) -> [BoardTask] {
+    tasks.map { task in
+        let associated = cards.filter { $0.taskId == task.id || $0.id == task.waitingCardId }
+        let authorWorking = task.status == "active" && (task.activity == "running" || associated.contains { $0.awaiting == "answer" })
+        let aside = authorWorking ? nil : associated.first { $0.isPutAside }?.id
+        return aside == task.minimizedCardId ? task : task.withMinimizedCard(aside)
+    }
+}
+
+/// What the Cards strip counts: tasks Working and Queued as the desktop groups them; Waiting on you is the open decision cards
+/// that are the captain's turn, and Put aside is the cards set aside for later (never counted as waiting).
 public struct CardsTally: Equatable {
-    public var working = 0, waiting = 0, queued = 0
+    public var working = 0, waiting = 0, queued = 0, aside = 0
     public init(cards: [Card], board: Board?) {
-        waiting = cards.filter { !$0.actions.isEmpty }.count
-        let groups = nowGroups(board?.tasks ?? [])
+        waiting = cards.filter(\.waitsOnYou).count
+        aside = cards.filter(\.isPutAside).count
+        let groups = nowGroups(presentTasks(board?.tasks ?? [], cards: cards))
         working = groups.values.filter { $0 == .working }.count
         queued = groups.values.filter { $0 == .queued }.count
     }
 }
 
-public enum CardsFilter: String, CaseIterable { case working, waiting, queued }
+public enum CardsFilter: String, CaseIterable { case working, waiting, aside, queued }
 
 /// The tasks a Working or Queued chip lists, newest change first: exactly the ones its count counts. Waiting lists cards, not tasks.
-public func tasksIn(_ filter: CardsFilter, board: Board?) -> [BoardTask] {
-    guard filter != .waiting, let board else { return [] }
-    let groups = nowGroups(board.tasks)
+public func tasksIn(_ filter: CardsFilter, board: Board?, cards: [Card] = []) -> [BoardTask] {
+    guard filter == .working || filter == .queued, let board else { return [] }
+    let tasks = presentTasks(board.tasks, cards: cards)
+    let groups = nowGroups(tasks)
     let want: NowGroup = filter == .working ? .working : .queued
-    return board.tasks.filter { groups[$0.id] == want }.sorted { $0.updatedAt > $1.updatedAt }
+    return tasks.filter { groups[$0.id] == want }.sorted { $0.updatedAt > $1.updatedAt }
 }
 
-/// The cards the Cards list shows under a chip: Waiting is every open decision card; Working and Queued list tasks instead (`tasksIn`).
+/// The cards the Cards list shows: with no chip, every card on the stage that is not put aside; Waiting on you, the decisions that are
+/// the captain's turn; Put aside, the cards set aside, newest first. Working and Queued list tasks instead (`tasksIn`).
 public func filterCards(_ cards: [Card], by filter: CardsFilter?, board: Board?) -> [Card] {
-    guard let filter else { return cards }
-    return filter == .waiting ? cards.filter { !$0.actions.isEmpty } : []
+    switch filter {
+    case nil: return cards.filter { $0.onStage && !$0.isPutAside }
+    case .waiting: return cards.filter(\.waitsOnYou)
+    case .aside: return cards.filter(\.isPutAside).sorted { $0.createdAt > $1.createdAt }
+    case .working?, .queued?: return []
+    }
 }

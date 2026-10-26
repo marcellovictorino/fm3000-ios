@@ -71,6 +71,18 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         await until("reply found in the saved last turn when no push announced it", seconds: 8) { model.chat.last?.text == "Got it: quiet: ping" && !model.awaitingReply }
         await until("pushed card from converse") { model.cards.contains { $0.title == "Firstmate answered" } }
 
+        let waitingBefore = CardsTally(cards: model.cards, board: model.board).waiting
+        guard await model.putAside(question), model.cards.first(where: { $0.id == question.id })?.isPutAside == true else { fail("put aside did not take: \(model.notice ?? "")") }
+        await until("the Mac keeps the card put aside, counted apart from Waiting on you") {
+            let tally = CardsTally(cards: model.cards, board: model.board)
+            return tally.aside == 1 && tally.waiting == waitingBefore - 1 && filterCards(model.cards, by: .aside, board: model.board).map(\.id) == [question.id]
+        }
+        guard await model.putAside(question) else { fail("put aside again: \(model.notice ?? "")") }
+        await until("put aside again") { model.cards.first { $0.id == question.id }?.isPutAside == true }
+        guard await model.putAside(question, false) else { fail("bring back: \(model.notice ?? "")") }
+        await until("brought back by hand") { model.cards.first { $0.id == question.id }?.isPutAside == false }
+        guard await model.putAside(question) else { fail("put aside before the reply: \(model.notice ?? "")") }
+        await until("put aside before the reply") { model.cards.first { $0.id == question.id }?.isPutAside == true }
         guard await model.reply("Call it Bridge", to: question) else { fail("reply refused: \(model.notice ?? "")") }
         guard model.awaitingThreads.contains(question.id) else { fail("no typing indicator after replying in the card thread") }
         step("typing indicator on while the thread waits")
@@ -78,6 +90,9 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
         await until("pushed thread message") { model.threads[question.id]?.contains { $0.who == "firstmate" && $0.text == "Noted: Call it Bridge" } == true }
         guard !model.awaitingThreads.contains(question.id) else { fail("typing indicator stayed after the answer arrived") }
         step("typing indicator off once answered")
+        await until("the put-aside card comes back by itself when its crewmate answers") {
+            model.cards.first { $0.id == question.id }?.isPutAside == false && CardsTally(cards: model.cards, board: model.board).aside == 0
+        }
 
         guard let action = merge.actions.first(where: { $0.isDefault }) else { fail("no default action") }
         await model.choose(action, on: merge)

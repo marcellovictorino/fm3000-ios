@@ -376,12 +376,22 @@ export async function startFakeMac(options = {}) {
       state.cards = state.cards.filter((c) => c.id !== cardId);
       return { ok: true };
     },
-    "inf:cards:act": ([cardId, actionId]) => {
+    // Put aside (the Mac's Minimize): one optional fact on the card, kept for every device. `false` removes it.
+    "inf:cards:minimize": ([cardId, minimized]) => {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) throw new Error("There is no such card.");
+      record({ ev: "card-minimized", cardId, minimized });
+      const { minimized: _old, ...rest } = card;
+      state.cards = state.cards.map((c) => (c.id === cardId ? (minimized ? { ...rest, minimized: true } : rest) : c));
+      queueMicrotask(() => push("inf:cards", state.cards));
+      return { ok: true };
+    },
+    "inf:cards:act": ([cardId, actionId, , value]) => {
       const card = state.cards.find((c) => c.id === cardId);
       if (!card) throw new Error("There is no such card.");
       const action = card.actions.find((a) => a.id === actionId);
       if (!action) throw new Error("That card has no such action.");
-      record({ ev: "card-acted", cardId, actionId });
+      record({ ev: "card-acted", cardId, actionId, words: value?.answers?.find((a) => a.name === "anything_else")?.written ?? null });
       if (!action.keepsOpen) {
         state.cards = state.cards.filter((c) => c.id !== cardId);
         queueMicrotask(() => push("inf:cards", state.cards));
@@ -398,9 +408,20 @@ export async function startFakeMac(options = {}) {
       state.threads.set(cardId, thread);
       record({ ev: "card-replied", cardId, text, images: payload.images?.length ?? 0, files: payload.files?.length ?? 0 });
       const result = { cardId, messages: [...thread] };
+      // The author owes an answer: the card says so (`awaiting`) until the answer is written, as on the Mac.
+      const answering = (c) => ({ ...c, awaiting: "answer", sentBackAt: AT() });
+      state.cards = state.cards.map((c) => (c.id === cardId ? answering(c) : c));
+      queueMicrotask(() => push("inf:cards", state.cards));
       setTimeout(() => {
         thread.push({ id: nextMessageId++, cardId, who: "firstmate", text: `Noted: ${text}`, at: AT() });
         push("inf:cards:thread", { cardId, messages: [...thread] });
+        // The author changed the card: a put-aside card comes back by itself at the end of its turn (INF-926).
+        state.cards = state.cards.map((c) => {
+          if (c.id !== cardId) return c;
+          const { minimized: _m, awaiting: _a, sentBackAt: _s, ...rest } = c;
+          return rest;
+        });
+        push("inf:cards", state.cards);
       }, 50);
       return result;
     },

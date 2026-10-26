@@ -9,7 +9,7 @@ struct CardsView: View {
 
     private var shown: [Card] { filterCards(model.cards, by: filter, board: model.board) }
     /// Under Working or Queued the list holds tasks (what those chips count), not cards.
-    private var shownTasks: [BoardTask] { filter.map { tasksIn($0, board: model.board) } ?? [] }
+    private var shownTasks: [BoardTask] { filter.map { tasksIn($0, board: model.board, cards: model.cards) } ?? [] }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -79,7 +79,7 @@ struct CardsView: View {
 
 extension CardsView {
     fileprivate static func title(_ filter: CardsFilter) -> String {
-        switch filter { case .working: "Working"; case .waiting: "Waiting on you"; case .queued: "Queued" }
+        switch filter { case .working: "Working"; case .waiting: "Waiting on you"; case .aside: "Put aside"; case .queued: "Queued" }
     }
 }
 

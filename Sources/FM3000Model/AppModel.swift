@@ -289,6 +289,22 @@ public final class AppModel: ObservableObject {
         } catch { notice = error.localizedDescription; return false }
     }
 
+    /// Puts a card aside for later, or brings it back: `inf:cards:minimize`. The Mac keeps it as one fact every Mac and phone shares,
+    /// and brings it back by itself when the card's crewmate changes or answers it. Shown at once; the Mac's next list settles it.
+    public func putAside(_ card: Card, _ aside: Bool = true) async -> Bool {
+        guard let index = cards.firstIndex(where: { $0.id == card.id }) else { return false }
+        let before = cards
+        cards[index].minimized = aside ? true : nil
+        do {
+            let _: OkResult = try await ask("inf:cards:minimize", [.string(card.id), .bool(aside)])
+            return true
+        } catch {
+            cards = before
+            notice = error.localizedDescription
+            return false
+        }
+    }
+
     /// Replies under a card: `inf:cards:reply`. The words go as the captain's own.
     public func reply(_ text: String, to card: Card, attachments: [Attachment] = []) async -> Bool {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
