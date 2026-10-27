@@ -40,10 +40,10 @@
 	<string>Infinitary connects to your Mac, which may be on your local network.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Dictate a message: your speech is turned into text on this phone.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Turn what you say into text for a message to your Mac.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose a photo to attach to a message for your Mac.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Turn what you say into text for a message to your Mac.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
