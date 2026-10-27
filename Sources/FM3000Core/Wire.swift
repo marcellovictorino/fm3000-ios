@@ -1,8 +1,8 @@
 import Foundation
 
-/// The protocol this app speaks (docs/contract.json `protocolVersion` was 11.0.0 in Firstmate 3000 0.1.30).
-/// The Mac gives full access to its own major and the one before it; others only read.
-public let protocolVersion = "11.0.0"
+/// The protocol this app speaks (docs/contract.json `protocolVersion` is 12.0.0 in Infinitary 0.6.0).
+/// The Mac gives full access only to its own major; other majors only read.
+public let protocolVersion = "12.0.0"
 
 public struct Cursor: Equatable, Codable {
     public var epoch: String
