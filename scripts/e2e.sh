@@ -45,7 +45,7 @@ const events = readFileSync(process.argv[1], "utf8").split("\n").filter((l) => l
 const by = (ev) => events.filter((e) => e.ev === ev);
 const checks = [
   ["pair carried window:true, system ios and joined as view over TLSv1.3", by("pair").some((e) => e.window && e.system === "ios" && e.kind === "view" && e.tls === "TLSv1.3")],
-  ["hello was protocol 11.0.0, as view, system ios, chip arm64", by("hello").every((e) => e.protocolVersion === "11.0.0" && e.as === "view" && e.system === "ios" && e.chip === "arm64")],
+  ["hello was protocol 12.0.0, as view, system ios, chip arm64", by("hello").every((e) => e.protocolVersion === "12.0.0" && e.as === "view" && e.system === "ios" && e.chip === "arm64")],
   ["no connection carried an Origin header", by("hello").length >= 2 && by("hello").every((e) => e.hasOrigin === false)],
   ["every connection was TLSv1.3", by("upgrade").length >= 2 && by("upgrade").every((e) => e.tls === "TLSv1.3")],
   ["the second hello asked to catch up and got a replay", by("hello").some((e) => e.cursor && e.catchUp === "replay")],

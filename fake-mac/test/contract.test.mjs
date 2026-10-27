@@ -50,7 +50,7 @@ function dial({ origin, identity = device, path = "/connection" } = {}) {
   });
 }
 const until = async (predicate) => { for (let i = 0; i < 100; i++) { if (predicate()) return; await new Promise((r) => setTimeout(r, 20)); } assert.fail("timeout"); };
-const hello = { t: "hello", protocolVersion: "11.0.0", as: "view", system: "ios", chip: "arm64", spellings: ["inf"] };
+const hello = { t: "hello", protocolVersion: "12.0.0", as: "view", system: "ios", chip: "arm64", spellings: ["inf"] };
 
 describe("pairing", () => {
   test("pins the home by its SPKI hash", () => {

@@ -314,7 +314,7 @@ await check("addresses: a Mac that moved is found at its new address; loopback a
     try expectEqual(learned.at, grant.at)
     try expectEqual(learned.also.map(\.description), ["100.64.0.9:47623", "192.168.1.20:47623"])
     try expectEqual(grant.learning([]), grant)   // an older Mac that says nothing changes nothing
-    let welcome = try HomeFrame.parse(#"{"t":"welcome","protocolVersion":"11.0.0","epoch":"e","seq":1,"catchUp":"reload","access":"full","addresses":["100.64.0.9:47623"]}"#)
+    let welcome = try HomeFrame.parse(#"{"t":"welcome","protocolVersion":"12.0.0","epoch":"e","seq":1,"catchUp":"reload","access":"full","addresses":["100.64.0.9:47623"]}"#)
     guard case .welcome(let w) = welcome else { throw Failed(description: "not a welcome") }
     try expectEqual(w.addresses, ["100.64.0.9:47623"])
 }
@@ -457,17 +457,17 @@ await check("tasks: a project pill counts its tasks, and picking one filters the
     try expectEqual(board.filtered(by: "a").tasks.map(\.id), ["1", "2"])
     try expectEqual(board.filtered(by: nil).tasks.count, 3); try expectEqual(board.filtered(by: "gone").tasks.count, 3)
 }
-await check("wire: hello says protocol 11.0.0, view, ios, arm64, and carries a cursor when it has one") {
+await check("wire: hello says protocol 12.0.0, view, ios, arm64, and carries a cursor when it has one") {
     let hello = try JSONDecoder().decode(JSONValue.self, from: Data(HomeFrame.hello(cursor: Cursor(epoch: "e1", seq: 7)).utf8))
     guard case .object(let o) = hello else { throw Failed(description: "not an object") }
-    try expectEqual(o["t"], .string("hello")); try expectEqual(o["protocolVersion"], .string("11.0.0"))
+    try expectEqual(o["t"], .string("hello")); try expectEqual(o["protocolVersion"], .string("12.0.0"))
     try expectEqual(o["as"], .string("view")); try expectEqual(o["system"], .string("ios")); try expectEqual(o["chip"], .string("arm64"))
     try expectEqual(o["cursor"], .object(["epoch": .string("e1"), "seq": .number(7)]))
     try expect(!HomeFrame.hello(cursor: nil).contains("cursor"))
 }
 await check("wire: reads welcome, push and results, ignoring fields it does not know") {
-    let welcome = try HomeFrame.parse(#"{"t":"welcome","protocolVersion":"11.0.0","epoch":"abc","seq":4,"catchUp":"reload","access":"read","name":"MacBook","spellings":["fm"],"future":1}"#)
-    try expectEqual(welcome, .welcome(Welcome(protocolVersion: "11.0.0", epoch: "abc", seq: 4, catchUp: "reload", access: .read, name: "MacBook")))
+    let welcome = try HomeFrame.parse(#"{"t":"welcome","protocolVersion":"12.0.0","epoch":"abc","seq":4,"catchUp":"reload","access":"read","name":"MacBook","spellings":["fm"],"future":1}"#)
+    try expectEqual(welcome, .welcome(Welcome(protocolVersion: "12.0.0", epoch: "abc", seq: 4, catchUp: "reload", access: .read, name: "MacBook")))
     try expectEqual(try HomeFrame.parse(#"{"t":"push","seq":5,"channel":"inf:cards","payload":[]}"#), .push(Push(seq: 5, channel: "inf:cards", payload: .array([]))))
     try expectEqual(try HomeFrame.parse(#"{"t":"result","id":3,"ok":true,"value":{"ok":true}}"#), .result(id: 3, value: .object(["ok": .bool(true)]), error: nil))
     try expectEqual(try HomeFrame.parse(#"{"t":"result","id":4,"ok":false,"error":"There is no such card."}"#), .result(id: 4, value: nil, error: "There is no such card."))
@@ -511,7 +511,7 @@ final class ScriptedTransport: FrameTransport, @unchecked Sendable {
     }
     func close() {}
 }
-let welcomeText = #"{"t":"welcome","protocolVersion":"11.0.0","epoch":"E","seq":10,"catchUp":"reload","access":"full","name":"Mac"}"#
+let welcomeText = #"{"t":"welcome","protocolVersion":"12.0.0","epoch":"E","seq":10,"catchUp":"reload","access":"full","name":"Mac"}"#
 let addr = DialAddress(host: "127.0.0.1", port: 1)
 
 func nextEvent(_ client: HomeClient) async -> ClientEvent? {
@@ -542,7 +542,7 @@ await check("client: the Mac's refusal comes back as its own words") {
 }
 await check("client: a push already seen after a replay is dropped, and the cursor follows the newest") {
     let transport = ScriptedTransport()
-    transport.feed(.text(#"{"t":"welcome","protocolVersion":"11.0.0","epoch":"E","seq":10,"catchUp":"replay","access":"full"}"#))
+    transport.feed(.text(#"{"t":"welcome","protocolVersion":"12.0.0","epoch":"E","seq":10,"catchUp":"replay","access":"full"}"#))
     transport.feed(.text(#"{"t":"push","seq":9,"channel":"inf:cards","payload":1}"#))
     transport.feed(.text(#"{"t":"push","seq":11,"channel":"inf:cards","payload":2}"#))
     let client = HomeClient(addresses: [addr], cursor: Cursor(epoch: "E", seq: 10)) { _ in transport }
@@ -554,7 +554,7 @@ await check("client: a push already seen after a replay is dropped, and the curs
 }
 await check("client: a new epoch is a reload, so the cursor restarts at the welcome's number") {
     let transport = ScriptedTransport()
-    transport.feed(.text(#"{"t":"welcome","protocolVersion":"11.0.0","epoch":"NEW","seq":3,"catchUp":"reload","access":"full"}"#))
+    transport.feed(.text(#"{"t":"welcome","protocolVersion":"12.0.0","epoch":"NEW","seq":3,"catchUp":"reload","access":"full"}"#))
     let client = HomeClient(addresses: [addr], cursor: Cursor(epoch: "OLD", seq: 99)) { _ in transport }
     _ = try await client.connect()
     try expectEqual(await client.cursor, Cursor(epoch: "NEW", seq: 3))
