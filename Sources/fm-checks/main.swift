@@ -1,7 +1,6 @@
 @testable import FM3000Core
 import FM3000CardWeb
 import FM3000Model
-import FM3000WatchLink
 import Foundation
 import Security
 import WebKit
@@ -263,39 +262,6 @@ await check("close from a card: asks first only when the captain's reply is the 
     try expect(!closeNeedsQuestion(thread: []), "an untouched card asked")
     try expect(!closeNeedsQuestion(thread: [message("captain", 1), message("firstmate", 2)]), "an answered reply asked")
     try expect(closeNeedsQuestion(thread: [message("firstmate", 1), message("captain", 2)]), "an unanswered reply did not ask")
-}
-// The captain's ask (SCR-345): the watch lists only the cards waiting on them, readable as text, with buttons and nothing to type.
-func watchFixture(_ id: String, body: String = "<p>Ready.</p>", at: Double = 1, aside: Bool = false, awaiting: String? = nil, asking: Bool? = nil, buttons: Bool = true) -> Card {
-    var c = Card(id: id, taskId: "t", author: "crewmate", priority: 1, title: "Title \(id)", meta: "FM-1 · crewmate", body: body,
-                 actions: buttons ? [CardAction(id: "go", label: "Merge", variant: "primary", default: true, keepsOpen: nil), CardAction(id: "no", label: "Not now", variant: nil, default: nil, keepsOpen: nil)] : [],
-                 status: "ready", createdAt: at, holdsPlace: nil, asking: asking, model: nil)
-    c.minimized = aside ? true : nil; c.awaiting = awaiting
-    return c
-}
-await check("watch: lists only cards waiting on the captain, newest first; put aside, answering and button-less cards stay off the wrist") {
-    let cards = [watchFixture("old", at: 1), watchFixture("new", at: 9), watchFixture("parked", aside: true), watchFixture("answering", awaiting: "answer"), watchFixture("note", buttons: false)]
-    try expectEqual(WatchCard.waiting(cards).map(\.id), ["new", "old"])
-}
-await check("watch: a card body reads as plain text, its buttons carry their labels, and a long body is cut") {
-    let html = "<p>The <strong>settings page</strong> change is green.</p><ul><li>Checks passed</li></ul><figure><svg><text>Branch</text></svg></figure>"
-    let card = WatchCard(watchFixture("c", body: html))
-    try expectEqual(card.text, "The settings page change is green.\n\n• Checks passed")
-    try expectEqual(card.choices.map(\.label), ["Merge", "Not now"]); try expectEqual(card.choices.map(\.isDefault), [true, false])
-    let long = WatchCard(watchFixture("c", body: "<p>" + String(repeating: "word ", count: 2_000) + "</p>"))
-    try expect(long.text.count <= WatchCard.textLimit + 1 && long.text.hasSuffix("…"), "long body not cut: \(long.text.count)")
-}
-await check("watch: a card that asks a question to fill in offers no buttons and says to answer on the phone") {
-    let asked = WatchCard(watchFixture("q", body: "<p>Pick a name.</p>", asking: true))
-    let form = WatchCard(watchFixture("f", body: "<fieldset><legend>Name</legend><input type=\"radio\" name=\"n\"></fieldset>"))
-    for card in [asked, form] { try expect(card.needsPhone && card.choices.isEmpty, "\(card.id) offered buttons") }
-}
-await check("watch: a request and a reply survive the trip through WatchConnectivity's dictionaries") {
-    for request in [WatchRequest.cards, .choose(cardId: "c1", choiceId: "go"), .putAside(cardId: "c1")] {
-        try expectEqual(WatchWire.request(from: WatchWire.message(request)), request)
-    }
-    let reply = WatchReply(cards: [WatchCard(watchFixture("c"))], problem: "That card is gone.")
-    try expectEqual(WatchWire.reply(from: WatchWire.message(reply)), reply)
-    try expect(WatchWire.request(from: ["other": 1]) == nil)
 }
 await check("wire: a card the Mac put aside, or is waiting on its author for, decodes with both facts") {
     let json = #"[{"id":"c1","author":"crewmate","priority":2,"title":"t","meta":"m","body":"","actions":[],"status":"ready","createdAt":1,"minimized":true,"awaiting":"answer","sentBackAt":9}]"#

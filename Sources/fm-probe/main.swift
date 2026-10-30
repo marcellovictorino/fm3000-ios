@@ -1,7 +1,6 @@
 import Combine
 import FM3000Core
 import FM3000Model
-import FM3000WatchLink
 import Foundation
 
 // fm-probe: the app's own model, driven from the command line.
@@ -97,28 +96,16 @@ try FileManager.default.createDirectory(atPath: stateDir, withIntermediateDirect
             model.cards.first { $0.id == question.id }?.isPutAside == false && CardsTally(cards: model.cards, board: model.board).aside == 0
         }
 
-        // The Apple Watch asks this phone, which asks the Mac: the same service the watch bridge calls.
-        let wrist = WatchService(model: model)
-        let listed = await wrist.handle(.cards)
-        guard listed.problem == nil, let shown = listed.cards?.first(where: { $0.id == merge.id }), shown.text.contains("• Checks passed"), !shown.text.contains("<"),
-              shown.choices.map(\.label) == ["Merge", "Not now"], listed.cards?.contains(where: { $0.id == question.id && $0.needsPhone && $0.choices.isEmpty }) == true else { fail("the watch's card list was wrong: \(String(describing: listed))") }
-        step("watch lists both waiting cards, the question one as answer-on-the-phone")
-        let parked = await wrist.handle(.putAside(cardId: merge.id))
-        guard parked.problem == nil, parked.cards?.contains(where: { $0.id == merge.id }) == false, model.cards.first(where: { $0.id == merge.id })?.isPutAside == true else { fail("the watch's put aside did not take: \(String(describing: parked))") }
-        step("watch put the card aside, and the Mac holds it so")
-        guard await model.putAside(merge, false) else { fail("bring back after the watch: \(model.notice ?? "")") }
-        let gone = await wrist.handle(.choose(cardId: "card-nobody", choiceId: "merge"))
-        guard gone.problem == "That card is gone." else { fail("a choice on a missing card was not refused: \(gone)") }
-        let chosen = await wrist.handle(.choose(cardId: merge.id, choiceId: "merge"))
-        guard chosen.problem == nil, chosen.cards?.contains(where: { $0.id == merge.id }) == false else { fail("the watch's choice did not take: \(String(describing: chosen))") }
-        step("watch chose Merge: the Mac closed the card and the watch's list no longer has it")
-
-        guard let action = question.actions.first(where: { $0.isDefault }) else { fail("no default action") }
-        await model.choose(action, on: question, words: "Ship it after lunch")
-        guard model.answered[question.id]?.label == action.label, model.isClosed(question), model.choosing[question.id] == nil else { fail("the choice was not kept as answered and closed") }
+        guard let action = merge.actions.first(where: { $0.isDefault }) else { fail("no default action") }
+        await model.choose(action, on: merge, words: "Ship it after lunch")
+        guard model.answered[merge.id]?.label == action.label, model.isClosed(merge), model.choosing[merge.id] == nil else { fail("the choice was not kept as answered and closed") }
         step("choice kept: the card shows what was chosen and counts as closed")
-        await until("card gone after action") { !model.cards.contains { $0.id == "card-question-1" } }
+        await until("card gone after action") { !model.cards.contains { $0.id == "card-merge-1" } }
 
+        if let other = model.cards.first(where: { $0.id == question.id }) {
+            guard await model.close(other), !model.cards.contains(where: { $0.id == question.id }) else { fail("closing a card did not take: \(model.notice ?? "")") }
+            step("card closed without a choice")
+        }
         await model.refreshBoard()
         guard model.board?.tasks.first?.key == "FM-1" else { fail("board missing FM-1") }
         step("task board read")

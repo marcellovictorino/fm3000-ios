@@ -11,7 +11,7 @@ iPhone client for Infinitary (a paired view of the user's Mac). `README.md` cove
 
 ## Layers
 
-`FM3000Core` (wire, models, TLS, pairing) → `FM3000Model` (`AppModel`, every request, `WatchService`, the phone side of the watch) → `FM3000UI` (SwiftUI). `FM3000CardWeb` (WebKit only) sets up the card body's web view and reports its content height, so a check can load a real page; `FM3000WatchLink` (Foundation only) is the message set shared with `WatchApp/`, the watchOS target; the watch never talks to the Mac, it asks the phone. `App/` and `project.yml` are a thin shell; `FM3000.xcodeproj` is generated and gitignored.
+`FM3000Core` (wire, models, TLS, pairing) → `FM3000Model` (`AppModel`, every request) → `FM3000UI` (SwiftUI). `FM3000CardWeb` (WebKit only) sets up the card body's web view and reports its content height, so a check can load a real page. `App/` and `project.yml` are a thin shell; `FM3000.xcodeproj` is generated and gitignored.
 
 ## Contract
 
@@ -24,10 +24,6 @@ iPhone client for Infinitary (a paired view of the user's Mac). `README.md` cove
 ## Card bodies
 
 Card bodies are HTML. `CardBody` draws them in a script-free web view with `CardStyle.css`, generated from the desktop's token and frame stylesheets (dark only). Regenerate it from `src/renderer/src/design/tokens/*.css` and `plugins/frames/frameStylesheet.ts` when the desktop look changes. `HTMLText.plain` stays for one-line previews.
-
-## Apple Watch
-
-The watch lists cards waiting on the captain (`WatchCard.waiting`), buttons only, plus Put aside; a card with a form says "Answer on your phone". Change what it may do in `WatchRequest` and `WatchService` (checked by `fm-checks` and `fm-probe`), never in the watch views alone. Try it in paired simulators: `xcrun simctl pair <watch> <phone>`, install both apps, keep the phone app in the foreground. Watch Debug flags: `-openCard <n>`, `-scrollEnd`, `-pressChoice <n>`, `-pressAside`. The watch target's product and the package library must not share a name (`FM3000Watch` app, `FM3000WatchLink` library).
 
 ## Simulator launch flags (Debug only)
 
