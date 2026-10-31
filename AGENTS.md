@@ -32,6 +32,7 @@ Card bodies are HTML. `CardBody` draws them in a script-free web view with `Card
 ## Hard limits
 
 - Run tests and probes under a scratch `HOME`; the real keychains stay untouched.
+- Never build a Mac's address, tailnet name or feed URL into the app or its build settings: the address comes from pairing or is typed in the app. Tests use example values (`100.64.0.9`, `my-mac.example-tailnet.ts.net`).
 - Ask the captain before any Apple sign-in, upload, archive or release; the repo is public at `origin` (github.com/marcellovictorino/fm3000-ios), and pushing to `main` is standing direction. Leave `origin/design/refresh` alone.
 - Commit atomically, one concern per commit, as `type(scope): summary`.
 - `xcodegen` is not installed on this Mac, so `generate-project.sh`, `run-simulator.sh` and `install-device.sh` cannot run until `brew install xcodegen`. The generated `FM3000.xcodeproj` is gitignored, so a fresh clone has to run `generate-project.sh` before building the app.

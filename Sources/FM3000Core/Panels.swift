@@ -110,10 +110,9 @@ public struct MachineSample: Codable, Equatable {
 
 /// The Mac's live feed: a launchd job (`mac-feed/`) samples CPU, GPU and memory every few seconds and `tailscale serve` publishes
 /// the latest reading as JSON on the tailnet. The phone reads it directly, so the reading does not depend on Infinitary's channels.
+/// The app carries no feed address of its own, and none is ever built into it: the phone finds the feed from the addresses the Mac
+/// gave when you paired (`url(addresses:name:)`), and an address you type in the app (the `UserDefaults` key `machineFeedURL`) wins.
 public enum MachineFeed {
-    /// Empty: the phone finds the feed itself (`url(addresses:name:)`). An address typed into the `UserDefaults` key `machineFeedURL` wins.
-    public static let defaultURL = ""
-
     /// Where `mac-feed/install.sh` publishes the feed: the paired Mac's tailnet name, port 8443. The Mac lists its Tailscale address
     /// (100.64.0.0/10) among those it listens at; `name` turns it into the name the feed's certificate carries, or nil when it cannot.
     public static func url(addresses: [DialAddress], name: (String) -> String?) -> URL? {

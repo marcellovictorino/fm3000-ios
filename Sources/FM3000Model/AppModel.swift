@@ -421,7 +421,7 @@ public final class AppModel: ObservableObject {
     /// The Mac's live feed over the tailnet (`MachineFeed`): the address typed in, else the one found from the paired Mac's addresses.
     /// Needs no connection, so it also works while the phone is not connected.
     public func machineFeed() async -> MachineFeed.Outcome {
-        let typed = UserDefaults.standard.string(forKey: "machineFeedURL") ?? MachineFeed.defaultURL
+        let typed = UserDefaults.standard.string(forKey: "machineFeedURL") ?? ""
         let addresses = grants.load()?.addresses ?? []
         let found = typed.isEmpty ? await Task.detached { MachineFeed.url(addresses: addresses, name: MachineFeed.tailnetName) }.value : URL(string: typed)
         guard let url = found else { return .unreachable }
