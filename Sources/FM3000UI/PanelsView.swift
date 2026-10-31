@@ -110,7 +110,7 @@ struct ResourcesView: View {
     @State private var feed: MachineFeed.Outcome = .unreachable
     @State private var observation: ComputerResources.Computer.Observation?
     /// Empty: `AppModel.machineFeed()` finds the feed from the paired Mac. An address typed here, as `mac-feed/install.sh` prints it, wins.
-    @AppStorage("machineFeedURL") private var feedAddress = MachineFeed.defaultURL
+    @AppStorage("machineFeedURL") private var feedAddress = ""
 
     private var feedField: some View {
         let field = TextField("Found from the paired Mac; type an address to override", text: $feedAddress).autocorrectionDisabled()
