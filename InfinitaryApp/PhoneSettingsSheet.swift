@@ -6,6 +6,7 @@ import SwiftUI
 struct PhoneSettingsSheet: View {
     let session: ReadOnlySession
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(PhoneAppearance.storageKey) private var appearance = PhoneAppearance.dark
 
     private var device: String { UIDevice.current.userInterfaceIdiom == .pad ? "This iPad" : "This phone" }
 
@@ -31,7 +32,9 @@ struct PhoneSettingsSheet: View {
                     }
                     VStack(alignment: .leading, spacing: PhoneTheme.space2) {
                         Text("Appearance").font(PhoneFont.headline)
-                        Text("Follows this device’s setting.").font(PhoneFont.callout).foregroundStyle(PhoneTheme.secondary)
+                        Picker("Appearance", selection: $appearance) {
+                            ForEach(PhoneAppearance.allCases) { Text($0.title).tag($0) }
+                        }.pickerStyle(.segmented).accessibilityIdentifier("appearance")
                     }
                     VStack(alignment: .leading, spacing: PhoneTheme.space2) {
                         Text("Infinitary").font(PhoneFont.headline)
