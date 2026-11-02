@@ -4,9 +4,11 @@ import SwiftUI
 @main struct InfinitaryApp: App {
     @State private var model = PhoneModel()
     @Environment(\.scenePhase) private var phase
+    @AppStorage(PhoneAppearance.storageKey) private var appearance = PhoneAppearance.dark
     var body: some Scene {
         WindowGroup {
             PhoneView(model: model)
+                .preferredColorScheme(appearance.scheme)
                 .font(PhoneFont.body)
                 .tint(PhoneTheme.accent)
                 .foregroundStyle(PhoneTheme.text)

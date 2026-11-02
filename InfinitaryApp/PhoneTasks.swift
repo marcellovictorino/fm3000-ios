@@ -13,12 +13,16 @@ struct PhoneTasks: View {
     @State private var problem: String?
     @State private var selected: PhoneTask?
     @State private var expanded: Set<PhoneTaskGroup> = [.waiting, .working, .queued]
+    // Board/List opens on Board, then remembers the last view; the project pill filters both.
+    @AppStorage("phone.tasksBoard") private var showBoard = true
+    @State private var project: String?
+    @State private var boardColumn: PhoneTaskGroup? = .waiting
 
     /// INF-1517: the board as the Mac's Tasks presents it, with each card put aside under Waiting on you.
     private var board: PhoneBoard? { session.board?.presenting(session.cards) }
 
     private var rows: [PhoneTask] {
-        let current = (board?.tasks ?? []).filter {
+        let current = (board?.tasks ?? []).filter { project == nil || $0.projectId == project }.filter {
             query.isEmpty || "\($0.key) \($0.title) \($0.goal ?? "")".localizedCaseInsensitiveContains(query)
         }
         let ids = Set(current.map(\.id))
@@ -34,40 +38,27 @@ struct PhoneTasks: View {
     // VoiceOver cannot pull past the top of a list, so it always finds the field.
     private var searchShown: Bool { searchOpen || !query.isEmpty || voiceOver }
 
+    /// The pills: one per project that has tasks, in the board's own order.
+    private var projectsWithTasks: [PhoneBoard.Project] {
+        let used = Set((board?.tasks ?? []).map(\.projectId))
+        return (board?.projects ?? []).filter { used.contains($0.id) }
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: PhoneTheme.space3) {
-                if searchShown { search }
-                if let problem { Text(problem).foregroundStyle(PhoneTheme.warning) }
-                LazyVStack(alignment: .leading, spacing: PhoneTheme.space2) {
-                    if rows.isEmpty && (board?.tasklessMinimized(session.cards).isEmpty ?? true) { Text(query.isEmpty ? "No tasks yet." : "No matching tasks.").foregroundStyle(PhoneTheme.secondary) }
-                    if query.isEmpty {
-                        let groups = board?.groups ?? [:]
-                        ForEach(PhoneTaskGroup.allCases, id: \.rawValue) { group in
-                            let members = rows.filter { groups[$0.id] == group }
-                            // A card put aside with no task is a row of its own under Waiting on you.
-                            let aside = group == .waiting ? board?.tasklessMinimized(session.cards) ?? [] : []
-                            VStack(spacing: 0) {
-                                groupHeader(group, count: members.count + aside.count)
-                                if expanded.contains(group) {
-                                    ForEach(members) { task in taskRow(task, last: aside.isEmpty && task.id == members.last?.id) }
-                                    ForEach(aside) { card in asideRow(card, last: card.id == aside.last?.id) }
-                                }
-                            }
-                        }
-                    } else {
-                        VStack(spacing: 0) {
-                            ForEach(rows) { task in taskRow(task, last: task.id == rows.last?.id) }
-                        }
+        GeometryReader { geometry in
+            let landscape = geometry.size.width > geometry.size.height
+            VStack(spacing: 0) {
+                PhoneTaskControls(showBoard: $showBoard, project: $project, projects: projectsWithTasks, wide: landscape)
+                    .frame(maxWidth: showBoard && landscape ? .infinity : PhoneColumn.width).frame(maxWidth: .infinity)
+                if showBoard && !searchShown {
+                    if rows.isEmpty && (board?.tasklessMinimized(session.cards).isEmpty ?? true) {
+                        Text("No tasks yet.").foregroundStyle(PhoneTheme.secondary).padding(PhoneTheme.space4)
                     }
-                }
-            }.padding(PhoneTheme.space4).frame(maxWidth: PhoneColumn.width).frame(maxWidth: .infinity)
-        }
-        .scrollBounceBehavior(.always, axes: .vertical)
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top < -PhoneTheme.space5 * 2
-        } action: { _, pulled in
-            if pulled && !searchOpen { withAnimation(.snappy) { searchOpen = true } }
+                    PhoneTaskBoard(board: board, tasks: rows, aside: project == nil ? board?.tasklessMinimized(session.cards) ?? [] : [],
+                                   landscape: landscape, width: geometry.size.width, column: $boardColumn,
+                                   open: open, restore: { restore([$0]) }, canRestore: session.canChange)
+                } else { list }
+            }
         }
         .background { Button("Find a task") { openSearch() }.keyboardShortcut("f", modifiers: [.command, .shift]).hidden() }
         .accessibilityIdentifier("tasks-list")
@@ -95,6 +86,43 @@ struct PhoneTasks: View {
                 PhoneTaskRecord(session: session, initial: task)
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { selected = nil }.accessibilityIdentifier("close-record") } }
             }.font(PhoneFont.body).tint(PhoneTheme.accent)
+        }
+    }
+
+    private var list: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: PhoneTheme.space3) {
+                if searchShown { search }
+                if let problem { Text(problem).foregroundStyle(PhoneTheme.warning) }
+                LazyVStack(alignment: .leading, spacing: PhoneTheme.space2) {
+                    if rows.isEmpty && (board?.tasklessMinimized(session.cards).isEmpty ?? true) { Text(query.isEmpty ? "No tasks yet." : "No matching tasks.").foregroundStyle(PhoneTheme.secondary) }
+                    if query.isEmpty {
+                        let groups = board?.groups ?? [:]
+                        ForEach(PhoneTaskGroup.allCases, id: \.rawValue) { group in
+                            let members = rows.filter { groups[$0.id] == group }
+                            // A card put aside with no task is a row of its own under Waiting on you.
+                            let aside = group == .waiting && project == nil ? board?.tasklessMinimized(session.cards) ?? [] : []
+                            VStack(spacing: 0) {
+                                groupHeader(group, count: members.count + aside.count)
+                                if expanded.contains(group) {
+                                    ForEach(members) { task in taskRow(task, last: aside.isEmpty && task.id == members.last?.id) }
+                                    ForEach(aside) { card in asideRow(card, last: card.id == aside.last?.id) }
+                                }
+                            }
+                        }
+                    } else {
+                        VStack(spacing: 0) {
+                            ForEach(rows) { task in taskRow(task, last: task.id == rows.last?.id) }
+                        }
+                    }
+                }
+            }.padding(PhoneTheme.space4).frame(maxWidth: PhoneColumn.width).frame(maxWidth: .infinity)
+        }
+        .scrollBounceBehavior(.always, axes: .vertical)
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top < -PhoneTheme.space5 * 2
+        } action: { _, pulled in
+            if pulled && !searchOpen { withAnimation(.snappy) { searchOpen = true } }
         }
     }
 
