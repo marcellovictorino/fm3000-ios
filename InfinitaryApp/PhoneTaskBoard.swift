@@ -112,9 +112,9 @@ struct PhoneTaskControls: View {
             Text("List").tag(false)
         }.pickerStyle(.segmented).frame(width: 180).accessibilityIdentifier("tasks-view")
         Group {
-            if wide { HStack(spacing: PhoneTheme.space3) { picker; pills } }
-            else { VStack(alignment: .leading, spacing: PhoneTheme.space2) { picker; pills } }
-        }.padding(.horizontal, PhoneTheme.space4).padding(.vertical, PhoneTheme.space2)
+            if wide { HStack(spacing: PhoneTheme.space3) { picker; pills }.padding(.horizontal, PhoneTheme.space4) }
+            else { VStack(alignment: .leading, spacing: PhoneTheme.space2) { picker.padding(.horizontal, PhoneTheme.space4); pills.frame(maxWidth: .infinity) }.frame(maxWidth: .infinity, alignment: .leading) }
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, PhoneTheme.space2)
     }
 
     private var pills: some View {
@@ -122,7 +122,7 @@ struct PhoneTaskControls: View {
             HStack(spacing: PhoneTheme.space2) {
                 pill("All", id: nil)
                 ForEach(projects, id: \.id) { pill($0.name, id: $0.id) }
-            }
+            }.padding(.horizontal, wide ? 0 : PhoneTheme.space4)
         }.scrollIndicators(.hidden)
     }
 

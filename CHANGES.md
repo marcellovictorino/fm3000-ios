@@ -9,3 +9,4 @@ Based on Infinitary 0.6.2-alpha.47 (commit c1e941529438207bf1cca34c437df3c2e9d80
 - Not changed: the `infinitary://` URL scheme, so installing the official app too lets either open join links.
 - Appearance: a Dark/Light choice in Settings, kept on the phone and starting on Dark, in place of "Follows this device's setting": new `InfinitaryApp/PhoneAppearance.swift`, edits to `InfinitaryApp/InfinitaryApp.swift` and `InfinitaryApp/PhoneSettingsSheet.swift`.
 - Tasks: a Board/List switch (opens on Board, remembers the last view) and project pills that filter both views; the board is read only, with the desktop's columns, and works in landscape: new `InfinitaryApp/PhoneTaskBoard.swift`, edits to `InfinitaryApp/PhoneTasks.swift`.
+- Added `InfinitaryTests/PhoneAppearanceTests.swift` (the appearance choice's default and persistence).
