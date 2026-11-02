@@ -1,0 +1,5727 @@
+{
+  "now": 1793293200000,
+  "modelNames": {
+    "openai-codex/gpt-6.1-terra": "GPT-6.1 Terra",
+    "anthropic/claude-opus-5-5": "Claude Opus 5.5"
+  },
+  "cases": [
+    {
+      "name": "working with its record, plan and checks",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "ci": "pending",
+          "ciAt": 1793293140000,
+          "ciStartedAt": 1793292300000,
+          "checks": {
+            "headSha": "c0ffee1",
+            "items": [
+              {
+                "name": "check-1",
+                "state": "pending"
+              },
+              {
+                "name": "check-2",
+                "state": "success"
+              },
+              {
+                "name": "check-3",
+                "state": "pending"
+              }
+            ],
+            "absenceDeclared": false
+          }
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "dot": "running",
+            "words": "2 running · 1 passed",
+            "at": 1793293140000,
+            "span": {
+              "startedAt": 1793292300000,
+              "finishedAt": null,
+              "joint": "for"
+            }
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Working",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "6m",
+        "planWords": {
+          "count": "2 of 4",
+          "skipped": 0,
+          "current": "Draw the sheet"
+        },
+        "planDots": [
+          {
+            "label": "Brief the work",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Port the facts",
+            "short": "Port",
+            "state": "done"
+          },
+          {
+            "label": "Draw the sheet",
+            "short": "Draw",
+            "state": "current"
+          },
+          {
+            "label": "Photograph it",
+            "short": "Photograph",
+            "state": "next"
+          }
+        ],
+        "checksWords": "2 running · 1 passed for 15m"
+      }
+    },
+    {
+      "name": "working before its record answers",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "ci": "pending"
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "dot": "running",
+            "words": "running",
+            "at": null,
+            "span": null
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Working",
+        "checksWords": "running"
+      }
+    },
+    {
+      "name": "waiting for your merge",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "captain"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "ci": "green",
+          "ciAt": 1793292960000,
+          "ciStartedAt": 1793291400000,
+          "ciFinishedAt": 1793292240000,
+          "checks": {
+            "headSha": "c0ffee1",
+            "items": [
+              {
+                "name": "check-1",
+                "state": "success"
+              },
+              {
+                "name": "check-2",
+                "state": "success"
+              },
+              {
+                "name": "check-3",
+                "state": "skipped"
+              }
+            ],
+            "absenceDeclared": false
+          }
+        },
+        "outcomeSummary": null,
+        "waitingCardId": "card-1",
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "waitingCardMerges": true
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "waiting",
+          "word": "Waiting on you",
+          "reason": "Waiting for your merge"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "dot": "ok",
+            "words": "2 passed · 1 skipped",
+            "at": 1793292960000,
+            "span": {
+              "startedAt": 1793291400000,
+              "finishedAt": 1793292240000,
+              "joint": "in"
+            }
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Waiting on you · Waiting for your merge",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "6m",
+        "planWords": {
+          "count": "2 of 4",
+          "skipped": 0,
+          "current": "Draw the sheet"
+        },
+        "planDots": [
+          {
+            "label": "Brief the work",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Port the facts",
+            "short": "Port",
+            "state": "done"
+          },
+          {
+            "label": "Draw the sheet",
+            "short": "Draw",
+            "state": "current"
+          },
+          {
+            "label": "Photograph it",
+            "short": "Photograph",
+            "state": "next"
+          }
+        ],
+        "checksWords": "2 passed · 1 skipped in 14m",
+        "checksAgo": "16m ago"
+      }
+    },
+    {
+      "name": "a decision card is ready",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "captain"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": "card-2",
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "waiting",
+          "word": "Waiting on you",
+          "reason": "A decision card is ready"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Waiting on you · A decision card is ready"
+      }
+    },
+    {
+      "name": "waiting for prerequisites",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "requiredAction": {
+          "cardId": "card-3",
+          "state": "blocked",
+          "result": "Waiting for INF-1880"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "waiting",
+          "word": "Waiting on you",
+          "reason": "Waiting for prerequisites"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Waiting on you · Waiting for prerequisites"
+      }
+    },
+    {
+      "name": "a required action is ready",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "requiredAction": {
+          "cardId": "card-3",
+          "state": "ready",
+          "result": "Ready"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "waiting",
+          "word": "Waiting on you",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Waiting on you"
+      }
+    },
+    {
+      "name": "starting",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "startAttempt": {
+          "phase": "preparing",
+          "since": 1793293140000
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "starting",
+          "word": "Starting",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Starting"
+      }
+    },
+    {
+      "name": "could not start",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "on-request",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "startNotice": {
+          "reason": "No model"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "backlog",
+          "word": "Backlog",
+          "reason": "Could not start"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Backlog · Could not start"
+      }
+    },
+    {
+      "name": "queued behind other work",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "queueWait": {
+          "line": "Waiting for a crew place since 9:58 AM",
+          "since": 1793289480000
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "queued",
+          "word": "Queued",
+          "reason": "Waiting for a crew place since 9:58 AM"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Queued · Waiting for a crew place since 9:58 AM"
+      }
+    },
+    {
+      "name": "backlog, blocked",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "on-request",
+        "flags": {
+          "blocked": true,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "backlog",
+          "word": "Backlog",
+          "reason": "Blocked by another task"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Backlog · Blocked by another task"
+      }
+    },
+    {
+      "name": "queued, held",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": true,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "queued",
+          "word": "Queued",
+          "reason": "Held"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Queued · Held"
+      }
+    },
+    {
+      "name": "a program waiting on its parts",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 3,
+          "closed": 1
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "program": true
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "queued",
+          "word": "Queued",
+          "reason": "Its 3 parts do the work"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Queued · Its 3 parts do the work"
+      }
+    },
+    {
+      "name": "a program waiting on its one part",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 1,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "program": true
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "queued",
+          "word": "Queued",
+          "reason": "Its 1 part does the work"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Queued · Its 1 part does the work"
+      }
+    },
+    {
+      "name": "backlog on a computer out of reach",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "on-request",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "executionDeviceId": "dev-mini",
+        "place": {
+          "name": "Mac mini",
+          "where": "on Mac mini",
+          "reach": "out-of-reach"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "backlog",
+          "word": "Backlog",
+          "reason": "Mac mini is out of reach",
+          "outOfReach": true
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Backlog · Mac mini is out of reach"
+      }
+    },
+    {
+      "name": "backlog by itself",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "on-request",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "backlog",
+          "word": "Backlog",
+          "reason": "Starts when you press Start"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Backlog · Starts when you press Start"
+      }
+    },
+    {
+      "name": "waiting for its checks",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "checks"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "ci": "red",
+          "ciStartedAt": 1793290200000,
+          "ciFinishedAt": 1793290920000,
+          "checks": {
+            "headSha": "c0ffee1",
+            "items": [
+              {
+                "name": "check-1",
+                "state": "failure"
+              },
+              {
+                "name": "check-2",
+                "state": "success"
+              },
+              {
+                "name": "check-3",
+                "state": "success"
+              }
+            ],
+            "absenceDeclared": false
+          }
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": "Waiting for checks",
+          "wait": "checks"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "dot": "failed",
+            "words": "1 failed · 2 passed",
+            "at": null,
+            "span": {
+              "startedAt": 1793290200000,
+              "finishedAt": 1793290920000,
+              "joint": "after"
+            }
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Working · Waiting for checks",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "6m",
+        "planWords": {
+          "count": "2 of 4",
+          "skipped": 0,
+          "current": "Draw the sheet"
+        },
+        "planDots": [
+          {
+            "label": "Brief the work",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Port the facts",
+            "short": "Port",
+            "state": "done"
+          },
+          {
+            "label": "Draw the sheet",
+            "short": "Draw",
+            "state": "current"
+          },
+          {
+            "label": "Photograph it",
+            "short": "Photograph",
+            "state": "next"
+          }
+        ],
+        "checksWords": "1 failed · 2 passed after 12m",
+        "checksAgo": "38m ago"
+      }
+    },
+    {
+      "name": "background work",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "job"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": "Background work continues",
+          "wait": "job"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Working · Background work continues"
+      }
+    },
+    {
+      "name": "working on a computer connecting",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "executionDeviceId": "dev-mini",
+        "place": {
+          "name": "Mac mini",
+          "where": "on Mac mini",
+          "reach": "connecting"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": "Mac mini is connecting"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Working · Mac mini is connecting"
+      }
+    },
+    {
+      "name": "working on a computer out of reach",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "executionDeviceId": "dev-mini",
+        "place": {
+          "name": "Mac mini",
+          "where": "on Mac mini",
+          "reach": "reconnecting"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": "Mac mini is out of reach",
+          "outOfReach": true
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Working · Mac mini is out of reach"
+      }
+    },
+    {
+      "name": "interrupted",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "interrupted",
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "interrupted",
+          "word": "Interrupted",
+          "reason": "Work was interrupted"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Interrupted · Work was interrupted"
+      }
+    },
+    {
+      "name": "idle on one task",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "dependency"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [
+          "INF-1880"
+        ],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "blockedSince": {
+          "INF-1880": 1793291700000
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "idle",
+          "word": "Idle",
+          "reason": "Waiting on INF-1880",
+          "waitsOn": [
+            "INF-1880"
+          ],
+          "since": 1793291700000
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Idle · Waiting on INF-1880"
+      }
+    },
+    {
+      "name": "idle on two tasks",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "dependency"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [
+          "INF-1880",
+          "INF-1881"
+        ],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "idle",
+          "word": "Idle",
+          "reason": "Waiting on 2 tasks",
+          "waitsOn": [
+            "INF-1880",
+            "INF-1881"
+          ]
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Idle · Waiting on 2 tasks"
+      }
+    },
+    {
+      "name": "idle on a computer that takes no new work",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "inactive"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "executionDeviceId": "dev-mini",
+        "place": {
+          "name": "Mac mini",
+          "where": "on Mac mini",
+          "reach": "in-reach",
+          "noNewWork": true
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "idle",
+          "word": "Idle",
+          "reason": "No continuing work"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Idle · No continuing work"
+      }
+    },
+    {
+      "name": "idle with an older computer",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "inactive"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "executionDeviceId": "dev-mini",
+        "place": {
+          "name": "Mac mini",
+          "where": "on Mac mini",
+          "reach": "out-of-reach",
+          "noNewWork": true
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "idle",
+          "word": "Idle",
+          "reason": "Mac mini takes no new work",
+          "outOfReach": true
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Idle · Mac mini takes no new work"
+      }
+    },
+    {
+      "name": "idle with no continuing work",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "inactive"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "anthropic/claude-opus-5-5",
+        "tier": "premium",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "checks": {
+            "headSha": "c0ffee1",
+            "items": [],
+            "absenceDeclared": true
+          }
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "reasoning": {
+          "level": "xhigh",
+          "lower": "capped"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "idle",
+          "word": "Idle",
+          "reason": "No continuing work"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "model": "Claude Opus 5.5",
+        "tier": "premium",
+        "reasoning": {
+          "level": "xhigh",
+          "lower": "capped"
+        },
+        "reason": "Reasoning at the most this model offers.",
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "dot": "idle",
+            "words": "no checks",
+            "at": null,
+            "span": null
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Idle · No continuing work",
+        "reasoningWords": "Extra high",
+        "nowAge": "5m",
+        "planAge": "6m",
+        "planWords": {
+          "count": "2 of 4",
+          "skipped": 0,
+          "current": "Draw the sheet"
+        },
+        "planDots": [
+          {
+            "label": "Brief the work",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Port the facts",
+            "short": "Port",
+            "state": "done"
+          },
+          {
+            "label": "Draw the sheet",
+            "short": "Draw",
+            "state": "current"
+          },
+          {
+            "label": "Photograph it",
+            "short": "Photograph",
+            "state": "next"
+          }
+        ],
+        "checksWords": "no checks"
+      }
+    },
+    {
+      "name": "idle with no posture",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "idle",
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "idle",
+          "word": "Idle",
+          "reason": "No continuing work"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "model": null,
+        "tier": null,
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Idle · No continuing work",
+        "nowAge": "5m",
+        "planAge": "6m",
+        "planWords": {
+          "count": "2 of 4",
+          "skipped": 0,
+          "current": "Draw the sheet"
+        },
+        "planDots": [
+          {
+            "label": "Brief the work",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Port the facts",
+            "short": "Port",
+            "state": "done"
+          },
+          {
+            "label": "Draw the sheet",
+            "short": "Draw",
+            "state": "current"
+          },
+          {
+            "label": "Photograph it",
+            "short": "Photograph",
+            "state": "next"
+          }
+        ]
+      }
+    },
+    {
+      "name": "paused for access",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "paused",
+          "reason": "access"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "ci": "pending",
+          "checks": {
+            "headSha": "c0ffee1",
+            "items": [
+              {
+                "name": "check-1",
+                "state": "success"
+              }
+            ],
+            "absenceDeclared": false,
+            "problem": "the host refused the read"
+          }
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "idle",
+          "word": "Idle",
+          "reason": "Paused for access"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "problem": "the host refused the read",
+            "dot": "warn",
+            "words": "passed · cannot read all checks: the host refused the read",
+            "at": null,
+            "span": null
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Idle · Paused for access",
+        "checksWords": "passed · cannot read all checks: the host refused the read"
+      }
+    },
+    {
+      "name": "done and answered",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "done",
+        "activity": null,
+        "closedReason": "answered",
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "ci": "merged",
+          "reviewVerdict": "pass",
+          "reviewRisk": "low"
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "done",
+          "word": "Done",
+          "reason": "Answered"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": {
+          "change": null,
+          "checks": null,
+          "review": {
+            "dot": "ok",
+            "words": "passed · risk low"
+          }
+        },
+        "browser": null,
+        "label": "Done · Answered",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "6m",
+        "planWords": {
+          "count": "2 of 4",
+          "skipped": 0,
+          "current": "Draw the sheet"
+        },
+        "planDots": [
+          {
+            "label": "Brief the work",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Port the facts",
+            "short": "Port",
+            "state": "done"
+          },
+          {
+            "label": "Draw the sheet",
+            "short": "Draw",
+            "state": "current"
+          },
+          {
+            "label": "Photograph it",
+            "short": "Photograph",
+            "state": "next"
+          }
+        ]
+      }
+    },
+    {
+      "name": "done with its required action",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "done",
+        "activity": null,
+        "closedReason": "merged",
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "requiredAction": {
+          "cardId": "card-4",
+          "state": "checked",
+          "result": "Installed 1.4"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "done",
+          "word": "Done",
+          "reason": "Installed 1.4"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": null,
+        "browser": null,
+        "label": "Done · Installed 1.4"
+      }
+    },
+    {
+      "name": "dropped after failing",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "dropped",
+        "activity": null,
+        "closedReason": "failed",
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "reviewVerdict": "findings",
+          "reviewRisk": "high"
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "dropped",
+          "word": "Dropped",
+          "reason": "Failed"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": null,
+          "checks": null,
+          "review": {
+            "dot": "warn",
+            "words": "findings · risk high"
+          }
+        },
+        "browser": null,
+        "label": "Dropped · Failed"
+      }
+    },
+    {
+      "name": "a version its checks were not read for",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "d00d1e2",
+          "ci": "pending",
+          "checks": {
+            "headSha": "c0ffee1",
+            "items": [
+              {
+                "name": "check-1",
+                "state": "success"
+              }
+            ],
+            "absenceDeclared": false
+          }
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "dot": "idle",
+            "words": "not read for this version",
+            "at": null,
+            "span": null
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Working",
+        "checksWords": "not read for this version"
+      }
+    },
+    {
+      "name": "a reading still incomplete",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "ci": "pending",
+          "checks": {
+            "headSha": "c0ffee1",
+            "items": [
+              {
+                "name": "check-1",
+                "state": "success"
+              },
+              {
+                "name": "check-2",
+                "state": "neutral"
+              }
+            ],
+            "absenceDeclared": false,
+            "complete": false
+          }
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "dot": "running",
+            "words": "1 passed · 1 neutral · reading incomplete",
+            "at": null,
+            "span": null
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Working",
+        "checksWords": "1 passed · 1 neutral · reading incomplete"
+      }
+    },
+    {
+      "name": "a neutral check",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "ci": "pending",
+          "checks": {
+            "headSha": "c0ffee1",
+            "items": [
+              {
+                "name": "check-1",
+                "state": "neutral"
+              },
+              {
+                "name": "check-2",
+                "state": "success"
+              }
+            ],
+            "absenceDeclared": false
+          }
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "dot": "warn",
+            "words": "1 neutral · 1 passed",
+            "at": null,
+            "span": null
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Working",
+        "checksWords": "1 neutral · 1 passed"
+      }
+    },
+    {
+      "name": "no checks reported yet",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "ci": "pending",
+          "ciStartedAt": 1793293080000,
+          "checks": {
+            "headSha": "c0ffee1",
+            "items": [],
+            "absenceDeclared": false
+          }
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "dot": "running",
+            "words": "none reported",
+            "at": null,
+            "span": {
+              "startedAt": 1793293080000,
+              "finishedAt": null,
+              "joint": "for"
+            }
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Working",
+        "checksWords": "none reported for 2m"
+      }
+    },
+    {
+      "name": "a branch with no reading",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "local-only",
+          "changeLabel": "fm/task-1887",
+          "ci": "no-pr"
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": {
+            "noun": "Branch",
+            "label": "fm/task-1887",
+            "url": null
+          },
+          "checks": {
+            "dot": "idle",
+            "words": "not read yet",
+            "at": null,
+            "span": null
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Working",
+        "checksWords": "not read yet"
+      }
+    },
+    {
+      "name": "green with no reading",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "ci": "green",
+          "ciStartedAt": 1793282100000,
+          "ciFinishedAt": 1793293170000
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "dot": "ok",
+            "words": "passed",
+            "at": null,
+            "span": {
+              "startedAt": 1793282100000,
+              "finishedAt": 1793293170000,
+              "joint": "in"
+            }
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Working",
+        "checksWords": "passed in 3h 04m",
+        "checksAgo": "just now"
+      }
+    },
+    {
+      "name": "a run started by hand",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "local-only",
+          "ci": "no-pr",
+          "runChecks": {
+            "runId": 7,
+            "name": "verify",
+            "state": "running",
+            "startedAt": 1793289000000,
+            "at": 1793293140000
+          }
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": null,
+          "checks": {
+            "dot": "running",
+            "words": "running",
+            "at": 1793293140000,
+            "span": {
+              "startedAt": 1793289000000,
+              "finishedAt": null,
+              "joint": "for"
+            }
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Working",
+        "checksWords": "running for 1h 10m"
+      }
+    },
+    {
+      "name": "a run cancelled by hand",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "local-only",
+          "runChecks": {
+            "runId": 8,
+            "name": "verify",
+            "state": "cancelled",
+            "startedAt": 1793292660000,
+            "finishedAt": 1793292960000,
+            "at": 1793292960000
+          }
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": null,
+          "checks": {
+            "dot": "idle",
+            "words": "cancelled",
+            "at": 1793292960000,
+            "span": {
+              "startedAt": 1793292660000,
+              "finishedAt": 1793292960000,
+              "joint": "after"
+            }
+          },
+          "review": null
+        },
+        "browser": null,
+        "label": "Working",
+        "checksWords": "cancelled after 5m",
+        "checksAgo": "4m ago"
+      }
+    },
+    {
+      "name": "a review blocked",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 612,
+          "prUrl": "https://github.com/infinitary-labs/infinitary/pull/612",
+          "headSha": "c0ffee1",
+          "ci": "green",
+          "reviewVerdict": "blocked"
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": null,
+        "reason": null,
+        "delivery": {
+          "change": {
+            "noun": "Pull request",
+            "label": "#612",
+            "url": "https://github.com/infinitary-labs/infinitary/pull/612"
+          },
+          "checks": {
+            "dot": "ok",
+            "words": "passed",
+            "at": null,
+            "span": null
+          },
+          "review": {
+            "dot": "failed",
+            "words": "blocked"
+          }
+        },
+        "browser": null,
+        "label": "Working",
+        "checksWords": "passed"
+      }
+    },
+    {
+      "name": "only another task's rows",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 9,
+            "at": 1793292780000,
+            "kind": "progress",
+            "text": "Its blocker merged.",
+            "from": {
+              "id": "t-1880",
+              "key": "INF-1880"
+            }
+          }
+        ],
+        "said": null,
+        "plan": null,
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": null,
+        "plan": null,
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": null,
+        "browser": null,
+        "label": "Working",
+        "reasoningWords": "High"
+      }
+    },
+    {
+      "name": "only the start line",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793292720000,
+            "kind": "dispatched",
+            "text": "The crewmate started."
+          },
+          {
+            "id": 2,
+            "at": 1793293140000,
+            "kind": "steered",
+            "text": "You wrote to it."
+          }
+        ],
+        "said": null,
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "The crewmate started.",
+          "at": 1793292720000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": null,
+        "browser": null,
+        "label": "Working",
+        "reasoningWords": "High",
+        "nowAge": "8m",
+        "planAge": "6m",
+        "planWords": {
+          "count": "2 of 4",
+          "skipped": 0,
+          "current": "Draw the sheet"
+        },
+        "planDots": [
+          {
+            "label": "Brief the work",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Port the facts",
+            "short": "Port",
+            "state": "done"
+          },
+          {
+            "label": "Draw the sheet",
+            "short": "Draw",
+            "state": "current"
+          },
+          {
+            "label": "Photograph it",
+            "short": "Photograph",
+            "state": "next"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a long plan, clipped",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Item 1 of the long plan",
+              "short": "Item",
+              "since": 1793287800000,
+              "state": "done"
+            },
+            {
+              "label": "Item 2 of the long plan",
+              "short": "Item",
+              "since": 1793288100000,
+              "state": "done"
+            },
+            {
+              "label": "Item 3 of the long plan",
+              "short": "Item",
+              "since": 1793288400000,
+              "state": "current"
+            },
+            {
+              "label": "Item 4 of the long plan",
+              "short": "Item",
+              "since": 1793288700000,
+              "state": "next"
+            },
+            {
+              "label": "Item 5 of the long plan",
+              "short": "Item",
+              "since": 1793289000000,
+              "state": "next"
+            },
+            {
+              "label": "Item 6 of the long plan",
+              "short": "Item",
+              "since": 1793289300000,
+              "state": "next"
+            },
+            {
+              "label": "Item 7 of the long plan",
+              "short": "Item",
+              "since": 1793289600000,
+              "state": "next"
+            },
+            {
+              "label": "Item 8 of the long plan",
+              "short": "Item",
+              "since": 1793289900000,
+              "state": "next"
+            },
+            {
+              "label": "Item 9 of the long plan",
+              "short": "Item",
+              "since": 1793290200000,
+              "state": "next"
+            },
+            {
+              "label": "Item 10 of the long plan",
+              "short": "Item",
+              "since": 1793290500000,
+              "state": "next"
+            },
+            {
+              "label": "Item 11 of the long plan",
+              "short": "Item",
+              "since": 1793290800000,
+              "state": "next"
+            },
+            {
+              "label": "Item 12 of the long plan",
+              "short": "Item",
+              "since": 1793291100000,
+              "state": "next"
+            },
+            {
+              "label": "Item 13 of the long plan",
+              "short": "Item",
+              "since": 1793291400000,
+              "state": "next"
+            },
+            {
+              "label": "Item 14 of the long plan",
+              "short": "Item",
+              "since": 1793291700000,
+              "state": "next"
+            },
+            {
+              "label": "Item 15 of the long plan",
+              "short": "Item",
+              "since": 1793292000000,
+              "state": "next"
+            },
+            {
+              "label": "Item 16 of the long plan",
+              "short": "Item",
+              "since": 1793292300000,
+              "state": "next"
+            },
+            {
+              "label": "Item 17 of the long plan",
+              "short": "Item",
+              "since": 1793292600000,
+              "state": "next"
+            },
+            {
+              "label": "Item 18 of the long plan",
+              "short": "Item",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793293080000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Item 1 of the long plan",
+              "short": "Item",
+              "since": 1793287800000,
+              "state": "done"
+            },
+            {
+              "label": "Item 2 of the long plan",
+              "short": "Item",
+              "since": 1793288100000,
+              "state": "done"
+            },
+            {
+              "label": "Item 3 of the long plan",
+              "short": "Item",
+              "since": 1793288400000,
+              "state": "current"
+            },
+            {
+              "label": "Item 4 of the long plan",
+              "short": "Item",
+              "since": 1793288700000,
+              "state": "next"
+            },
+            {
+              "label": "Item 5 of the long plan",
+              "short": "Item",
+              "since": 1793289000000,
+              "state": "next"
+            },
+            {
+              "label": "Item 6 of the long plan",
+              "short": "Item",
+              "since": 1793289300000,
+              "state": "next"
+            },
+            {
+              "label": "Item 7 of the long plan",
+              "short": "Item",
+              "since": 1793289600000,
+              "state": "next"
+            },
+            {
+              "label": "Item 8 of the long plan",
+              "short": "Item",
+              "since": 1793289900000,
+              "state": "next"
+            },
+            {
+              "label": "Item 9 of the long plan",
+              "short": "Item",
+              "since": 1793290200000,
+              "state": "next"
+            },
+            {
+              "label": "Item 10 of the long plan",
+              "short": "Item",
+              "since": 1793290500000,
+              "state": "next"
+            },
+            {
+              "label": "Item 11 of the long plan",
+              "short": "Item",
+              "since": 1793290800000,
+              "state": "next"
+            },
+            {
+              "label": "Item 12 of the long plan",
+              "short": "Item",
+              "since": 1793291100000,
+              "state": "next"
+            },
+            {
+              "label": "Item 13 of the long plan",
+              "short": "Item",
+              "since": 1793291400000,
+              "state": "next"
+            },
+            {
+              "label": "Item 14 of the long plan",
+              "short": "Item",
+              "since": 1793291700000,
+              "state": "next"
+            },
+            {
+              "label": "Item 15 of the long plan",
+              "short": "Item",
+              "since": 1793292000000,
+              "state": "next"
+            },
+            {
+              "label": "Item 16 of the long plan",
+              "short": "Item",
+              "since": 1793292300000,
+              "state": "next"
+            },
+            {
+              "label": "Item 17 of the long plan",
+              "short": "Item",
+              "since": 1793292600000,
+              "state": "next"
+            },
+            {
+              "label": "Item 18 of the long plan",
+              "short": "Item",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793293080000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": null,
+        "browser": null,
+        "label": "Working",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "2m",
+        "planWords": {
+          "count": "2 of 18",
+          "skipped": 0,
+          "current": "Item 3 of the long plan"
+        },
+        "planDots": [
+          {
+            "label": "Item 1 of the long plan",
+            "short": "Item",
+            "state": "done"
+          },
+          {
+            "label": "Item 2 of the long plan",
+            "short": "Item",
+            "state": "done"
+          },
+          {
+            "label": "Item 3 of the long plan",
+            "short": "Item",
+            "state": "current"
+          },
+          {
+            "label": "Item 4 of the long plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 5 of the long plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 6 of the long plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 7 of the long plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 8 of the long plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 9 of the long plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 10 of the long plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 11 of the long plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 12 of the long plan, Item 13 of the long plan, Item 14 of the long plan, Item 15 of the long plan, Item 16 of the long plan, Item 17 of the long plan, Item 18 of the long plan",
+            "short": "7 more",
+            "state": "next",
+            "group": 7
+          }
+        ]
+      }
+    },
+    {
+      "name": "a long plan, folded and clipped",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Item 1 of the longer plan",
+              "short": "Item",
+              "since": 1793286000000,
+              "state": "done"
+            },
+            {
+              "label": "Item 2 of the longer plan",
+              "short": "Item",
+              "since": 1793286300000,
+              "state": "done"
+            },
+            {
+              "label": "Item 3 of the longer plan",
+              "short": "Item",
+              "since": 1793286600000,
+              "state": "done"
+            },
+            {
+              "label": "Item 4 of the longer plan",
+              "short": "Item",
+              "since": 1793286900000,
+              "state": "skipped"
+            },
+            {
+              "label": "Item 5 of the longer plan",
+              "short": "Item",
+              "since": 1793287200000,
+              "state": "done"
+            },
+            {
+              "label": "Item 6 of the longer plan",
+              "short": "Item",
+              "since": 1793287500000,
+              "state": "done"
+            },
+            {
+              "label": "Item 7 of the longer plan",
+              "short": "Item",
+              "since": 1793287800000,
+              "state": "done"
+            },
+            {
+              "label": "Item 8 of the longer plan",
+              "short": "Item",
+              "since": 1793288100000,
+              "state": "done"
+            },
+            {
+              "label": "Item 9 of the longer plan",
+              "short": "Item",
+              "since": 1793288400000,
+              "state": "done"
+            },
+            {
+              "label": "Item 10 of the longer plan",
+              "short": "Item",
+              "since": 1793288700000,
+              "state": "current"
+            },
+            {
+              "label": "Item 11 of the longer plan",
+              "short": "Item",
+              "since": 1793289000000,
+              "state": "next"
+            },
+            {
+              "label": "Item 12 of the longer plan",
+              "short": "Item",
+              "since": 1793289300000,
+              "state": "next"
+            },
+            {
+              "label": "Item 13 of the longer plan",
+              "short": "Item",
+              "since": 1793289600000,
+              "state": "next"
+            },
+            {
+              "label": "Item 14 of the longer plan",
+              "short": "Item",
+              "since": 1793289900000,
+              "state": "next"
+            },
+            {
+              "label": "Item 15 of the longer plan",
+              "short": "Item",
+              "since": 1793290200000,
+              "state": "next"
+            },
+            {
+              "label": "Item 16 of the longer plan",
+              "short": "Item",
+              "since": 1793290500000,
+              "state": "next"
+            },
+            {
+              "label": "Item 17 of the longer plan",
+              "short": "Item",
+              "since": 1793290800000,
+              "state": "next"
+            },
+            {
+              "label": "Item 18 of the longer plan",
+              "short": "Item",
+              "since": 1793291100000,
+              "state": "next"
+            },
+            {
+              "label": "Item 19 of the longer plan",
+              "short": "Item",
+              "since": 1793291400000,
+              "state": "next"
+            },
+            {
+              "label": "Item 20 of the longer plan",
+              "short": "Item",
+              "since": 1793291700000,
+              "state": "next"
+            },
+            {
+              "label": "Item 21 of the longer plan",
+              "short": "Item",
+              "since": 1793292000000,
+              "state": "next"
+            },
+            {
+              "label": "Item 22 of the longer plan",
+              "short": "Item",
+              "since": 1793292300000,
+              "state": "next"
+            },
+            {
+              "label": "Item 23 of the longer plan",
+              "short": "Item",
+              "since": 1793292600000,
+              "state": "next"
+            },
+            {
+              "label": "Item 24 of the longer plan",
+              "short": "Item",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793293080000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Item 1 of the longer plan",
+              "short": "Item",
+              "since": 1793286000000,
+              "state": "done"
+            },
+            {
+              "label": "Item 2 of the longer plan",
+              "short": "Item",
+              "since": 1793286300000,
+              "state": "done"
+            },
+            {
+              "label": "Item 3 of the longer plan",
+              "short": "Item",
+              "since": 1793286600000,
+              "state": "done"
+            },
+            {
+              "label": "Item 4 of the longer plan",
+              "short": "Item",
+              "since": 1793286900000,
+              "state": "skipped"
+            },
+            {
+              "label": "Item 5 of the longer plan",
+              "short": "Item",
+              "since": 1793287200000,
+              "state": "done"
+            },
+            {
+              "label": "Item 6 of the longer plan",
+              "short": "Item",
+              "since": 1793287500000,
+              "state": "done"
+            },
+            {
+              "label": "Item 7 of the longer plan",
+              "short": "Item",
+              "since": 1793287800000,
+              "state": "done"
+            },
+            {
+              "label": "Item 8 of the longer plan",
+              "short": "Item",
+              "since": 1793288100000,
+              "state": "done"
+            },
+            {
+              "label": "Item 9 of the longer plan",
+              "short": "Item",
+              "since": 1793288400000,
+              "state": "done"
+            },
+            {
+              "label": "Item 10 of the longer plan",
+              "short": "Item",
+              "since": 1793288700000,
+              "state": "current"
+            },
+            {
+              "label": "Item 11 of the longer plan",
+              "short": "Item",
+              "since": 1793289000000,
+              "state": "next"
+            },
+            {
+              "label": "Item 12 of the longer plan",
+              "short": "Item",
+              "since": 1793289300000,
+              "state": "next"
+            },
+            {
+              "label": "Item 13 of the longer plan",
+              "short": "Item",
+              "since": 1793289600000,
+              "state": "next"
+            },
+            {
+              "label": "Item 14 of the longer plan",
+              "short": "Item",
+              "since": 1793289900000,
+              "state": "next"
+            },
+            {
+              "label": "Item 15 of the longer plan",
+              "short": "Item",
+              "since": 1793290200000,
+              "state": "next"
+            },
+            {
+              "label": "Item 16 of the longer plan",
+              "short": "Item",
+              "since": 1793290500000,
+              "state": "next"
+            },
+            {
+              "label": "Item 17 of the longer plan",
+              "short": "Item",
+              "since": 1793290800000,
+              "state": "next"
+            },
+            {
+              "label": "Item 18 of the longer plan",
+              "short": "Item",
+              "since": 1793291100000,
+              "state": "next"
+            },
+            {
+              "label": "Item 19 of the longer plan",
+              "short": "Item",
+              "since": 1793291400000,
+              "state": "next"
+            },
+            {
+              "label": "Item 20 of the longer plan",
+              "short": "Item",
+              "since": 1793291700000,
+              "state": "next"
+            },
+            {
+              "label": "Item 21 of the longer plan",
+              "short": "Item",
+              "since": 1793292000000,
+              "state": "next"
+            },
+            {
+              "label": "Item 22 of the longer plan",
+              "short": "Item",
+              "since": 1793292300000,
+              "state": "next"
+            },
+            {
+              "label": "Item 23 of the longer plan",
+              "short": "Item",
+              "since": 1793292600000,
+              "state": "next"
+            },
+            {
+              "label": "Item 24 of the longer plan",
+              "short": "Item",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793293080000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": null,
+        "browser": null,
+        "label": "Working",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "2m",
+        "planWords": {
+          "count": "8 of 23",
+          "skipped": 1,
+          "current": "Item 10 of the longer plan"
+        },
+        "planDots": [
+          {
+            "label": "Item 1 of the longer plan, Item 2 of the longer plan, Item 3 of the longer plan, Item 5 of the longer plan, Item 6 of the longer plan, Item 7 of the longer plan, Item 8 of the longer plan",
+            "short": "7 done",
+            "state": "done",
+            "group": 7
+          },
+          {
+            "label": "Item 4 of the longer plan",
+            "short": "Item",
+            "state": "skipped"
+          },
+          {
+            "label": "Item 9 of the longer plan",
+            "short": "Item",
+            "state": "done"
+          },
+          {
+            "label": "Item 10 of the longer plan",
+            "short": "Item",
+            "state": "current"
+          },
+          {
+            "label": "Item 11 of the longer plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 12 of the longer plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 13 of the longer plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 14 of the longer plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 15 of the longer plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 16 of the longer plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 17 of the longer plan",
+            "short": "Item",
+            "state": "next"
+          },
+          {
+            "label": "Item 18 of the longer plan, Item 19 of the longer plan, Item 20 of the longer plan, Item 21 of the longer plan, Item 22 of the longer plan, Item 23 of the longer plan, Item 24 of the longer plan",
+            "short": "7 more",
+            "state": "next",
+            "group": 7
+          }
+        ]
+      }
+    },
+    {
+      "name": "a plan folded",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Step 1",
+              "short": "Step",
+              "since": 1793290200000,
+              "state": "done"
+            },
+            {
+              "label": "Step 2",
+              "short": "Step",
+              "since": 1793290500000,
+              "state": "done"
+            },
+            {
+              "label": "Step 3",
+              "short": "Step",
+              "since": 1793290800000,
+              "state": "done"
+            },
+            {
+              "label": "Step 4",
+              "short": "Step",
+              "since": 1793291100000,
+              "state": "done"
+            },
+            {
+              "label": "Step 5",
+              "short": "Step",
+              "since": 1793291400000,
+              "state": "done"
+            },
+            {
+              "label": "Step 6",
+              "short": "Step",
+              "since": 1793291700000,
+              "state": "done"
+            },
+            {
+              "label": "Step 7",
+              "short": "Step",
+              "since": 1793292000000,
+              "state": "current"
+            },
+            {
+              "label": "Step 8",
+              "short": "Step",
+              "since": 1793292300000,
+              "state": "next"
+            },
+            {
+              "label": "Step 9",
+              "short": "Step",
+              "since": 1793292600000,
+              "state": "next"
+            },
+            {
+              "label": "Step 10",
+              "short": "Step",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793289540000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Step 1",
+              "short": "Step",
+              "since": 1793290200000,
+              "state": "done"
+            },
+            {
+              "label": "Step 2",
+              "short": "Step",
+              "since": 1793290500000,
+              "state": "done"
+            },
+            {
+              "label": "Step 3",
+              "short": "Step",
+              "since": 1793290800000,
+              "state": "done"
+            },
+            {
+              "label": "Step 4",
+              "short": "Step",
+              "since": 1793291100000,
+              "state": "done"
+            },
+            {
+              "label": "Step 5",
+              "short": "Step",
+              "since": 1793291400000,
+              "state": "done"
+            },
+            {
+              "label": "Step 6",
+              "short": "Step",
+              "since": 1793291700000,
+              "state": "done"
+            },
+            {
+              "label": "Step 7",
+              "short": "Step",
+              "since": 1793292000000,
+              "state": "current"
+            },
+            {
+              "label": "Step 8",
+              "short": "Step",
+              "since": 1793292300000,
+              "state": "next"
+            },
+            {
+              "label": "Step 9",
+              "short": "Step",
+              "since": 1793292600000,
+              "state": "next"
+            },
+            {
+              "label": "Step 10",
+              "short": "Step",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793289540000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": null,
+        "browser": null,
+        "label": "Working",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "1h",
+        "planWords": {
+          "count": "6 of 10",
+          "skipped": 0,
+          "current": "Step 7"
+        },
+        "planDots": [
+          {
+            "label": "Step 1, Step 2, Step 3, Step 4, Step 5",
+            "short": "5 done",
+            "state": "done",
+            "group": 5
+          },
+          {
+            "label": "Step 6",
+            "short": "Step",
+            "state": "done"
+          },
+          {
+            "label": "Step 7",
+            "short": "Step",
+            "state": "current"
+          },
+          {
+            "label": "Step 8",
+            "short": "Step",
+            "state": "next"
+          },
+          {
+            "label": "Step 9",
+            "short": "Step",
+            "state": "next"
+          },
+          {
+            "label": "Step 10",
+            "short": "Step",
+            "state": "next"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a plan all done",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief",
+              "short": "Brief",
+              "since": 1793292600000,
+              "state": "done"
+            },
+            {
+              "label": "Build",
+              "short": "Build",
+              "since": 1793292900000,
+              "state": "done"
+            }
+          ],
+          "at": 1793199600000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief",
+              "short": "Brief",
+              "since": 1793292600000,
+              "state": "done"
+            },
+            {
+              "label": "Build",
+              "short": "Build",
+              "since": 1793292900000,
+              "state": "done"
+            }
+          ],
+          "at": 1793199600000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": null,
+        "browser": null,
+        "label": "Working",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "1d",
+        "planWords": {
+          "count": "2 of 2",
+          "skipped": 0,
+          "current": "All done"
+        },
+        "planDots": [
+          {
+            "label": "Brief",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Build",
+            "short": "Build",
+            "state": "done"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a plan between items",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief",
+              "short": "Brief",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Build",
+              "short": "Build",
+              "since": 1793292600000,
+              "state": "next"
+            },
+            {
+              "label": "Ship",
+              "short": "Ship",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793293200000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": ""
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief",
+              "short": "Brief",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Build",
+              "short": "Build",
+              "since": 1793292600000,
+              "state": "next"
+            },
+            {
+              "label": "Ship",
+              "short": "Ship",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793293200000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": null,
+        "browser": null,
+        "label": "Working",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "now",
+        "planWords": {
+          "count": "1 of 3",
+          "skipped": 0,
+          "current": "Between items"
+        },
+        "planDots": [
+          {
+            "label": "Brief",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Build",
+            "short": "Build",
+            "state": "next"
+          },
+          {
+            "label": "Ship",
+            "short": "Ship",
+            "state": "next"
+          }
+        ]
+      }
+    }
+  ]
+}

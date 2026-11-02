@@ -1,0 +1,6 @@
+{
+  "description": "Real createKeyIdentity/buildPairingLink output for an unpaired disposable test Mac. No private key or live invitation.",
+  "link": "infinitary://join?as=mac&at=test-mac.local%3A47623&key=NVs213TzQW_dKdOOVW039h9Nu4bsdjR7LHCWjwZ3HrY&code=s_TBKlR3oVPw8KwRbm2AJVlPhSiVq1dnoY1C9hv1x7k&also=192.168.1.20%3A47623%2C%5Bfd00%3A%3A20%5D%3A47623",
+  "pin": "NVs213TzQW_dKdOOVW039h9Nu4bsdjR7LHCWjwZ3HrY",
+  "certificate": "MIIBOjCB4KADAgECAhBnAxCw/3nm2tf+qDwF1zmJMAoGCCqGSM49BAMCMB4xHDAaBgNVBAMME0luZmluaXRhcnkgdGVzdCBNYWMwIBcNMjAwMTAxMDAwMDAwWhgPMjEyMDAxMDEwMDAwMDBaMB4xHDAaBgNVBAMME0luZmluaXRhcnkgdGVzdCBNYWMwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASNMqG/0PjtDeJ7h5WokbwEf/gBNmaKKRTOIkJxyQCmi26rJHkB+uV7fVyb8XknFq8QgKL1RFWaVRWkcknOErIEMAoGCCqGSM49BAMCA0kAMEYCIQCZl7qYLmabquv930Ag4T4BgBmUoVzxRz556XfNHOANWgIhAPMLdOTzOU6P3a5z3gpFWjQgwG+QSZlAmz/ykHoqR5Of"
+}
