@@ -10,3 +10,4 @@ Based on Infinitary 0.6.2-alpha.47 (commit c1e941529438207bf1cca34c437df3c2e9d80
 - Appearance: a Dark/Light choice in Settings, kept on the phone and starting on Dark, in place of "Follows this device's setting": new `InfinitaryApp/PhoneAppearance.swift`, edits to `InfinitaryApp/InfinitaryApp.swift` and `InfinitaryApp/PhoneSettingsSheet.swift`.
 - Tasks: a Board/List switch (opens on Board, remembers the last view) and project pills that filter both views; the board is read only, with the desktop's columns, and works in landscape: new `InfinitaryApp/PhoneTaskBoard.swift`, edits to `InfinitaryApp/PhoneTasks.swift`.
 - Added `InfinitaryTests/PhoneAppearanceTests.swift` (the appearance choice's default and persistence).
+- Cards: swiping the stage left or right turns to the next or previous card, as the pager arrows do: new `InfinitaryApp/PhoneSwipePaging.swift`, one line added in `InfinitaryApp/PhoneCards.swift`.
