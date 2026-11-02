@@ -1,0 +1,19 @@
+Infinitary
+Copyright 2026 Kun Chen
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product bundles Git, the version control system (https://git-scm.com),
+as built for macOS by dugite-native (https://github.com/desktop/dugite-native):
+git 2.53.0 from the dugite-native v2.53.0-4 release, for arm64 and x86_64,
+under Contents/Resources/git. Git is licensed under the GNU General Public
+License, version 2 (https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
+Its complete corresponding source is at https://github.com/git/git/tree/v2.53.0,
+and the scripts that built these binaries are at
+https://github.com/desktop/dugite-native/tree/v2.53.0-4. Git is a separate
+program the app runs; it is not linked into Infinitary. The binaries are
+shipped as that release built them, less the Git Credential Manager and
+git-lfs programs it also carries.
+
+This product includes dugite (https://github.com/desktop/dugite),
+Copyright (c) 2016 GitHub and contributors, licensed under the MIT License.
