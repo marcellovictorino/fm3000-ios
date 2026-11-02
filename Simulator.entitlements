@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<!-- Simulator-only metadata for unsigned tests; no identity, provisioning or signing key. -->
+<key>application-identifier</key><string>TEAMID.com.marcellovictorino.infinitary</string>
+<key>keychain-access-groups</key><array><string>TEAMID.com.marcellovictorino.infinitary</string></array>
+</dict></plist>

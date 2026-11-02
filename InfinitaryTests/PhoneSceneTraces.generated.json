@@ -1,0 +1,992 @@
+[
+  {
+    "emote": "nod",
+    "progress": 0,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.25
+      },
+      "pointer": true,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "nod",
+    "progress": 0.05,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.25
+      },
+      "pointer": true,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "nod",
+    "progress": 0.15,
+    "frame": {
+      "pitch": -0.4330127018922193,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0.03897114317029973,
+      "sx": 1.0173205080756889,
+      "sy": 0.9653589838486225,
+      "gaze": {
+        "x": 0,
+        "y": 0.7263139720814413
+      },
+      "pointer": true,
+      "lid": 0,
+      "happy": 0.6249999999999999,
+      "suppressBlink": false,
+      "glow": 0.6928203230275509
+    }
+  },
+  {
+    "emote": "nod",
+    "progress": 0.25,
+    "frame": {
+      "pitch": -0.4330127018922193,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0.03897114317029973,
+      "sx": 1.0173205080756889,
+      "sy": 0.9653589838486225,
+      "gaze": {
+        "x": 0,
+        "y": 0.7263139720814413
+      },
+      "pointer": true,
+      "lid": 0,
+      "happy": 1,
+      "suppressBlink": false,
+      "glow": 0.6928203230275509
+    }
+  },
+  {
+    "emote": "nod",
+    "progress": 0.4,
+    "frame": {
+      "pitch": -0.15000000000000013,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0.013500000000000012,
+      "sx": 1.006,
+      "sy": 0.988,
+      "gaze": {
+        "x": 0,
+        "y": 0.41500000000000015
+      },
+      "pointer": true,
+      "lid": 0,
+      "happy": 1,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "nod",
+    "progress": 0.55,
+    "frame": {
+      "pitch": -0.18262842870261603,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0.016436558583235443,
+      "sx": 1.0073051371481045,
+      "sy": 0.9853897257037907,
+      "gaze": {
+        "x": 0,
+        "y": 0.45089127157287767
+      },
+      "pointer": true,
+      "lid": 0,
+      "happy": 1,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "nod",
+    "progress": 0.7,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.25
+      },
+      "pointer": true,
+      "lid": 0,
+      "happy": 0.8000000000000009,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "nod",
+    "progress": 0.85,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.25
+      },
+      "pointer": true,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "nod",
+    "progress": 1,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.25
+      },
+      "pointer": true,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "salute",
+    "progress": 0,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.1
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "salute",
+    "progress": 0.05,
+    "frame": {
+      "pitch": 0,
+      "spin": -0.11361294934623117,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0.00681677696077387,
+      "sx": 1.025562913602902,
+      "sy": 0.9659161151961306,
+      "gaze": {
+        "x": 0,
+        "y": 0.1
+      },
+      "pointer": false,
+      "lid": 0.1875,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "salute",
+    "progress": 0.15,
+    "frame": {
+      "pitch": 0,
+      "spin": -0.19418836348521043,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0.011651301809112625,
+      "sx": 1.0436923817841723,
+      "sy": 0.9417434909544369,
+      "gaze": {
+        "x": 0,
+        "y": 0.1
+      },
+      "pointer": false,
+      "lid": 0.5,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "salute",
+    "progress": 0.25,
+    "frame": {
+      "pitch": 0.0676189218785119,
+      "spin": 1.1570010565176239,
+      "rot": 0,
+      "tx": 0,
+      "ty": -0.0112321076891571,
+      "sx": 0.9969717853766756,
+      "sy": 1.0138987122717156,
+      "gaze": {
+        "x": 0,
+        "y": -0.026785478522209805
+      },
+      "pointer": false,
+      "lid": 0.5,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0.4226182617406994
+    }
+  },
+  {
+    "emote": "salute",
+    "progress": 0.4,
+    "frame": {
+      "pitch": 0.15756924048195328,
+      "spin": 1.6326100711363625,
+      "rot": 0,
+      "tx": 0,
+      "ty": -0.02954423259036624,
+      "sx": 0.9803038449397559,
+      "sy": 1.0492403876506105,
+      "gaze": {
+        "x": 0,
+        "y": -0.19544232590366237
+      },
+      "pointer": false,
+      "lid": 0.2999999999999998,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0.984807753012208
+    }
+  },
+  {
+    "emote": "salute",
+    "progress": 0.55,
+    "frame": {
+      "pitch": 0.01394491883962531,
+      "spin": 1.5707963267948966,
+      "rot": 0,
+      "tx": 0,
+      "ty": -0.0026146722824297456,
+      "sx": 0.9982568851450468,
+      "sy": 1.004357787137383,
+      "gaze": {
+        "x": 0,
+        "y": 0.07385327717570254
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0.0871557427476582
+    }
+  },
+  {
+    "emote": "salute",
+    "progress": 0.7,
+    "frame": {
+      "pitch": 0,
+      "spin": 1.5707963267948966,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.1
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "salute",
+    "progress": 0.85,
+    "frame": {
+      "pitch": 0,
+      "spin": 1.5707963267948966,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.1
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "salute",
+    "progress": 1,
+    "frame": {
+      "pitch": 0,
+      "spin": 1.5707963267948966,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.1
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tick",
+    "progress": 0,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.15
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tick",
+    "progress": 0.05,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.15
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tick",
+    "progress": 0.15,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0.029999999999999992,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0.698328324567994,
+        "y": 0.5529644662391274
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tick",
+    "progress": 0.25,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0.06,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0.8621643119574491,
+        "y": 0.6814892510949822
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tick",
+    "progress": 0.4,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0.06,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 1,
+        "y": 0.4255796130714389
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tick",
+    "progress": 0.55,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0.06,
+      "tx": 0,
+      "ty": 0.012727922061357849,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0.9951590012753203,
+        "y": 0.6118116106552854
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 1,
+      "suppressBlink": false,
+      "glow": 0.7281152949374523
+    }
+  },
+  {
+    "emote": "tick",
+    "progress": 0.7,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0.03600000000000001,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.15
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 1,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tick",
+    "progress": 0.85,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.15
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0.8999999999999999,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tick",
+    "progress": 1,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.15
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tuck",
+    "progress": 0,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.1
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tuck",
+    "progress": 0.05,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0.49299999999999994,
+        "y": -1
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tuck",
+    "progress": 0.15,
+    "frame": {
+      "pitch": 0.1157142857142857,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0.49299999999999994,
+        "y": -1
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tuck",
+    "progress": 0.25,
+    "frame": {
+      "pitch": 0.18,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0.49299999999999994,
+        "y": -1
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tuck",
+    "progress": 0.4,
+    "frame": {
+      "pitch": 0.13999999999999996,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0.5700423680000001,
+        "y": -1
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tuck",
+    "progress": 0.55,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 0.9859133721579285,
+      "sy": 0.9859133721579285,
+      "gaze": {
+        "x": 0.01348512143749996,
+        "y": -0.04818284762499999
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0.28173255684142995
+    }
+  },
+  {
+    "emote": "tuck",
+    "progress": 0.7,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 0.9672569633027357,
+      "sy": 0.9672569633027357,
+      "gaze": {
+        "x": 0,
+        "y": 0.1
+      },
+      "pointer": false,
+      "lid": 0.9350162426854147,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0.6548607339452859
+    }
+  },
+  {
+    "emote": "tuck",
+    "progress": 0.85,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.1
+      },
+      "pointer": false,
+      "lid": 0.1205366802553235,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "tuck",
+    "progress": 1,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": 0,
+        "y": 0.1
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": true,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "aww",
+    "progress": 0,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": -0.55,
+        "y": 0.55
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "aww",
+    "progress": 0.05,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": -0.55,
+        "y": 0.55
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  },
+  {
+    "emote": "aww",
+    "progress": 0.15,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": -0.04329280673423945,
+      "tx": 0,
+      "ty": 0.008,
+      "sx": 0.97,
+      "sy": 0.97,
+      "gaze": {
+        "x": -0.55,
+        "y": 0.55
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0.8999999999999999,
+      "suppressBlink": false,
+      "glow": 0.39999999999999997
+    }
+  },
+  {
+    "emote": "aww",
+    "progress": 0.25,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": -0.03536483584890722,
+      "tx": 0,
+      "ty": 0.012,
+      "sx": 0.955,
+      "sy": 0.955,
+      "gaze": {
+        "x": -0.55,
+        "y": 0.55
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 1,
+      "suppressBlink": false,
+      "glow": 0.6
+    }
+  },
+  {
+    "emote": "aww",
+    "progress": 0.4,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": -0.08838111204864538,
+      "tx": 0,
+      "ty": 0.012,
+      "sx": 0.955,
+      "sy": 0.955,
+      "gaze": {
+        "x": -0.55,
+        "y": 0.55
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 1,
+      "suppressBlink": false,
+      "glow": 0.6
+    }
+  },
+  {
+    "emote": "aww",
+    "progress": 0.55,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": -0.09003512439581068,
+      "tx": 0,
+      "ty": 0.012,
+      "sx": 0.955,
+      "sy": 0.955,
+      "gaze": {
+        "x": -0.55,
+        "y": 0.55
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 1,
+      "suppressBlink": false,
+      "glow": 0.6
+    }
+  },
+  {
+    "emote": "aww",
+    "progress": 0.7,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": -0.03570507316655136,
+      "tx": 0,
+      "ty": 0.012,
+      "sx": 0.955,
+      "sy": 0.955,
+      "gaze": {
+        "x": -0.55,
+        "y": 0.55
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 1,
+      "suppressBlink": false,
+      "glow": 0.6
+    }
+  },
+  {
+    "emote": "aww",
+    "progress": 0.85,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": -0.05280717783897615,
+      "tx": 0,
+      "ty": 0.008666666666666671,
+      "sx": 0.9675,
+      "sy": 0.9675,
+      "gaze": {
+        "x": -0.55,
+        "y": 0.55
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0.9166666666666666,
+      "suppressBlink": false,
+      "glow": 0.4333333333333335
+    }
+  },
+  {
+    "emote": "aww",
+    "progress": 1,
+    "frame": {
+      "pitch": 0,
+      "spin": 0,
+      "rot": 0,
+      "tx": 0,
+      "ty": 0,
+      "sx": 1,
+      "sy": 1,
+      "gaze": {
+        "x": -0.55,
+        "y": 0.55
+      },
+      "pointer": false,
+      "lid": 0,
+      "happy": 0,
+      "suppressBlink": false,
+      "glow": 0
+    }
+  }
+]

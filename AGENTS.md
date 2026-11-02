@@ -1,38 +1,23 @@
 # AGENTS.md
 
-iPhone client for Infinitary (a paired view of the user's Mac). `README.md` covers install, pairing and what was verified; this file covers how to change the code.
+iPhone app for Infinitary: the official app, lightly customised. `README.md` covers building and syncing.
 
-## Gate
+## Branches
 
-`./scripts/test.sh` is the gate: fake-Mac contract tests, `fm-checks`, then an end-to-end run. Keep it green; it needs no phone and no real Mac.
+- `upstream`: pristine copy of the installed app's `ios/Infinitary`, `LICENSE`, `NOTICE` and `docs/ios.md`, one commit per Infinitary version, made only by `scripts/sync-upstream.sh`. Never edit it by hand.
+- `main`: `upstream` plus my changes (listed in `CHANGES.md`). Bring a version in with `git merge upstream` (merge commit, never squash or rebase). Resolve conflicts in favour of upstream unless the change is listed in `CHANGES.md`.
+- `archive/fm3000`, tag `fm3000-final`: the earlier hand-written client. Leave alone.
 
-- Add a check to `Sources/fm-checks/main.swift` (pure logic) or a step to `Sources/fm-probe/main.swift` (talks to the fake Mac); there is no XCTest.
-- Show a UI change in the simulator before committing: build with `xcodebuild … -destination "platform=iOS Simulator,id=<udid>"` (see `scripts/run-simulator.sh`), then `xcrun simctl io <udid> screenshot <file>`.
+## Rules
 
-## Layers
+- Every file I change from upstream is added to `CHANGES.md` (Apache 2.0 requires marking changes). Keep `LICENSE` and `NOTICE`.
+- Never commit an Apple team id or a Mac's address. Pairing supplies the address.
+- Upstream docs are in `docs/ios.md`; read them before changing behaviour. The wire contract is the Mac's `docs/contract.json`.
+- Ask the captain before any Apple sign-in, upload, archive or release.
+- Commit atomically as `type(scope): summary`.
 
-`FM3000Core` (wire, models, TLS, pairing) → `FM3000Model` (`AppModel`, every request) → `FM3000UI` (SwiftUI). `FM3000CardWeb` (WebKit only) sets up the card body's web view and reports its content height, so a check can load a real page. `App/` and `project.yml` are a thin shell; `FM3000.xcodeproj` is generated and gitignored.
+## Checks
 
-## Contract
-
-- The Mac's `docs/contract.json` (inside `/Applications/Infinitary.app/Contents/Resources/self-source/docs`) is the source of truth; `fake-mac/fixtures/contract.json` is the committed copy the gate reads. Refresh it from the app when the contract changes, or run with `FM3000_CONTRACT=<path>` for channels and shapes. Read it before adding a request; never guess a field.
-- `fake-mac/` validates every request and answer against that file. Teach it the new channel in the same commit as the client code.
-- `Wire.protocolVersion` must match the Mac's major; the Mac drops a stale major to read-only.
-- `/pair` needs `system: "ios"`.
-- A feature the contract cannot express (voice notes, card pictures) is listed as a gap, never faked.
-
-## Card bodies
-
-Card bodies are HTML. `CardBody` draws them in a script-free web view with `CardStyle.css`, generated from the desktop's token and frame stylesheets (dark only). Regenerate it from `src/renderer/src/design/tokens/*.css` and `plugins/frames/frameStylesheet.ts` when the desktop look changes. `HTMLText.plain` stays for one-line previews.
-
-## Simulator launch flags (Debug only)
-
-`-pairLink <link>`, `-startTab <n>`, `-openDetails` (opens a card body's expandable sections), `-askClose` (shows the Close question), `-openCard`, `-openThread`, `-openTask`, `-layout board`. Reset a stale pairing with `xcrun simctl keychain <udid> reset`.
-
-## Hard limits
-
-- Run tests and probes under a scratch `HOME`; the real keychains stay untouched.
-- Never build a Mac's address, tailnet name or feed URL into the app or its build settings: the address comes from pairing or is typed in the app. Tests use example values (`100.64.0.9`, `my-mac.example-tailnet.ts.net`).
-- Ask the captain before any Apple sign-in, upload, archive or release; the repo is public at `origin` (github.com/marcellovictorino/fm3000-ios), and pushing to `main` is standing direction. Leave `origin/design/refresh` alone.
-- Commit atomically, one concern per commit, as `type(scope): summary`.
-- `xcodegen` is not installed on this Mac, so `generate-project.sh`, `run-simulator.sh` and `install-device.sh` cannot run until `brew install xcodegen`. The generated `FM3000.xcodeproj` is gitignored, so a fresh clone has to run `generate-project.sh` before building the app.
+- `swift test` in `InfinitaryKit` (23 tests, no phone needed).
+- `xcodebuild build -project Infinitary.xcodeproj -scheme Infinitary -destination "generic/platform=iOS Simulator" CODE_SIGNING_ALLOWED=NO`
+- Upstream's own test targets: `InfinitaryTests`, `InfinitaryUITests` (need an iOS simulator runtime).
