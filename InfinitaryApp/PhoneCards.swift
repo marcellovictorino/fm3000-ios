@@ -41,6 +41,7 @@ struct PhoneCards: View {
         }
         .padding(.horizontal, PhoneTheme.space4).frame(maxWidth: card == nil || maximized ? .infinity : PhoneColumn.width).frame(maxWidth: .infinity)
         .background(PhoneTheme.background)
+        .phoneSwipePaging(previous: canPagePrevious ? { page(-1) } : nil, next: canPageNext ? { page(1) } : nil)
         // INF-589 item 12: a soft tap once the computer accepts an answer or a reply; never on a page turn.
         .sensoryFeedback(.phone, trigger: sent)
         .onChange(of: card.map { $0.isPast ? PhoneMessageContext.Card.past($0.id) : .current($0.id) }, initial: true) { _, shown in
