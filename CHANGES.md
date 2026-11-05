@@ -22,4 +22,6 @@ Each line says what changed, then **Job:** the job to be done, for feedback to t
   **Job:** get through a stack of cards quickly with one hand, without reaching for the small arrows, and see the card move as I push it.
 - Cards: while typing a card's reply, a swipe down on the card, a tap on its head or body, or Done above the keyboard closes the keyboard and keeps the draft; before, with the keyboard up the body had no room to scroll, so nothing closed it: edits to `InfinitaryApp/PhoneCards.swift`.
   **Job:** put the keyboard away mid-reply to read the card again, without losing what I typed.
+- Cards: tapping a diagram (an inline SVG drawing) opens it in the card picture viewer, as tapping a picture already did; the viewer now pinches from 1x to 8x, pans when zoomed, and a double tap zooms in at the tap or back out. Upstream has the same gap: its card bridge opens only `<img>` pictures. New `InfinitaryApp/CardDiagramZoom.swift` (a script in its own content world inside the card body's frame, answering real taps only), edits to `InfinitaryApp/CardWebView.swift` and `InfinitaryApp/CardMediaView.swift`.
+  **Job:** read the small print of a diagram or picture on a card by enlarging it, on a phone screen too small to show it whole.
 - Added `InfinitaryTests/PhoneAppearanceTests.swift` (the appearance choice's default and persistence).

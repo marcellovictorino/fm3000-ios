@@ -43,6 +43,10 @@ struct CardMediaView: View {
                         Button("Retry") { Task { await loadRecording() } }
                     } else { ProgressView("Loading recording") }
                     Text(presentation["caption"].text ?? "").font(PhoneFont.caption)
+                } else if presentation["type"].text == "diagram", let svg = presentation["svg"].text {
+                    // Fork: a tapped diagram, zoomable like a picture.
+                    PassiveCardMedia(source: "", session: session, diagram: (svg, presentation["fonts"].text ?? ""))
+                    Text(presentation["alt"].text ?? "").font(PhoneFont.caption)
                 } else if pictures.indices.contains(index), let source = pictures[index]["src"].text {
                     PassiveCardMedia(source: source, session: session).id(index)
                     Text(pictures[index]["alt"].text ?? "").font(PhoneFont.caption)
@@ -55,7 +59,7 @@ struct CardMediaView: View {
                     }
                 }
             }.background(PhoneTheme.background)
-                .phoneTitle(presentation["type"].text == "demo" ? "Card recording" : "Card picture")
+                .phoneTitle(presentation["type"].text == "demo" ? "Card recording" : presentation["type"].text == "diagram" ? "Card diagram" : "Card picture")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }.onAppear { index = Int(presentation["index"].numeric ?? 0); playGif = presentation["play"].flag }
             .task { if presentation["type"].text == "demo" { await loadRecording() } }
@@ -75,9 +79,12 @@ struct CardMediaView: View {
 }
 
 /// No script, native handler, filesystem URL, external page or shared website data in a picture viewer.
+/// Fork: it pinches from 1x to 8x, pans when zoomed, and a double tap zooms in at the tap or back out.
 private struct PassiveCardMedia: UIViewRepresentable {
     let source: String
     let session: ReadOnlySession
+    /// A diagram's drawing and the card's font faces, shown in place of the picture at `source`.
+    var diagram: (svg: String, fonts: String)?
     func makeCoordinator() -> Coordinator { Coordinator(session: session) }
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -90,25 +97,51 @@ private struct PassiveCardMedia: UIViewRepresentable {
         view.allowsLinkPreview = false
         view.navigationDelegate = context.coordinator
         view.isOpaque = false; view.backgroundColor = .clear; view.accessibilityIdentifier = "card-picture"
+        view.scrollView.contentInsetAdjustmentBehavior = .never
+        let doubleTap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.zoom(_:)))
+        doubleTap.numberOfTapsRequired = 2
+        doubleTap.delegate = context.coordinator
+        view.addGestureRecognizer(doubleTap)
         return view
     }
     func updateUIView(_ view: WKWebView, context: Context) {
-        guard context.coordinator.source != source else { return }
-        context.coordinator.source = source
+        let key = diagram?.svg ?? source
+        guard context.coordinator.source != key else { return }
+        context.coordinator.source = key
         let escaped = source.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "\"", with: "&quot;").replacingOccurrences(of: "<", with: "&lt;")
-        let element = "<img alt=\"Card picture\" src=\"\(escaped)\">"
+        // A diagram's copy is drawn as it is; scripts are off and the policy below loads nothing but card fonts and pictures.
+        let element = diagram.map { "<div class=\"diagram\">\($0.svg)</div>" } ?? "<img alt=\"Card picture\" src=\"\(escaped)\">"
+        let fonts = (diagram?.fonts ?? "").replacingOccurrences(of: "</", with: "<\\/")
         view.loadHTMLString("""
-        <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: app-frame://images app-frame://media; media-src 'none'; style-src 'unsafe-inline'; base-uri 'none'">
-        <style>html,body{margin:0;height:100%;background:transparent}body{display:flex;align-items:center;justify-content:center}img,video{max-width:100%;max-height:100%;object-fit:contain}</style>
+        <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=8">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: app-frame://images app-frame://media; font-src app-frame: data:; media-src 'none'; style-src 'unsafe-inline'; base-uri 'none'">
+        <style>\(fonts)
+        html,body{margin:0;height:100%;background:transparent}body{display:flex;align-items:center;justify-content:center}img,video{max-width:100%;max-height:100%;object-fit:contain}.diagram{width:100%;height:100%}</style>
         </head><body>\(element)</body></html>
         """, baseURL: nil)
     }
     static func dismantleUIView(_ view: WKWebView, coordinator: Coordinator) { view.stopLoading(); coordinator.assets.cancel() }
-    @MainActor final class Coordinator: NSObject, WKNavigationDelegate {
+    @MainActor final class Coordinator: NSObject, WKNavigationDelegate, UIGestureRecognizerDelegate {
         let assets: CardAssets
         var source: String?
         init(session: ReadOnlySession) { assets = CardAssets(session: session) }
+        @objc func zoom(_ tap: UITapGestureRecognizer) {
+            guard let scroller = (tap.view as? WKWebView)?.scrollView else { return }
+            if scroller.zoomScale > scroller.minimumZoomScale + 0.01 { return scroller.setZoomScale(scroller.minimumZoomScale, animated: true) }
+            // The scroller's own points are the page's, times its zoom.
+            let at = tap.location(in: scroller), point = CGPoint(x: at.x / scroller.zoomScale, y: at.y / scroller.zoomScale)
+            let scale = min(3, scroller.maximumZoomScale)
+            let size = CGSize(width: scroller.bounds.width / scale, height: scroller.bounds.height / scale)
+            scroller.zoom(to: CGRect(x: point.x - size.width / 2, y: point.y - size.height / 2, width: size.width, height: size.height), animated: true)
+        }
+        // WebKit's own double tap, which zooms to fit what was tapped, waits for this one; its other touches keep working.
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool { Self.isDoubleTap(other) }
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { !Self.isDoubleTap(other) }
+        private static func isDoubleTap(_ recognizer: UIGestureRecognizer) -> Bool {
+            (recognizer as? UITapGestureRecognizer)?.numberOfTapsRequired == 2
+        }
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                      decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
             decisionHandler(navigationAction.request.url?.absoluteString == "about:blank" && navigationAction.navigationType == .other ? .allow : .cancel)

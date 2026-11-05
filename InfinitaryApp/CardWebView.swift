@@ -19,6 +19,7 @@ import SwiftUI
     private let session: ReadOnlySession
     private var view: WKWebView?
     private var assets: CardAssets?
+    private let diagrams = CardDiagramReceiver()
     private var watchdog: Task<Void, Never>?
     private var collection: (id: UUID, continuation: CheckedContinuation<PhoneJSON, Error>)?
     private var collectionTimeout: Task<Void, Never>?
@@ -71,6 +72,14 @@ import SwiftUI
         self.assets = assets
         configuration.setURLSchemeHandler(assets, forURLScheme: "app-frame")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "cardHost")
+        // Fork: a tapped diagram opens in the picture viewer (CardDiagramZoom.swift).
+        if part == .body {
+            diagrams.open = { [weak self] page, presentation in
+                guard let self, page === self.view, self.revealed else { return }
+                self.presentation = presentation
+            }
+            CardDiagramZoom.install(in: configuration.userContentController, handler: diagrams)
+        }
         let view = CardBodyView(frame: .zero, configuration: configuration)
         view.onLayout = { [weak self] in self?.revealIfShown() }
         view.allowsLinkPreview = false
@@ -121,6 +130,8 @@ import SwiftUI
         if let id = collection?.id { finishCollection(id, .failure(PhoneRequestError("This card did not answer. Your choice was not sent."))) }
         onReading = nil; onDrawn = nil; onLink = nil; onDraft = nil; onTask = nil
         view?.configuration.userContentController.removeScriptMessageHandler(forName: "cardHost", contentWorld: .page)
+        if part == .body, let controller = view?.configuration.userContentController { CardDiagramZoom.remove(from: controller) }
+        diagrams.open = nil
         assets?.cancel(); assets = nil
         view?.stopLoading(); view?.navigationDelegate = nil; view?.uiDelegate = nil; view = nil
     }
