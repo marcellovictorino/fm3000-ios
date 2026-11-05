@@ -37,6 +37,7 @@ struct PhoneCards: View {
                     onTask: { messageContext.openTask = $0 }, onDraft: { messageContext.draft = $0 },
                     side: Binding(get: { sides[card.id] ?? PhoneCardSide() }, set: { sides[card.id] = $0 }))
                     .id("\(card.id):\(card.offerID ?? card.body):\(card.isPast)")
+                    .phoneSwipePaging(card: card.id, previous: canPagePrevious ? { page(-1) } : nil, next: canPageNext ? { page(1) } : nil)
             } else {
                 // INF-1060 keeps the empty stage free of placeholder words; INF-1066 adds its native crew.
                 PhoneCrewScene(session: session)
@@ -49,7 +50,6 @@ struct PhoneCards: View {
         }
         .padding(.horizontal, PhoneTheme.space4).frame(maxWidth: card == nil || maximized ? .infinity : PhoneColumn.width).frame(maxWidth: .infinity)
         .background(PhoneTheme.background)
-        .phoneSwipePaging(previous: canPagePrevious ? { page(-1) } : nil, next: canPageNext ? { page(1) } : nil)
         // INF-589 item 12: a soft tap once the computer accepts an answer or a reply; never on a page turn.
         .sensoryFeedback(.phone, trigger: sent)
         .onChange(of: card.map { $0.isPast ? PhoneMessageContext.Card.past($0.id) : .current($0.id) }, initial: true) { _, shown in
