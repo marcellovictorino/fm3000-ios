@@ -18,6 +18,6 @@ Each line says what changed, then **Job:** the job to be done, for feedback to t
   **Job:** read the app in the look I prefer, whatever the phone's own setting is.
 - Tasks: a Board/List switch (opens on Board, remembers the last view) and project pills that filter both views; the board is read only, with the desktop's columns, and works in landscape: new `InfinitaryApp/PhoneTaskBoard.swift`, edits to `InfinitaryApp/PhoneTasks.swift`. Since 0.6.2-alpha.115 the board also shows upstream's line saying why a brought-back card was put aside again.
   **Job:** see where every task stands at a glance, as on the desktop, and narrow it to one project.
-- Cards: swiping the stage left or right turns to the next or previous card, as the pager arrows do (the arrows stay): new `InfinitaryApp/PhoneSwipePaging.swift`, one line added in `InfinitaryApp/PhoneCards.swift`.
-  **Job:** get through a stack of cards quickly with one hand, without reaching for the small arrows.
+- Cards: swiping the card left or right turns to the next or previous card, as the pager arrows do (the arrows stay). The card follows the finger with a slight tilt, springs back on a short drag, and on a full one slides off while the next slides in from the other side; with Reduce Motion it fades instead: new `InfinitaryApp/PhoneSwipePaging.swift`, one line added in `InfinitaryApp/PhoneCards.swift`.
+  **Job:** get through a stack of cards quickly with one hand, without reaching for the small arrows, and see the card move as I push it.
 - Added `InfinitaryTests/PhoneAppearanceTests.swift` (the appearance choice's default and persistence).
