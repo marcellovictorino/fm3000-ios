@@ -3,6 +3,30 @@ import Testing
 @testable import InfinitaryKit
 
 struct CardValuesTests {
+    /// INF-2022: the native reader is extensible JSON, so optional update fields do not alter legacy body/actions.
+    @Test func optionalUpdateFieldsKeepLegacyCardReading() throws {
+        let value: PhoneJSON = .object([
+            "id": .string("card-findings"), "title": .string("Latency findings"), "author": .string("firstmate"),
+            "body": .string("<p>The sampler has finished.</p>"),
+            "actions": .array([.object(["id": .string("keep"), "label": .string("Keep the findings")])]),
+            "offerId": .string("findings-offer"), "lifecycleId": .string("findings-life"),
+            "seen": .bool(true), "currentUpdateId": .string("released-answer"), "currentUpdateSeen": .bool(false)
+        ])
+        let bytes = try JSONEncoder().encode(value)
+        // The older PhoneCard's decoder used this same PhoneJSON reader and required these five fields.
+        let legacy = try JSONDecoder().decode(PhoneJSON.self, from: bytes)
+        #expect(legacy["id"].text == "card-findings")
+        #expect(legacy["title"].text == "Latency findings")
+        #expect(legacy["author"].text == "firstmate")
+        #expect(legacy["body"] == value["body"])
+        #expect(legacy["actions"] == value["actions"])
+        let current = try JSONDecoder().decode(PhoneCard.self, from: bytes)
+        #expect(current.value["seen"].flag)
+        #expect(!current.currentUpdateSeen)
+        #expect(current.currentUpdateID == "released-answer")
+        #expect(current.actions == legacy["actions"].list)
+    }
+
     /// INF-499 #4: a reply admitted on the phone must fit the computer's UTF-16 budget.
     @Test func replyBudgetMatchesThePublishedWire() {
         let emoji = "😀"
@@ -31,6 +55,7 @@ struct CardValuesTests {
 
     /// INF-1610: the "You asked" line reads the message the Mac sent, folds a long one onto one run of words,
     /// keeps its paragraphs when opened, and names a message of pictures alone.
+    /// INF-1958: the bubble adds no quotation marks.
     @Test func askedLineReadsTheSavedMessage() throws {
         let message = "did something change about how we order the cards in the stack?\n\nkeep minimize as it is."
         let at = Date(timeIntervalSince1970: 1_793_200_200)
@@ -41,8 +66,8 @@ struct CardValuesTests {
         ]))
         let asked = try #require(card.asked)
         #expect(asked.at == at)
-        #expect(asked.words(open: false) == "\u{201C}did something change about how we order the cards in the stack? keep minimize as it is.\u{201D}")
-        #expect(asked.words(open: true) == "\u{201C}\(message)\u{201D}")
+        #expect(asked.words(open: false) == "did something change about how we order the cards in the stack? keep minimize as it is.")
+        #expect(asked.words(open: true) == message)
         #expect(asked.label(now: at).hasPrefix("You asked · "))
         #expect(asked.label(now: at.addingTimeInterval(3 * 86_400)).contains(","))
         #expect(PhoneAsked(at: at, text: " ").words(open: false) == "A picture")
@@ -51,6 +76,40 @@ struct CardValuesTests {
             "body": .string("<p>Nothing asked.</p>"), "actions": .array([])
         ]))
         #expect(plain.asked == nil)
+    }
+
+    /// INF-2326, the captain: "when it comes from an automation, it should just say it's ran by an automation and name
+    /// which one". The phone draws the same five kinds of line as the Mac: an automation and a task by name without a
+    /// bubble, a click with its button's words and what was written, and how many tasks away the source sits.
+    @Test func originLineNamesAutomationsClicksAndTasks() throws {
+        let at = Date(timeIntervalSince1970: 1_793_200_200)
+        let millis = PhoneJSON.number(at.timeIntervalSince1970 * 1000)
+        func line(_ asked: [String: PhoneJSON]) throws -> PhoneAsked {
+            try #require(try PhoneCard(.object([
+                "id": .string("card-origin"), "title": .string("Three packages have newer versions"),
+                "author": .string("firstmate"), "body": .string("<p>None is urgent.</p>"), "actions": .array([]),
+                "asked": .object(asked)
+            ])).asked)
+        }
+        let automation = try line(["at": millis, "text": .string("Nightly product audit"), "kind": .string("automation")])
+        #expect(automation.label(now: at).hasPrefix("Run by an automation · "))
+        #expect(!automation.inBubble)
+        #expect(automation.text == "Nightly product audit")
+        let click = try line([
+            "at": millis, "text": .string("start them later"), "kind": .string("chose"),
+            "choice": .string("File the picked improvements"), "through": .number(2)
+        ])
+        #expect(click.label(now: at).hasPrefix("You chose · "))
+        #expect(click.label(now: at).hasSuffix(" · through 2 tasks"))
+        #expect(click.words(open: false) == "File the picked improvements · start them later")
+        let from = try line([
+            "at": millis, "text": .string("Cut tonight's alpha"), "kind": .string("from"), "key": .string("INF-2081")
+        ])
+        #expect(from.label(now: at) == "From INF-2081")
+        #expect(!from.inBubble)
+        let said = try line(["at": millis, "text": .string("keep the timeout"), "kind": .string("said"), "through": .number(1)])
+        #expect(said.label(now: at).hasPrefix("You said · "))
+        #expect(said.label(now: at).hasSuffix(" · through 1 task"))
     }
 
     /// INF-499 #2: the actual body-choice receipt has a frame evidence actor, not a captain.

@@ -6,7 +6,7 @@ enum PhoneCrewPainter {
         Path(ellipseIn: CGRect(x: at.x - r, y: at.y - r, width: r * 2, height: r * 2))
     }
     static func draw(_ frame: PhoneSceneMotion.Frame, roster: PhoneSceneRoster, now: Double, still: Bool,
-                     in context: inout GraphicsContext, palette: CharacterPainter.Palette) {
+                     in context: inout ScenePen, palette: CharacterPainter.Palette) {
         // As on the desktop, no orbit is outlined and another computer's group has no ring at its center.
         for (from, to, review) in frame.links {
             var path = Path(); path.move(to: from); path.addLine(to: to)
@@ -23,12 +23,30 @@ enum PhoneCrewPainter {
             draw(glyph, now: now, still: still, in: &context, palette: palette)
         }
         for (point, strength) in frame.packets {
-            context.fill(circle(point, 5), with: .radialGradient(Gradient(colors: [palette.acc.color(0.6 * strength), palette.acc.color(0)]), center: point, startRadius: 0, endRadius: 5))
+            context.fill(circle(point, 5), with: .radialGradient(PenGradient(colors: [palette.acc.color(0.6 * strength), palette.acc.color(0)]), center: point, startRadius: 0, endRadius: 5))
             context.fill(circle(point, 2), with: .color(palette.acc.color(strength)))
         }
     }
+    /// Keyboard browsing's accent outline round the selected crewmate's 44-point square, and the desktop's corner
+    /// brackets round the crewmate whose summary is open (INF-1926), drawn with the frame they belong to.
+    static func drawMarks(_ frame: PhoneSceneMotion.Frame, selection: String?, bracketed: (task: String, computer: String)?,
+                          in context: inout ScenePen, palette: CharacterPainter.Palette) {
+        guard selection != nil || bracketed != nil else { return }
+        let glyphs = frame.glyphs.map { (id: $0.task.id, task: $0.task.id, computer: PhoneSceneRoster.computerID($0.task), point: $0.point, reach: $0.size / 2 + 4) }
+        let marks = frame.marks.map { (id: $0.id, task: $0.task.id, computer: $0.computerID, point: $0.point, reach: CharacterCatalog.shared.program["rootMarkPx"]! + 4) }
+        for target in glyphs + marks {
+            let square = CGRect(x: target.point.x - 22, y: target.point.y - 22, width: 44, height: 44)
+            if selection == target.id {
+                context.stroke(Path(roundedRect: square, cornerRadius: PhoneTheme.controlRadius, style: .continuous),
+                               with: .color(palette.accent), lineWidth: 1.5)
+            }
+            if let bracketed, bracketed.task == target.task, bracketed.computer == target.computer {
+                context.stroke(PhoneCrewBrackets(reach: target.reach).path(in: square), with: .color(palette.muted), lineWidth: 1)
+            }
+        }
+    }
     /// A warp rider's light trail (CharacterWarp.ride), in its own light lifted toward white, thinning and fading away from it.
-    private static func streak(_ glyph: PhoneSceneMotion.Glyph, in context: inout GraphicsContext, palette: CharacterPainter.Palette) {
+    private static func streak(_ glyph: PhoneSceneMotion.Glyph, in context: inout ScenePen, palette: CharacterPainter.Palette) {
         let points = glyph.streak, segments = points.count - 1
         guard segments > 0, glyph.unfold > 0.01 else { return }
         let color = palette.acc.mix(palette.hot, glyph.unknown ? 0 : max(glyph.work, glyph.wait * glyph.job)).mix(CharacterPainter.RGB(255, 246, 230), 0.25)
@@ -39,7 +57,7 @@ enum PhoneCrewPainter {
                            style: StrokeStyle(lineWidth: max(0.6, glyph.size * 0.2 * fade), lineCap: .round))
         }
     }
-    private static func draw(_ glyph: PhoneSceneMotion.Glyph, now: Double, still: Bool, in context: inout GraphicsContext, palette: CharacterPainter.Palette) {
+    private static func draw(_ glyph: PhoneSceneMotion.Glyph, now: Double, still: Bool, in context: inout ScenePen, palette: CharacterPainter.Palette) {
         let solid = CharacterCatalog.shared.solids[glyph.task.tier ?? "low"] ?? CharacterCatalog.shared.solids["low"]!
         let work = glyph.unknown ? 0 : glyph.work
         // A background wait banks to idle strength; its wires stay ember only for local work, ice cyan for checks (INF-1777).
@@ -62,7 +80,7 @@ enum PhoneCrewPainter {
         if waiting > 0.01 {
             let breath = still ? 0.5 : 0.5 - 0.5 * cos(2 * .pi * (now - glyph.captainSince) / (beacon["breathMs"]! / 1000))
             let haloR = glyph.size * beacon["haloReach"]!, haloA = beacon["halo"]! * (0.4 + 0.6 * breath) * waiting
-            context.fill(circle(at, haloR), with: .radialGradient(Gradient(colors: [palette.acc.color(haloA), palette.acc.color(0)]), center: at, startRadius: 0, endRadius: haloR))
+            context.fill(circle(at, haloR), with: .radialGradient(PenGradient(colors: [palette.acc.color(haloA), palette.acc.color(0)]), center: at, startRadius: 0, endRadius: haloR))
             let ringR = glyph.size * beacon["ring"]! * (1 + beacon["swell"]! * (breath - 0.5))
             let light = (beacon["lo"]! + (beacon["hi"]! - beacon["lo"]!) * breath) * waiting * palette.boost
             context.stroke(circle(at, ringR), with: .color(palette.acc.color(min(1, light))), lineWidth: beacon["line"]!)
@@ -70,7 +88,7 @@ enum PhoneCrewPainter {
         let spill = glyph.flicker * CharacterCatalog.shared.flicker["glowSpill"]!
         if work > 0 || spill > 0 {
             let halo = glyph.size * (0.95 + 0.2 * spill), alpha = (0.14 * work + 0.5 * spill) * glyph.alpha * glyph.unfold
-            context.fill(circle(at, halo), with: .radialGradient(Gradient(colors: [color.color(alpha), color.color(0)]), center: at, startRadius: 0, endRadius: halo))
+            context.fill(circle(at, halo), with: .radialGradient(PenGradient(colors: [color.color(alpha), color.color(0)]), center: at, startRadius: 0, endRadius: halo))
         }
         if glyph.unfold < 1 { context.fill(circle(at, 2.8 * (1 - glyph.unfold)), with: .color(palette.acc.color(glyph.alpha))) }
         // The wait ring: dashed, never the beacon's full ring, with a brighter arc travelling round it; a still frame holds it whole.

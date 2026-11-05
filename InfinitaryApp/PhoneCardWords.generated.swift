@@ -18,6 +18,8 @@ enum PhoneCardWords {
     static let requiredActionsLead = "After merging, you need to…"
     static let threadWho = ["captain": "you", "crewmate": "crew", "firstmate": "mate", "host": "app"]
     static let threadWorking = "working"
+    static let threadCard = "Card"
+    static let threadCardUpdated = "updated"
     static let driverWords = ["crewmate": "the crewmate is driving", "nobody": "nobody is driving", "waiting": "paused for your help", "taking": "you are taking control", "captain": "you have control"]
     static let stopLineWords = ["captain": "you stopped it", "crewmate": "the crewmate closed it", "idle": "stopped after 30 minutes unused", "gone": "its page stopped working", "task-closed": "stopped when the task closed"]
     static let staleBrowser = "this card's browser has stopped"
@@ -25,6 +27,22 @@ enum PhoneCardWords {
     static func requiredActionsCount(_ count: Int) -> String { "\(count) required actions" }
     static func settingsCount(_ count: Int) -> String {
         count == 1 ? "settings · 1 value" : "settings · \(count) values"
+    }
+    static func messageCount(_ count: Int) -> String {
+        count == 1 ? "1 message" : "\(count) messages"
+    }
+    static func newCount(_ count: Int) -> String { "\(count) new" }
+    static func threadCount(_ count: Int) -> String { "thread · \(count)" }
+    /** Who really wrote a thread line, and whether it came after the card closed ("Shared cards"). */
+    static func contributor(host: Bool, label: String?, clarification: Bool) -> String {
+        switch (host, label, clarification) {
+        case (true, let label?, false): "Revised by \(label)"
+        case (true, let label?, true): "Revised by \(label), after the card closed"
+        case (false, let label?, false): "Written by \(label)"
+        case (false, let label?, true): "Written by \(label), after the card closed"
+        case (_, nil, true): "Written after the card closed"
+        default: ""
+        }
     }
     static func closeRest(_ key: String?) -> String {
         guard let key else { return "Close · stays readable in Tasks" }

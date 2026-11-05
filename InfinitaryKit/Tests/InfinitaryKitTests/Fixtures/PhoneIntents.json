@@ -1,0 +1,146 @@
+{
+  "about": "INF-2553: the intent table's fixture (src/shared/intents.ts). The phone's fold (PhoneIntentsTests.swift) and the shared one (src/shared/intents.test.ts) replay it. A snapshot lists cards of `home` by id, each with fields `with` replaces.",
+  "home": [
+    {
+      "id": "c-chart",
+      "title": "Chart the northern entrance",
+      "author": "firstmate",
+      "body": "<p>The chart of the northern entrance is ready to publish.</p>",
+      "actions": [
+        { "id": "publish", "label": "Publish the chart", "default": true },
+        { "id": "hold", "label": "Hold it" }
+      ],
+      "lifecycleId": "life-chart-1",
+      "offerId": "offer-chart-1",
+      "currentUpdateId": "update-chart-1"
+    },
+    {
+      "id": "c-buoys",
+      "title": "The buoy count is in",
+      "author": "crewmate",
+      "taskId": "t-buoys",
+      "body": "<p>Forty-two buoys are on station; three need new lights.</p>",
+      "actions": [],
+      "lifecycleId": "life-buoys-1",
+      "offerId": "offer-buoys-1",
+      "currentUpdateId": "update-buoys-1"
+    },
+    {
+      "id": "c-tide",
+      "title": "Tide tables for next week",
+      "author": "crewmate",
+      "taskId": "t-tide",
+      "body": "<p>The tide tables for next week are drafted.</p>",
+      "actions": [{ "id": "keep", "label": "Keep them", "default": true }],
+      "lifecycleId": "life-tide-1",
+      "offerId": "offer-tide-1",
+      "currentUpdateId": "update-tide-1",
+      "minimized": true
+    }
+  ],
+  "folds": [
+    { "name": "nothing pending shows the home's stage", "intents": [], "stage": ["c-chart", "c-buoys"], "aside": ["c-tide"] },
+    {
+      "name": "a close takes its card off the stage at once",
+      "intents": [{ "kind": "close", "card": "c-chart", "lifecycle": "life-chart-1", "offer": "offer-chart-1" }],
+      "stage": ["c-buoys"],
+      "aside": ["c-tide"]
+    },
+    {
+      "name": "a choice takes its card off the stage at once",
+      "intents": [{ "kind": "choose", "card": "c-chart", "lifecycle": "life-chart-1", "offer": "offer-chart-1" }],
+      "stage": ["c-buoys"],
+      "aside": ["c-tide"]
+    },
+    {
+      "name": "putting a card aside moves it to its task row",
+      "intents": [{ "kind": "putAside", "card": "c-buoys", "lifecycle": "life-buoys-1", "offer": "offer-buoys-1" }],
+      "stage": ["c-chart"],
+      "aside": ["c-buoys", "c-tide"]
+    },
+    {
+      "name": "bringing a card back puts it on the stage in the home's order",
+      "intents": [{ "kind": "bringBack", "card": "c-tide" }],
+      "stage": ["c-chart", "c-buoys", "c-tide"],
+      "aside": []
+    },
+    {
+      "name": "a later intent on the same card composes in send order",
+      "intents": [
+        { "kind": "putAside", "card": "c-buoys", "lifecycle": "life-buoys-1", "offer": "offer-buoys-1" },
+        { "kind": "bringBack", "card": "c-buoys" },
+        { "kind": "close", "card": "c-buoys", "lifecycle": "life-buoys-1", "offer": "offer-buoys-1" }
+      ],
+      "stage": ["c-chart"],
+      "aside": ["c-tide"]
+    }
+  ],
+  "evidence": [
+    {
+      "name": "a push without the card holds a close",
+      "intent": { "kind": "close", "card": "c-chart", "lifecycle": "life-chart-1", "offer": "offer-chart-1" },
+      "snapshot": [{ "of": "c-buoys" }, { "of": "c-tide" }],
+      "says": "holds"
+    },
+    {
+      "name": "a push still holding the card lacks a close",
+      "intent": { "kind": "close", "card": "c-chart", "lifecycle": "life-chart-1", "offer": "offer-chart-1" },
+      "snapshot": [{ "of": "c-chart" }, { "of": "c-buoys" }],
+      "says": "lacks"
+    },
+    {
+      "name": "a card revised under a close voids it",
+      "intent": { "kind": "close", "card": "c-chart", "lifecycle": "life-chart-1", "offer": "offer-chart-1" },
+      "snapshot": [{ "of": "c-chart", "with": { "offerId": "offer-chart-2" } }],
+      "says": "void"
+    },
+    {
+      "name": "a card reopened with a new lifecycle holds the close of the old one",
+      "intent": { "kind": "close", "card": "c-chart", "lifecycle": "life-chart-1", "offer": "offer-chart-1" },
+      "snapshot": [{ "of": "c-chart", "with": { "lifecycleId": "life-chart-2", "offerId": "offer-chart-3" } }],
+      "says": "holds"
+    },
+    {
+      "name": "a card awaiting its author after a choice holds the choice",
+      "intent": { "kind": "choose", "card": "c-chart", "lifecycle": "life-chart-1", "offer": "offer-chart-1" },
+      "snapshot": [{ "of": "c-chart", "with": { "awaiting": "answer" } }],
+      "says": "holds"
+    },
+    {
+      "name": "a card the author sent back after a choice voids it",
+      "intent": { "kind": "choose", "card": "c-chart", "lifecycle": "life-chart-1", "offer": "offer-chart-1" },
+      "snapshot": [{ "of": "c-chart", "with": { "offerId": "offer-chart-2" } }],
+      "says": "void"
+    },
+    {
+      "name": "a push with the card put aside holds putting it aside",
+      "intent": { "kind": "putAside", "card": "c-buoys", "lifecycle": "life-buoys-1", "offer": "offer-buoys-1" },
+      "snapshot": [{ "of": "c-buoys", "with": { "minimized": true } }],
+      "says": "holds"
+    },
+    {
+      "name": "a push with the card still on the stage lacks putting it aside",
+      "intent": { "kind": "putAside", "card": "c-buoys", "lifecycle": "life-buoys-1", "offer": "offer-buoys-1" },
+      "snapshot": [{ "of": "c-buoys" }],
+      "says": "lacks"
+    },
+    {
+      "name": "a push with the card back on the stage holds bringing it back",
+      "intent": { "kind": "bringBack", "card": "c-tide" },
+      "snapshot": [{ "of": "c-tide", "with": { "minimized": null } }],
+      "says": "holds"
+    },
+    {
+      "name": "a push with the card still aside lacks bringing it back",
+      "intent": { "kind": "bringBack", "card": "c-tide" },
+      "snapshot": [{ "of": "c-tide" }],
+      "says": "lacks"
+    },
+    {
+      "name": "a card closed elsewhere voids bringing it back",
+      "intent": { "kind": "bringBack", "card": "c-tide" },
+      "snapshot": [{ "of": "c-chart" }],
+      "says": "void"
+    }
+  ]
+}

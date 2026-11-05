@@ -5,6 +5,7 @@ import SwiftUI
 struct PhoneCards: View {
     let session: ReadOnlySession
     @Environment(PhoneMessageContext.self) private var messageContext
+    @Environment(\.verticalSizeClass) private var verticalSize
     @State private var selected: String?
     @State private var past: PhoneCard?
     @State private var drafts: [String: PhoneJSON] = [:]
@@ -13,6 +14,10 @@ struct PhoneCards: View {
     @State private var sent = 0
     /// INF-1524, the captain's yes on iPad only: the card takes the stage's whole width, as the Mac's maximize does.
     @State private var maximized = false
+    @State private var pagerMenu = PhoneCardPager()
+    /// INF-2565, the captain: "i don't think we should auto flip". A revision gives the card a new offer, so its pane is
+    /// built again to draw the new body; the side it shows and the thread it has read live here, per card, and outlast that.
+    @State private var sides: [String: PhoneCardSide] = [:]
     private var card: PhoneCard? { past ?? session.stack.first(where: { $0.id == selected }) ?? session.stack.first }
 
     var body: some View {
@@ -29,7 +34,8 @@ struct PhoneCards: View {
                     showsNext: past == nil && index < session.stack.count - 1, visible: messageContext.cardsVisible,
                     replyLeaves: !card.value["holdsPlace"].flag && session.stack.count > 1,
                     maximized: $maximized,
-                    onTask: { messageContext.openTask = $0 }, onDraft: { messageContext.draft = $0 })
+                    onTask: { messageContext.openTask = $0 }, onDraft: { messageContext.draft = $0 },
+                    side: Binding(get: { sides[card.id] ?? PhoneCardSide() }, set: { sides[card.id] = $0 }))
                     .id("\(card.id):\(card.offerID ?? card.body):\(card.isPast)")
             } else {
                 // INF-1060 keeps the empty stage free of placeholder words; INF-1066 adds its native crew.
@@ -37,7 +43,9 @@ struct PhoneCards: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity).padding(.vertical, PhoneTheme.space5)
             }
             // INF-589 item 11: with no card to page, the pager hides. INF-1517: cards put aside wait in Tasks, as on the Mac.
-            if !session.stack.isEmpty { pager }
+            // INF-2095: the pager shows once its menu holds the stack, so it never draws a count its menu lacks.
+            // INF-2568: on a phone on its side the keyboard leaves about two lines of room, which the field typed in needs.
+            if !session.stack.isEmpty && !pagerMenu.items.isEmpty && !(phoneOnItsSide(verticalSize) && messageContext.keyboardUp) { pager }
         }
         .padding(.horizontal, PhoneTheme.space4).frame(maxWidth: card == nil || maximized ? .infinity : PhoneColumn.width).frame(maxWidth: .infinity)
         .background(PhoneTheme.background)
@@ -51,13 +59,20 @@ struct PhoneCards: View {
             if let marked = session.stack.first(where: { !previousIDs.contains($0.id) && $0.value["holdsPlace"].flag }) {
                 selected = marked.id; past = nil
             } else if selected == nil || !ids.contains(selected!) {
-                selected = session.stack.first(where: { !session.seenCards.contains($0.offerID ?? $0.id) })?.id ?? ids.first
+                selected = session.stack.first(where: { !session.hasSeen($0) })?.id ?? ids.first
             }
             showRestored(ids)
             previousIDs = ids
+            sides = sides.filter { ids.contains($0.key) || $0.key == past?.id }
             if let past, ids.contains(past.id) { self.past = nil }
         }
         .onChange(of: messageContext.restoring) { _, _ in showRestored(session.stack.map(\.id)) }
+        // INF-2095: the pager's menu takes its cards and label here, and only when either changes.
+        .onChange(of: session.stack.map { PhoneCardPager.Item(id: $0.id, title: $0.title) }, initial: true) { _, items in
+            pagerMenu.pick = { id in selected = id; past = nil }
+            pagerMenu.show(items, label: pagerLabel)
+        }
+        .onChange(of: pagerLabel, initial: true) { _, label in pagerMenu.show(pagerMenu.items, label: label) }
         .onChange(of: session.showCardID, initial: true) { _, id in
             guard let id else { return }
             if session.stack.contains(where: { $0.id == id }) { selected = id; past = nil }
@@ -69,19 +84,11 @@ struct PhoneCards: View {
         HStack(spacing: PhoneTheme.space2) {
             Button { page(-1) } label: { Label("Previous card", systemImage: "chevron.left").labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44) }
                 .disabled(!canPagePrevious).accessibilityIdentifier("previous-card")
-            Menu {
-                ForEach(session.stack) { item in
-                    Button(item.title) { selected = item.id; past = nil }
-                }
-            } label: {
-                Text(past != nil ? "Past card" : "\(index + 1) of \(session.stack.count)")
-                    .font(.custom("JetBrainsMono-Regular", size: 12, relativeTo: .caption))
-                    .frame(minWidth: 44, minHeight: 44)
-            }.accessibilityIdentifier("card-pager")
+            PhoneCardPagerMenu(pager: pagerMenu)
             Button { page(1) } label: {
                 Label("Next card", systemImage: "chevron.right").labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44)
                     .overlay(alignment: .topTrailing) {
-                        if session.stack.dropFirst(index + 1).contains(where: { !session.seenCards.contains($0.offerID ?? $0.id) }) {
+                        if session.stack.dropFirst(index + 1).contains(where: { !session.hasSeen($0) }) {
                             Circle().fill(PhoneTheme.accent).frame(width: 6, height: 6).accessibilityHidden(true)
                         }
                     }
@@ -99,9 +106,10 @@ struct PhoneCards: View {
                 .frame(width: 0, height: 0)
         }
     }
+    private var pagerLabel: String { past != nil ? "Past card" : "\(index + 1) of \(session.stack.count)" }
     /// The cards on the stack not yet read, besides the one shown.
     private var fresh: [PhoneCard] {
-        session.stack.filter { $0.id != card?.id && !session.seenCards.contains($0.offerID ?? $0.id) }
+        session.stack.filter { $0.id != card?.id && !session.hasSeen($0) }
     }
     private var index: Int { session.stack.firstIndex { $0.id == (selected ?? session.stack.first?.id) } ?? 0 }
     private var canPagePrevious: Bool { past == nil && index > 0 }
@@ -114,6 +122,42 @@ struct PhoneCards: View {
     private func page(_ delta: Int) {
         let next = index + delta
         if session.stack.indices.contains(next) { selected = session.stack[next].id; past = nil }
+    }
+}
+
+/// INF-2095: what the pager's menu shows, which only a change to the stack's cards or to the pager's own label alters.
+/// An inline menu re-ran its content on every redraw of the cards view, as on every workspace redraw, such as a reply
+/// notice clearing on its own; with the menu open, UIKit then sometimes rebuilt it under a quick tap, which lost the pick
+/// and left the menu open. An equatable menu view did not help: SwiftUI still ran its body on the cards view's redraws
+/// with equal inputs. The menu view holds only this object, so the cards view's redraws pass it nothing new, and it
+/// redraws when what it reads here changes. A change to the stack itself still reaches the open menu.
+@MainActor @Observable final class PhoneCardPager {
+    struct Item: Identifiable, Equatable { let id: String; let title: String }
+    private(set) var items: [Item] = []
+    private(set) var label = ""
+    /// The cards view's pick, which reads nothing the menu draws.
+    @ObservationIgnored var pick: (String) -> Void = { _ in }
+
+    func show(_ items: [Item], label: String) {
+        if self.items != items { self.items = items }
+        if self.label != label { self.label = label }
+    }
+}
+
+private struct PhoneCardPagerMenu: View {
+    let pager: PhoneCardPager
+
+    var body: some View {
+        Menu {
+            let _ = PhoneMenuTapProbe.shared?.menuBuilt()
+            ForEach(pager.items) { item in
+                Button(item.title) { PhoneMenuTapProbe.shared?.picked(); pager.pick(item.id) }
+            }
+        } label: {
+            Text(pager.label)
+                .font(.custom("JetBrainsMono-Regular", size: 12, relativeTo: .caption))
+                .frame(minWidth: 44, minHeight: 44)
+        }.accessibilityIdentifier("card-pager")
     }
 }
 
@@ -164,6 +208,14 @@ extension UIApplication {
     @objc fileprivate func infinitaryPageCard(_ command: UIKeyCommand) { PhonePagerKeys.Anchor.shown?.press(command) }
 }
 
+/// What a card's pane keeps across a revision that builds it again (INF-2565): the side it shows, how much of its thread
+/// the captain has read, and the offer the face last showed, so the back marks a revision that came while it showed.
+struct PhoneCardSide: Equatable {
+    var turned = false
+    var readCount: Int?
+    var faceOffer: String?
+}
+
 private struct PhoneCardPane: View {
     let card: PhoneCard
     let session: ReadOnlySession
@@ -192,7 +244,28 @@ private struct PhoneCardPane: View {
     /// INF-1524: a settle card's fact strip, drawn read-only beside its choices once the body has split it off.
     @State private var factsHost: CardWebHost?
     @State private var problem: String?
-    @State private var threadOpen = false
+    /// INF-1919, the captain's pick: the thread lives on the card's back, and the card turns over to show it.
+    /// INF-2565: the side, the read count and the face's offer are the stage's, so a revision never turns the card.
+    @Binding var side: PhoneCardSide
+    private var turned: Bool {
+        get { side.turned }
+        nonmutating set { side.turned = newValue }
+    }
+    /// Where the turn stands: the back is drawn only while it shows or turns, and the face's own field and choices give
+    /// way while the back shows, so one control of each kind is on the card for a tap or for accessibility to find.
+    @State private var flipped = false
+    @State private var backMounted = false
+    /// The side whose field takes the focus once a turn draws it.
+    @State private var pendingFocus: CardSide?
+    /// How many of the thread's messages the captain has seen on the back; nil until the thread is first read.
+    private var readCount: Int? {
+        get { side.readCount }
+        nonmutating set { side.readCount = newValue }
+    }
+    @State private var backHeadHeight: CGFloat = 0
+    @State private var threadHeight: CGFloat = 0
+    @State private var backFootHeight: CGFloat = 0
+    @State private var backHeight: CGFloat = 0
     /// The "You asked" line is open; held here because a taller head moves into or out of the scroller.
     @State private var askedOpen = false
     @State private var retry = 0
@@ -204,20 +277,36 @@ private struct PhoneCardPane: View {
     @State private var libraryOpen = false
     @State private var cameraOpen = false
     @Environment(\.scenePhase) private var phase
+    @Environment(PhoneMessageContext.self) private var messageContext
     @Environment(\.openURL) private var openURL
-    @FocusState private var replyFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.verticalSizeClass) private var verticalSize
+    /// The field has the focus on this side; a turn carries it to the field on the other.
+    @FocusState private var replyFocus: CardSide?
+    /// INF-2568: where the face's field sits in the pane, read in the pane's own space before the lift moves it.
+    @State private var faceReplyFrame: CGRect?
+    /// Counts the moments the face's scroller follows its focused field's caret: the field taking the focus or growing,
+    /// and the keyboard shortening the scroller.
+    @State private var replyGrew = 0
+
+    enum CardSide { case face, back }
 
     /// What the close asks first (the Mac's CloseQuestion): about unsent picks or words, about a reply still unanswered, or both.
     struct CloseAsk { let words: String; let picks: Bool }
 
     init(card: PhoneCard, session: ReadOnlySession, fill: PhoneJSON, reply: Binding<String>,
          onReading: @escaping (PhoneJSON) -> Void, onSeen: @escaping () -> Void, onHide: @escaping () -> Void, onPage: @escaping (Int) -> Void, onSent: @escaping () -> Void, showsNext: Bool, visible: Bool, replyLeaves: Bool,
-         maximized: Binding<Bool>, onTask: @escaping (String) -> Void, onDraft: @escaping (String) -> Void) {
+         maximized: Binding<Bool>, onTask: @escaping (String) -> Void, onDraft: @escaping (String) -> Void,
+         side: Binding<PhoneCardSide>) {
         self.card = card; self.session = session; _reply = reply
         self.onReading = onReading; self.onSeen = onSeen; self.onHide = onHide; self.onPage = onPage; self.onSent = onSent
         self.showsNext = showsNext; self.visible = visible; self.replyLeaves = replyLeaves
         _maximized = maximized; self.onTask = onTask; self.onDraft = onDraft
         _host = State(initialValue: Self.bodyHost(card, session, fill))
+        _side = side
+        // A pane built again while its back shows starts on the back, with no turn.
+        let showsBack = side.wrappedValue.turned && !Self.messages(card, session).isEmpty
+        _flipped = State(initialValue: showsBack); _backMounted = State(initialValue: showsBack)
     }
     private static func bodyHost(_ card: PhoneCard, _ session: ReadOnlySession, _ fill: PhoneJSON,
                                  heightLag: TimeInterval = 0) -> CardWebHost {
@@ -226,7 +315,14 @@ private struct PhoneCardPane: View {
         let keys = (session.board?.tasks ?? []).filter { $0.id != own }.map(\.key)
         return CardWebHost(card: card, session: session, fill: fill, keys: keys, heightLag: heightLag)
     }
-    private var messages: [PhoneJSON] { card.isPast ? card.value["messages"].list : session.threads[card.id]?["messages"].list ?? [] }
+    private static func messages(_ card: PhoneCard, _ session: ReadOnlySession) -> [PhoneJSON] {
+        card.isPast ? card.value["messages"].list : session.threads[card.id]?["messages"].list ?? []
+    }
+    private var messages: [PhoneJSON] { Self.messages(card, session) }
+    /// What the face draws; a revision that changes it gives the card a new offer.
+    private var offer: String { card.offerID ?? card.body }
+    /// INF-2565, the captain: "at most we should show an indicator near the "< card" button to show there's an update".
+    private var updatedBehind: Bool { showsBack && side.faceOffer != nil && side.faceOffer != offer }
     private var reachable: Bool { session.contact == "in-reach" }
     private var replyWords: String { reply.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var canSendReply: Bool { !host.changing && session.canChange && host.drawn && replyFits }
@@ -247,8 +343,20 @@ private struct PhoneCardPane: View {
     /// A closing choice waits until every required question has an answer (the captain's Q2 A on the Mac).
     private var unanswered: Bool { asking && (host.reading["answered"].numeric ?? 0) < (host.reading["of"].numeric ?? 0) }
 
+    /// INF-2553, the captain's pick: an iPhone on its side has no room for the notice pill, so the words about a change
+    /// taken back on this card stay on its own line until its next change, as a refused change's did before.
+    private var line: String? { problem ?? (phoneOnItsSide(verticalSize) ? session.takenBack[card.id] : nil) }
+
     private var hasFoot: Bool {
-        !card.actions.isEmpty || problem != nil || takesReply || factsHost != nil || !card.value["requiredActions"].list.isEmpty
+        !card.actions.isEmpty || line != nil || takesReply || factsHost != nil || !card.value["requiredActions"].list.isEmpty
+            || !messages.isEmpty
+    }
+    /// The back shows: a card has a back only once its thread has a message.
+    private var showsBack: Bool { turned && !messages.isEmpty }
+    /// The author's messages that came while the card showed its face.
+    private var unread: Int {
+        guard !showsBack, let readCount else { return 0 }
+        return messages.dropFirst(readCount).filter { $0["who"].text != "captain" }.count
     }
     /// A short stage, such as an iPhone on its side with a long draft, would leave the body a sliver between its pinned
     /// head and choices; unless the body keeps at least the room they take, the whole card scrolls as it did before.
@@ -262,7 +370,7 @@ private struct PhoneCardPane: View {
     /// INF-1524: the reply field sits in the pinned foot, and moving the foot in or out of the scroller makes a new field,
     /// so the keyboard its focus raises, which shortens the stage, never reshapes the frame; the shape settles once it closes.
     private func shapeFrame() {
-        guard paneHeight > 0, !replyFocused else { return }
+        guard paneHeight > 0, replyFocus == nil else { return }
         let pins = paneHeight - headHeight - footHeight >= headHeight + footHeight
         guard pins != pinsFrame, shapedAt != paneHeight else { return }
         shapedAt = paneHeight
@@ -283,47 +391,28 @@ private struct PhoneCardPane: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: PhoneTheme.cardRadius, style: .continuous)
-        // INF-944 items 1 and 2, the Mac's shape: the head and the choices stay in the frame, and the body and
-        // thread scroll between them in this one native scroller. The body's web view never scrolls on its own.
-        VStack(alignment: .leading, spacing: 0) {
-            if pinsFrame { measuredHead }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    if !pinsFrame { measuredHead }
-                    content.padding([.horizontal], PhoneTheme.space4).padding(.bottom, PhoneTheme.space4)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    if hasFoot && !pinsFrame { measuredFoot }
-                }
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
-            }
-            .frame(maxHeight: contentHeight > 0 ? contentHeight : nil)
-            .scrollBounceBehavior(.basedOnSize)
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.containerSize.height < geometry.contentSize.height - 1
-            } action: { _, below in runsOn = below }
-            .accessibilityIdentifier("card-scroll")
-            .scrollDismissesKeyboard(.interactively)
-            if hasFoot && pinsFrame { measuredFoot }
+        ZStack(alignment: .top) {
+            front.modifier(PhoneCardTurn(angle: turnAngle, back: false))
+            if backMounted && !messages.isEmpty { back.modifier(PhoneCardTurn(angle: turnAngle, back: true)) }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .clipShape(shape)
-        // INF-1524 piece 1: the Mac's raised surface, its edge and shadow outside the clipped content.
-        .phoneCardSurface()
-        // A frame holding only its scroller is that scroller to accessibility, which then keeps the scroller's name.
-        .accessibilityElement(children: .contain).accessibilityIdentifier(pinsFrame ? "card-frame" : "card-scroll")
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { surfaceHeight = $0 }
-        .frame(maxHeight: .infinity, alignment: .top)
+        .coordinateSpace(.named(Self.paneSpace))
+        .offset(y: -lift)
+        // INF-2568: the pane is the room the stage offers, never the card's own height, so a card taller than the room the
+        // keyboard leaves stays inside it rather than pushing the pager and the message box down behind the keyboard.
+        .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
+        .clipShape(PhonePaneClip(clips: (showsBack ? backHeight : surfaceHeight) > paneHeight + 0.5))
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { paneHeight = $0 }
         .onChange(of: [paneHeight, headHeight, footHeight]) { shapeFrame() }
-        .onChange(of: replyFocused) { _, focused in if !focused { shapeFrame() } }
+        .onChange(of: replyFocus == nil) { _, unfocused in if unfocused { shapeFrame() } }
+        .onChange(of: replyFocus != nil, initial: true) { _, focused in messageContext.replyFocused = focused }
+        .onDisappear { if replyFocus != nil { messageContext.replyFocused = false } }
         .background(alignment: .topTrailing) {
             if showsNext {
                 // The stack follows the card's frame, which never reaches the pager; the sliver is raised as the card is.
                 RoundedRectangle(cornerRadius: PhoneTheme.cardRadius, style: .continuous).fill(.clear)
                     .phoneCardSurface()
                     .frame(width: PhoneTheme.space5)
-                    .frame(maxHeight: max(0, surfaceHeight - 2 * PhoneTheme.space3))
+                    .frame(maxHeight: max(0, (showsBack ? backHeight : surfaceHeight) - 2 * PhoneTheme.space3))
                     .padding(.vertical, PhoneTheme.space3)
                     .offset(x: PhoneTheme.space2).accessibilityHidden(true).allowsHitTesting(false)
             }
@@ -333,8 +422,17 @@ private struct PhoneCardPane: View {
         .onChange(of: session.contact) { _, contact in if contact == "in-reach" { readThread(); markSeen() } }
         .onChange(of: phase) { _, phase in if phase == .active { markSeen() } }
         .onChange(of: visible) { _, visible in if visible { markSeen() } }
-        // INF-1524: the thread opens on a new message.
-        .onChange(of: messages.count) { before, after in if after > before { threadOpen = true } }
+        // A same-offer answer keeps the drawn body and local drafts, but reports its new released identity.
+        .onChange(of: card.currentUpdateID) { _, _ in connectHost(); markSeen() }
+        // INF-1919: a reply that lands while the face shows lights the latest line and never turns the card.
+        .onChange(of: card.isPast || session.threads[card.id] != nil, initial: true) { _, read in
+            if read && readCount == nil { readCount = messages.count }
+        }
+        .onChange(of: messages.count) { _, count in if showsBack { readCount = count } }
+        .onChange(of: showsBack) { _, back in
+            if back { readCount = messages.count; side.faceOffer = offer }
+            turn(to: back)
+        }
         .sheet(isPresented: Binding(get: { host.presentation != nil }, set: { if !$0 { host.presentation = nil } })) {
             if let presentation = host.presentation { CardMediaView(presentation: presentation, session: session) }
         }
@@ -357,6 +455,199 @@ private struct PhoneCardPane: View {
                 catch { problem = error.localizedDescription }
             }.ignoresSafeArea()
         }
+    }
+
+    private var turnAngle: Double { flipped ? 180 : 0 }
+
+    private static let paneSpace = "card-pane"
+    private static let replyAnchor = "card-reply-row"
+
+    /// INF-2568: how far the face rises in its pane while its pinned reply types and the card stands taller than the room
+    /// the keyboard leaves. It rises as far as shows the card's foot, the choices under the field, but never so far that
+    /// the field's top leaves the pane, and always far enough that the field's foot, where the caret types, stays in it.
+    /// The head the rise hides comes back as the keyboard closes.
+    private var lift: CGFloat {
+        guard replyFocus == .face, pinsFrame, paneHeight > 0, let field = faceReplyFrame else { return 0 }
+        let overflow = surfaceHeight - paneHeight
+        guard overflow > 0 else { return 0 }
+        return min(max(min(overflow, field.minY), field.maxY - paneHeight, 0), overflow)
+    }
+
+    private func followCaret() { if replyFocus == .face { replyGrew += 1 } }
+
+    /// A card's scroller closes the keyboard as a person starts to scroll it, never as the scroller follows the caret.
+    private func scrolled(_ phase: ScrollPhase) {
+        // INF-2568, the captain: "scrolling a card should dismiss the keyboard if keyboard is up".
+        if phase == .interacting && messageContext.keyboardUp { dismissPhoneKeyboard() }
+    }
+
+    /// The latest line and Card turn the card over, carrying a typing captain's focus to the other side's field; a send
+    /// turns it too, but drops the keyboard, as it did before, so the whole card shows above where the keyboard was.
+    private func turnOver(back: Bool) {
+        if replyFocus != nil { pendingFocus = back ? .back : .face; replyFocus = pendingFocus }
+        turned = back
+    }
+
+    /// The back is drawn at the face's angle first, then turns in; turned away, it leaves once the turn ends.
+    private func turn(to back: Bool) {
+        if reduceMotion {
+            flipped = back; backMounted = back
+        } else if back {
+            backMounted = true
+            DispatchQueue.main.async { withAnimation(PhoneTheme.surfaceMove) { flipped = showsBack } }
+        } else {
+            withAnimation(PhoneTheme.surfaceMove) { flipped = false } completion: { if !showsBack { backMounted = false } }
+        }
+    }
+
+    /// The card's face: everything a choice needs, with the thread's latest line at its foot.
+    private var front: some View {
+        let shape = RoundedRectangle(cornerRadius: PhoneTheme.cardRadius, style: .continuous)
+        // INF-944 items 1 and 2, the Mac's shape: the head and the choices stay in the frame, and the body scrolls
+        // between them in this one native scroller. The body's web view never scrolls on its own.
+        return VStack(alignment: .leading, spacing: 0) {
+            if pinsFrame { measuredHead }
+            ScrollViewReader { scroller in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if !pinsFrame { measuredHead }
+                        content.padding([.horizontal], PhoneTheme.space4).padding(.bottom, PhoneTheme.space4)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if hasFoot && !pinsFrame { measuredFoot }
+                    }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+                }
+                .frame(maxHeight: contentHeight > 0 ? contentHeight : nil)
+                .scrollBounceBehavior(.basedOnSize)
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    geometry.contentOffset.y + geometry.containerSize.height < geometry.contentSize.height - 1
+                } action: { _, below in runsOn = below }
+                .accessibilityIdentifier("card-scroll")
+                .scrollDismissesKeyboard(.interactively)
+                .onScrollPhaseChange { _, phase in scrolled(phase) }
+                // INF-2568: SwiftUI scrolls a field into view as it takes the focus, but only its top line, and not as it
+                // grows or as the keyboard shortens the scroller, so a reply inside the scroller keeps its foot, where the
+                // caret types, in view.
+                .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height } action: { _, _ in followCaret() }
+                .onChange(of: replyFocus) { followCaret() }
+                .onChange(of: replyGrew) { if !pinsFrame { scroller.scrollTo(Self.replyAnchor, anchor: .bottom) } }
+            }
+            if hasFoot && pinsFrame { measuredFoot }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .clipShape(shape)
+        // INF-1524 piece 1: the Mac's raised surface, its edge and shadow outside the clipped content.
+        .phoneCardSurface()
+        // A frame holding only its scroller is that scroller to accessibility, which then keeps the scroller's name.
+        .accessibilityElement(children: .contain).accessibilityIdentifier(pinsFrame ? "card-frame" : "card-scroll")
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { surfaceHeight = $0 }
+    }
+
+    /// INF-1919, the card's back: Card turns it over again, then the thread's count, the card's title in one muted
+    /// line, the messages as the face drew them before, and the same field and choices at its foot. It stands as tall
+    /// as the face at least, and grows with its thread up to the stage's height.
+    private var back: some View {
+        let shape = RoundedRectangle(cornerRadius: PhoneTheme.cardRadius, style: .continuous)
+        let ideal = backHeadHeight + threadHeight + backFootHeight
+        let height = min(paneHeight > 0 ? paneHeight : .infinity, max(surfaceHeight, ideal))
+        return VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: PhoneTheme.space2) {
+                    Button { turnOver(back: false) } label: {
+                        Label {
+                            Text(PhoneCardWords.threadCard)
+                        } icon: {
+                            // The latest line's own mark: a dot on the chevron, here for a revision behind the thread.
+                            Image(systemName: "chevron.left").overlay(alignment: .topTrailing) {
+                                if updatedBehind {
+                                    Circle().fill(PhoneTheme.accent).frame(width: 6, height: 6).offset(x: 3, y: -3)
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                        }
+                        .frame(minHeight: 44).contentShape(Rectangle())
+                    }
+                    .foregroundStyle(PhoneTheme.secondary)
+                    .accessibilityValue(updatedBehind ? PhoneCardWords.threadCardUpdated : "")
+                    .keyboardShortcut(showsBack ? KeyboardShortcut("\\", modifiers: .command) : nil)
+                    .accessibilityIdentifier("thread-return")
+                    Spacer(minLength: PhoneTheme.space2)
+                    Text(PhoneCardWords.threadCount(messages.count).uppercased()).font(PhoneFont.micro)
+                        .foregroundStyle(PhoneTheme.muted).accessibilityIdentifier("thread-count")
+                }
+                Text(card.title).font(PhoneFont.caption).foregroundStyle(PhoneTheme.muted).lineLimit(1)
+                    .padding(.bottom, PhoneTheme.space2).accessibilityIdentifier("thread-title")
+            }
+            .padding(.leading, PhoneTheme.space3).padding(.trailing, PhoneTheme.space4)
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { backHeadHeight = $0 }
+            ScrollView {
+                PhoneCardThread(messages: messages, working: working)
+                    .padding(.horizontal, PhoneTheme.space4).padding(.vertical, PhoneTheme.space3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { threadHeight = $0 }
+            }
+            .frame(maxHeight: threadHeight > 0 ? threadHeight : nil)
+            .defaultScrollAnchor(.bottom)
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
+            .onScrollPhaseChange { _, phase in scrolled(phase) }
+            .accessibilityIdentifier("card-thread")
+            Spacer(minLength: 0)
+            backFoot.fixedSize(horizontal: false, vertical: true)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { backFootHeight = $0 }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // INF-2568: a back taller than the room the keyboard leaves keeps its foot, with the field, in view.
+        .frame(height: height.isFinite && height > 0 ? height : nil, alignment: .bottom)
+        .clipShape(shape)
+        .phoneCardSurface()
+        .accessibilityElement(children: .contain).accessibilityIdentifier("card-back")
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { backHeight = $0 }
+    }
+
+    /// The back's foot: the field and, by the captain's pick, the choices, so a reply and a choice are made here too.
+    private var backFoot: some View {
+        VStack(alignment: .leading, spacing: PhoneTheme.space2) {
+            if let problem { Text(problem).foregroundStyle(PhoneTheme.warning) }
+            if takesReply { replyField(.back) }
+            choiceRow
+        }
+        .padding(.horizontal, PhoneTheme.space4).padding(.top, PhoneTheme.space2).padding(.bottom, PhoneTheme.space3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .top) { Rectangle().fill(PhoneTheme.line).frame(height: 1) }
+    }
+
+    /// INF-1919, the Mac's collapsed-thread row at the face's foot: who wrote last in their color and the newest words
+    /// on one line, then working while the author is at work, the replies new since the back last showed, with a dot
+    /// on the chevron, or how many messages there are. A tap, or Command-backslash, turns the card over.
+    private var latestLine: some View {
+        let last = messages.last
+        let who = last?["who"].text ?? "host"
+        let state = working ? PhoneCardWords.threadWorking
+            : unread > 0 ? PhoneCardWords.newCount(unread) : PhoneCardWords.messageCount(messages.count)
+        return Button { turnOver(back: true) } label: {
+            HStack(spacing: PhoneTheme.space2) {
+                Text(PhoneCardWords.threadWho[who] ?? who).font(PhoneFont.mono).foregroundStyle(PhoneCardThread.color(who))
+                Text(last?["text"].text ?? "").font(PhoneFont.caption).lineLimit(1)
+                    .foregroundStyle(who == "host" ? PhoneTheme.muted : PhoneTheme.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(state).font(PhoneFont.mono).foregroundStyle(unread > 0 && !working ? PhoneTheme.accent : PhoneTheme.muted)
+                if working { ProgressView().controlSize(.mini) }
+                Image(systemName: "chevron.right").font(PhoneFont.mono).foregroundStyle(PhoneTheme.muted)
+                    .overlay(alignment: .topTrailing) {
+                        if unread > 0 {
+                            Circle().fill(PhoneTheme.accent).frame(width: 6, height: 6).offset(x: 3, y: -3).accessibilityHidden(true)
+                        }
+                    }
+            }
+            .frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(showsBack ? nil : KeyboardShortcut("\\", modifiers: .command))
+        .accessibilityLabel(PhoneCardWords.threadCount(messages.count))
+        .accessibilityValue(state)
+        .accessibilityIdentifier("thread-cue")
     }
 
     private var head: some View {
@@ -464,11 +755,6 @@ private struct PhoneCardPane: View {
             if card.value["attachment"] != .null {
                 PhoneBrowserStrip(attachment: card.value["attachment"], session: session) { host.notice = "Do this on \(session.mac.name)." }
             }
-            if !messages.isEmpty {
-                DisclosureGroup("Thread", isExpanded: $threadOpen) {
-                    PhoneCardThread(messages: messages, working: working).padding(.top, PhoneTheme.space3)
-                }.accessibilityIdentifier("card-thread")
-            }
         }
     }
 
@@ -500,12 +786,28 @@ private struct PhoneCardPane: View {
             }
             let required = card.value["requiredActions"].list
             if !required.isEmpty { PhoneRequiredActions(actions: required) }
-            if let problem { Text(problem).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("card-error") }
-            if takesReply { replyField }
+            if let line { Text(line).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("card-error") }
+            // INF-2565: a pane built again while its back shows starts turned, and its latest line gives way as the field does.
+            if !messages.isEmpty { latestLine.modifier(PhoneFaceOnly(angle: turnAngle)) }
+            if takesReply {
+                replyField(.face).modifier(PhoneFaceOnly(angle: turnAngle)).id(Self.replyAnchor)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.paneSpace)) } action: { frame in
+                        if pinsFrame { faceReplyFrame = frame }
+                    }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { _ in followCaret() }
+            }
             if card.isPast, let words = sentWords {
                 Text("\(PhoneCardWords.sentWithChoice) \(words)").font(PhoneFont.caption).foregroundStyle(PhoneTheme.secondary)
                     .accessibilityIdentifier("past-sent-words")
             }
+            choiceRow.modifier(PhoneFaceOnly(angle: turnAngle))
+        }
+        .padding(.horizontal, PhoneTheme.space4).padding(.top, PhoneTheme.space2).padding(.bottom, PhoneTheme.space3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .top) { if runsOn && pinsFrame { Rectangle().fill(PhoneTheme.line).frame(height: 1) } }
+    }
+
+    @ViewBuilder private var choiceRow: some View {
             if !card.actions.isEmpty {
                 PhoneChoiceRow {
                     if asking, let count = host.reading["of"].numeric {
@@ -528,15 +830,11 @@ private struct PhoneCardPane: View {
                     }
                 }
             }
-        }
-        .padding(.horizontal, PhoneTheme.space4).padding(.top, PhoneTheme.space2).padding(.bottom, PhoneTheme.space3)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .top) { if runsOn && pinsFrame { Rectangle().fill(PhoneTheme.line).frame(height: 1) } }
     }
 
     /// INF-1524, the captain's picks: the reply field pinned above the choices, its words also going with a choice, and
-    /// photos from the library or the camera.
-    private var replyField: some View {
+    /// photos from the library or the camera. INF-1919: the face and the back each draw it, with one draft and photos.
+    private func replyField(_ side: CardSide) -> some View {
         VStack(alignment: .leading, spacing: PhoneTheme.space2) {
             if !photos.isEmpty {
                 ScrollView(.horizontal) {
@@ -563,7 +861,8 @@ private struct PhoneCardPane: View {
                 .disabled(photos.count >= PhoneLimits.images || host.changing).accessibilityIdentifier("reply-photos")
                 TextField(PhoneCardWords.replyHint, text: $reply, axis: .vertical).lineLimit(1...5)
                     .padding(.vertical, PhoneTheme.space2).frame(minHeight: 44)
-                    .focused($replyFocused).accessibilityIdentifier("card-reply")
+                    .focused($replyFocus, equals: side).accessibilityIdentifier("card-reply")
+                    .onAppear { if pendingFocus == side { replyFocus = side; pendingFocus = nil } }
                 Button(action: sendReply) {
                     Label("Send reply", systemImage: "arrow.up.circle.fill").labelStyle(.iconOnly).imageScale(.large)
                         .foregroundStyle(canSendReply ? PhoneTheme.accent : PhoneTheme.muted)
@@ -605,7 +904,7 @@ private struct PhoneCardPane: View {
     private func choose(_ action: PhoneJSON) {
         if onMac(action) { host.notice = "Do this on \(session.mac.name)."; return }
         let id = action["id"].text
-        perform(closesCard: true) {
+        perform {
             pending = id
             defer { pending = nil }
             let snapshot = try await host.submissionReading()
@@ -620,11 +919,13 @@ private struct PhoneCardPane: View {
                 answers.append(.object(["name": .string(PhoneCardWords.anythingElse), "values": .array([]),
                                         "changed": .bool(true), "written": .string(words)]))
             }
-            let result = try await session.ask(.act, [.string(card.id), action["id"], .string("chrome"),
-                .object(["answers": .array(answers)]), card.submission(reading: reading, fresh: snapshot.fresh)])
-            if let refusal = result["refusal"].text { throw PhoneRequestError(refusal) }
+            // INF-2553: the card leaves at the tap with its words; a refusal brings it back to its place with them.
             if replyWords == words { reply = "" }
-            onSent()
+            let sent = await send(.choose(card: card.id, lifecycle: card.lifecycleID, offer: card.offerID), .act,
+                [.string(card.id), action["id"], .string("chrome"), .object(["answers": .array(answers)]),
+                 card.submission(reading: reading, fresh: snapshot.fresh)],
+                restore: { [reply = $reply] in if reply.wrappedValue.isEmpty { reply.wrappedValue = words } })
+            if sent { host.chosen = true; onSent() }
         }
     }
 
@@ -638,11 +939,19 @@ private struct PhoneCardPane: View {
             if !sent.isEmpty {
                 payload["images"] = .array(sent.map { photo in .object(photo.wire.mapValues(PhoneJSON.string)) })
             }
-            _ = try await session.ask(.reply, [.string(card.id), .object(payload),
-                card.submission(reading: reading, fresh: snapshot.fresh), .bool(replyLeaves)])
+            // INF-2553: the words join the thread at once, marked sending, and the draft clears; a refusal puts the
+            // words and photos back. INF-1919: a send from either side shows its line on the back, the first included.
             if reply == text { reply = "" }
             photos.removeAll { photo in sent.contains { $0.id == photo.id } }
-            threadOpen = true; replyFocused = false; onSent()
+            turned = true; replyFocus = nil
+            let before = PhoneIntentLedger.captainMessages(session.threads[card.id])
+            let delivered = await self.send(.reply(card: card.id, text: text, before: before), .reply,
+                [.string(card.id), .object(payload), card.submission(reading: reading, fresh: snapshot.fresh), .bool(replyLeaves)],
+                restore: { [reply = $reply, photos = $photos] in
+                    if reply.wrappedValue.isEmpty { reply.wrappedValue = text }
+                    photos.wrappedValue = sent + photos.wrappedValue
+                })
+            if delivered { onSent() }
         }
     }
 
@@ -659,22 +968,37 @@ private struct PhoneCardPane: View {
             + (waiting ? [PhoneCardWords.unansweredReply(author: author, key: task?.key)] : [])
         closeAsk = CloseAsk(words: words.joined(separator: " "), picks: picks)
     }
+    /// INF-2553: the card leaves at the tap and the next one is up; a refusal brings it back to its place.
     private func close() {
-        perform(closesCard: true) { _ = try await session.ask(.close, [.string(card.id), card.submission()]) }
+        perform {
+            let sent = await send(.close(card: card.id, lifecycle: card.lifecycleID, offer: card.offerID), .close,
+                                  [.string(card.id), card.submission()])
+            if sent { host.chosen = true }
+        }
     }
-    /// Put aside: the Mac's minimize. The card leaves the stack and comes back when it changes.
+    /// Put aside: the Mac's minimize. The card leaves the stack at the tap and comes back when it changes.
     private func putAside() {
-        perform(closesCard: true) { _ = try await session.ask(.minimize, [.string(card.id), .bool(true)]) }
+        perform {
+            let sent = await send(.putAside(card: card.id, lifecycle: card.lifecycleID, offer: card.offerID), .minimize,
+                                  [.string(card.id), .bool(true)])
+            if sent { host.chosen = true }
+        }
     }
 
-    private func perform(closesCard: Bool = false, _ operation: @escaping @MainActor () async throws -> Void) {
+    /// Sends one change through the session's intent layer, which shows it now and says why when it is taken back,
+    /// so the pane itself says nothing more; true once the computer accepted it.
+    private func send(_ kind: PhoneIntent.Kind, _ channel: PhoneCardRequest, _ args: [PhoneJSON],
+                      restore: (@MainActor () -> Void)? = nil) async -> Bool {
+        do { try await session.change(kind, channel, args, restore: restore); return true } catch { return false }
+    }
+
+    private func perform(_ operation: @escaping @MainActor () async throws -> Void) {
         let activeHost = host
         guard activeHost.beginChange() else { return }
         problem = nil
         Task {
             defer { activeHost.busy = false }
-            do { try await operation(); if closesCard { activeHost.chosen = true } }
-            catch { problem = error.localizedDescription }
+            do { try await operation() } catch { problem = error.localizedDescription }
         }
     }
     private func connectHost() {
@@ -695,7 +1019,6 @@ private struct PhoneCardPane: View {
     private func markSeen() {
         guard !card.isPast, host.drawn, reachable, visible, phase == .active else { return }
         onSeen()
-        if let offer = card.offerID { Task { _ = try? await session.ask(.seen, [.string(card.id), .string(offer)]) } }
     }
     private func readThread() {
         guard !card.isPast, reachable else { return }
@@ -716,35 +1039,77 @@ private struct PhoneCardPane: View {
     }
 }
 
-/// INF-1610, the Mac's "You asked" line: when the captain sent the message the card is about, and their words.
-/// A long message shows its start, cut after two lines; Show all opens the whole of it, and Show less folds it.
+/// INF-1919: one face of a card that turns over about its upright axis. Each face shows for its half of the turn, so
+/// the face never draws mirrored, and the hidden face takes no touches and stays out of the accessibility tree.
+private struct PhoneCardTurn: ViewModifier, Animatable {
+    var angle: Double
+    let back: Bool
+
+    nonisolated var animatableData: Double {
+        get { angle }
+        set { angle = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        let shows = back == (angle >= 90)
+        content
+            .rotation3DEffect(.degrees(back ? angle - 180 : angle), axis: (x: 0, y: 1, z: 0), perspective: 0.4)
+            .opacity(shows ? 1 : 0)
+            .allowsHitTesting(shows)
+            .accessibilityHidden(!shows)
+    }
+}
+
+/// The face's field and choices while the back shows past its edge: a blank as tall, since a hidden control is still
+/// found by a tap or by accessibility beside the back's own.
+private struct PhoneFaceOnly: ViewModifier, Animatable {
+    var angle: Double
+    @State private var height: CGFloat = 0
+
+    nonisolated var animatableData: Double {
+        get { angle }
+        set { angle = newValue }
+    }
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if angle < 90 {
+            content.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+        } else {
+            Color.clear.frame(height: height).accessibilityHidden(true)
+        }
+    }
+}
+
+/// The card's saved question label and time; the shared bubble owns its interaction (INF-1610, INF-1963).
+/// INF-2326: the label also says a click, an automation or the task the work came from, as the Mac does.
 /// The card holds whether it is open: opening it can move the head into or out of the scroller, a new line.
 private struct PhoneAskedLine: View {
     let asked: PhoneAsked
     @Binding var open: Bool
-    @State private var folded: CGFloat = 0
-    @State private var whole: CGFloat = 0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            (Text(asked.label()).font(PhoneFont.micro).foregroundStyle(PhoneTheme.muted)
-                + Text("  ") + Text(asked.words(open: open)).font(PhoneFont.caption).foregroundStyle(PhoneTheme.secondary))
-                .lineLimit(open ? nil : 2)
-                .fixedSize(horizontal: false, vertical: true)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { folded = $0 }
-                .background(alignment: .topLeading) {
-                    // The whole message, unseen, so the line knows whether two lines cut it.
-                    (Text(asked.label()).font(PhoneFont.micro) + Text("  ") + Text(asked.words(open: false)).font(PhoneFont.caption))
-                        .fixedSize(horizontal: false, vertical: true).hidden()
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { whole = $0 }
-                }
-                .accessibilityIdentifier("card-asked")
-            if open || whole > folded + 1 {
-                Button(open ? "Show less" : "Show all") { open.toggle() }
-                    .font(PhoneFont.micro).foregroundStyle(PhoneTheme.accent)
-                    .frame(minHeight: 44, alignment: .leading).contentShape(Rectangle())
-                    .accessibilityIdentifier("card-asked-toggle")
+        VStack(alignment: .leading, spacing: 4) {
+            Text(asked.label()).font(PhoneFont.micro).foregroundStyle(PhoneTheme.muted)
+                .accessibilityIdentifier("card-asked-label")
+            if asked.inBubble {
+                PhoneQuestionBubble(text: asked.shown, open: $open, identifier: "card-asked-toggle")
+            } else if !asked.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                // INF-2326: an automation's name or a task's title is not the captain's words, so no bubble.
+                Text(asked.text).font(PhoneFont.caption).foregroundStyle(PhoneTheme.secondary)
+                    .accessibilityIdentifier("card-asked-name")
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("card-asked")
+    }
+}
+
+/// INF-2568: a card taller than its pane is cut at the pane's top and foot, where the bar and the pager or the keyboard
+/// stand, while its shadow still reaches past the pane's sides; a card that fits keeps its whole shadow.
+private struct PhonePaneClip: Shape {
+    var clips: Bool
+
+    func path(in rect: CGRect) -> Path {
+        Path(clips ? rect.insetBy(dx: -rect.width, dy: 0) : rect.insetBy(dx: -rect.width, dy: -max(rect.width, rect.height)))
     }
 }

@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Replies and fidgets use the same light and line-art primitives as the desktop, with no image runtime.
 enum CharacterGarnish {
-    static func draw(_ p: CharacterPose, in context: inout GraphicsContext, c: Double, r: Double, size: Double,
-                     color: Color, eyes: [CGPoint], pose: (Double, Double) -> CGPoint) {
+    static func draw(_ p: CharacterPose, in context: inout ScenePen, c: Double, r: Double, size: Double,
+                     color: PenColor, eyes: [CGPoint], pose: (Double, Double) -> CGPoint) {
         let t = p.progress, px = size / 280
         func dot(_ x: Double, _ y: Double, _ radius: Double, _ alpha: Double) {
             context.fill(Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)), with: .color(color.opacity(alpha)))
@@ -67,7 +67,7 @@ enum CharacterGarnish {
                         }
                     }
                 }
-                context.fill(Path(ellipseIn: CGRect(x: at.x - halo, y: at.y - halo, width: halo * 2, height: halo * 2)), with: .radialGradient(Gradient(colors: [color.opacity(0.45 * kept.alpha), color.opacity(0)]), center: at, startRadius: 0, endRadius: halo))
+                context.fill(Path(ellipseIn: CGRect(x: at.x - halo, y: at.y - halo, width: halo * 2, height: halo * 2)), with: .radialGradient(PenGradient(colors: [color.opacity(0.45 * kept.alpha), color.opacity(0)]), center: at, startRadius: 0, endRadius: halo))
                 dot(at.x, at.y, 3 * kept.r * px, 0.95 * kept.alpha)
             }
             let u = (t - 0.55) / 0.3

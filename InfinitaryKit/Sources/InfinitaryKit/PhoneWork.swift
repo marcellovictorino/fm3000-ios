@@ -41,9 +41,9 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
     /// The home’s dated start-wait line, shared with its first mate and desktop views.
     public let queueWait: QueueWait?
     public struct QueueWait: Decodable, Sendable { public let line: String; public let since: Double? }
-    public let startAttempt: StartAttempt?
+    public internal(set) var startAttempt: StartAttempt?
     public let requiredAction: RequiredAction?
-    public let activity: String?
+    public internal(set) var activity: String?
     public let tier: String?
     public let executionDeviceId: String?
     public let reviewOf: String?
@@ -52,7 +52,7 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
     public struct WorkPosture: Decodable, Sendable { public let state: String; public let reason: String }
     public let goal: String?
     public let startedAt: Double?
-    public let moves: [String: PhoneMove]?
+    public internal(set) var moves: [String: PhoneMove]?
     public let outcomeSummary: String?
     public let waitingCardId: String?
     public let assignee: String?
@@ -104,6 +104,8 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
         case "running": return "Working"
         case "starting": return "Starting"
         case "interrupted": return "Interrupted"
+        // INF-2553: an interrupt the phone sent and its computer has not shown yet.
+        case "stopping": return "Stopping"
         case "idle": return "Idle"
         default: return "Not started"
         }
@@ -176,7 +178,7 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
 
 public struct PhoneBoard: Decodable, Sendable {
     public let seq: Int
-    public private(set) var tasks: [PhoneTask]
+    public internal(set) var tasks: [PhoneTask]
     public let projects: [Project]
     public let links: [Link]?
     public struct Link: Decodable, Sendable { public let fromId: String; public let toId: String; public let type: String }

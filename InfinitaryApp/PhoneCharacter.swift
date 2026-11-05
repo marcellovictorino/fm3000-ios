@@ -1,4 +1,5 @@
 import InfinitaryKit
+import Synchronization
 import SwiftUI
 
 /// INF-209's native three-state first mate, moving as the Mac's character does (INF-589 item 18).
@@ -57,8 +58,17 @@ private struct CharacterDrawing: View {
 
 /// Live-only reactions and the greeting handed between visible native scenes.
 @MainActor enum CharacterCues {
-    /// The first character a person sees after the app opens or joins a computer greets once.
-    static var greetingPending = true
+    /// The first character a person sees after the app opens or joins a computer greets once. A scene's motion
+    /// starts on its own render thread, so the flag is shared under a lock.
+    private nonisolated static let greeting = Mutex(true)
+    nonisolated static var greetingPending: Bool {
+        get { greeting.withLock { $0 } }
+        set { greeting.withLock { $0 = newValue } }
+    }
+    /// Takes the pending greeting for a character starting now, so exactly one character greets.
+    nonisolated static func takeGreeting() -> Bool {
+        greeting.withLock { pending in defer { pending = false }; return pending }
+    }
     /// The characters on screen now; a reaction reaches only these, never one shown later.
     static let shown = NSHashTable<CharacterMotion>.weakObjects()
 
@@ -199,30 +209,34 @@ private struct Gaze {
 }
 
 /// One character's running motion: the machine, the eased targets, the ember, the turning and the face.
-@MainActor final class CharacterMotion {
+/// The crew scene advances it on its render thread while cues arrive on the main thread, so every entry takes its lock.
+final class CharacterMotion: @unchecked Sendable {
+    private let lock = NSLock()
     private var machine: CharacterMachine?
     private var last: Double?
     private var pose = CharacterPose()
     private var vel = 0.5
     private var blinker = Blinker(), gaze = Gaze()
     private var requests: [(CharacterMachine.Emote, CharacterMachine.Fidget?)] = []
-    func request(_ emote: CharacterMachine.Emote, variant: CharacterMachine.Fidget? = nil) { requests.append((emote, variant)) }
+    func request(_ emote: CharacterMachine.Emote, variant: CharacterMachine.Fidget? = nil) { lock.withLock { requests.append((emote, variant)) } }
     private var flickerAt = -Double.infinity, flickerBoost = 0.0
     func flicker(tokens: Double) {
-        guard let last else { return }
-        flickerBoost = max(CharacterFlicker.intensity(tokens), flickerBoost * CharacterFlicker.envelope(last - flickerAt))
-        flickerAt = last
+        lock.withLock {
+            guard let last else { return }
+            flickerBoost = max(CharacterFlicker.intensity(tokens), flickerBoost * CharacterFlicker.envelope(last - flickerAt))
+            flickerAt = last
+        }
     }
-    func discardReactions() { requests.removeAll(keepingCapacity: true); flickerBoost = 0 }
-    var greeting: Bool { machine?.mode == .greet }
+    func discardReactions() { lock.withLock { requests.removeAll(keepingCapacity: true); flickerBoost = 0 } }
+    var greeting: Bool { lock.withLock { machine?.mode == .greet } }
 
     func advance(to time: Double, state: PhoneCharacter.State) -> CharacterPose {
+        lock.withLock { advanceLocked(to: time, state: state) }
+    }
+    private func advanceLocked(to time: Double, state: PhoneCharacter.State) -> CharacterPose {
         if machine == nil {
             machine = CharacterMachine(now: time)
-            if CharacterCues.greetingPending {
-                CharacterCues.greetingPending = false
-                machine?.request(.greet, now: time)
-            }
+            if CharacterCues.takeGreeting() { machine?.request(.greet, now: time) }
         }
         guard var machine else { return pose }
         // Inputs first, then the request: a nod asked for as a turn starts is held for that turn's end.
@@ -282,7 +296,7 @@ private struct Gaze {
 
 /// The Mac's drawFrame for the phone's states and emotes: the tesseract, its halo, and the two soft-light eyes.
 enum CharacterPainter {
-    struct RGB {
+    struct RGB: Sendable {
         var r, g, b: Double
         init(_ r: Double, _ g: Double, _ b: Double) { (self.r, self.g, self.b) = (r, g, b) }
         init(_ color: Color, in environment: EnvironmentValues) {
@@ -290,7 +304,7 @@ enum CharacterPainter {
             self.init(Double(resolved.red) * 255, Double(resolved.green) * 255, Double(resolved.blue) * 255)
         }
         func mix(_ other: RGB, _ t: Double) -> RGB { RGB(r + (other.r - r) * t, g + (other.g - g) * t, b + (other.b - b) * t) }
-        func color(_ opacity: Double) -> Color { Color(.sRGB, red: r / 255, green: g / 255, blue: b / 255, opacity: opacity) }
+        func color(_ opacity: Double) -> PenColor { PenColor(red: r / 255, green: g / 255, blue: b / 255, alpha: opacity) }
     }
     fileprivate struct Point { var x, y, depth, w: Double }
 
@@ -326,27 +340,49 @@ enum CharacterPainter {
             return colors!
         }
     }
-    struct Palette {
+    /// Resolved once per theme on the main thread, so a render thread draws with plain values.
+    struct Palette: Sendable {
         let scheme: ColorScheme
         let acc, dim, hot, bg: RGB
         let boost, haloBoost: Double
+        /// The scene's selection outline and the open summary's corner brackets.
+        let accent, muted: PenColor
         init(_ environment: EnvironmentValues) {
             scheme = environment.colorScheme
             acc = RGB(PhoneTheme.wire, in: environment); dim = RGB(PhoneTheme.wireDim, in: environment)
             hot = RGB(PhoneTheme.wireHot, in: environment); bg = RGB(PhoneTheme.background, in: environment)
             boost = PhoneTheme.wireBoost(scheme); haloBoost = PhoneTheme.haloBoost(scheme)
+            accent = PenColor(PhoneTheme.accent, in: environment); muted = PenColor(PhoneTheme.muted, in: environment)
+        }
+        init(_ scheme: ColorScheme) {
+            var environment = EnvironmentValues()
+            environment.colorScheme = scheme
+            self.init(environment)
         }
     }
 
+    /// A SwiftUI Canvas draws through the same pen as the render thread, so the two never drift.
     static func draw(_ p: CharacterPose, in context: inout GraphicsContext, size: CGSize, cache: Cache = Cache()) {
+        let palette = cache.palette(context.environment)
+        #if DEBUG
+        let source = context.environment.characterEvidenceSource
+        #else
+        let source = ""
+        #endif
+        context.withCGContext { cg in
+            var pen = ScenePen(cg)
+            draw(p, in: &pen, size: size, cache: cache, palette: palette, source: source)
+        }
+    }
+
+    /// `source` names the drawing for the DEBUG frame sample (`characterEvidenceSource`).
+    static func draw(_ p: CharacterPose, in context: inout ScenePen, size: CGSize, cache: Cache, palette colors: Palette, source: String) {
         #if DEBUG
         let frameStarted = ProcessInfo.processInfo.systemUptime
-        defer { CharacterFrameMetrics.shared.record(start: frameStarted, source: context.environment.characterEvidenceSource, mode: p.mode.rawValue, heat: p.heat, rotation: p.a) }
+        defer { CharacterFrameMetrics.shared.record(start: frameStarted, source: source, mode: p.mode.rawValue, heat: p.heat, rotation: p.a) }
         #endif
         let s = min(size.width, size.height), c = s / 2
         context.translateBy(x: (size.width - s) / 2, y: (size.height - s) / 2)
-        let environment = context.environment
-        let colors = cache.palette(environment)
         let acc = colors.acc, dim = colors.dim, hot = colors.hot, bg = colors.bg
         let boost = colors.boost, haloBoost = colors.haloBoost
         let cur = p.cur, heat = p.heat, now = p.milliseconds, et = p.progress
@@ -383,7 +419,7 @@ enum CharacterPainter {
         // The ambient glow, breathing while listening.
         let glowA = haloBoost * cur.glow * (warp?.glow ?? 1) * (0.1 + heat * 0.16 + cur.breath * 0.6 * (0.5 + 0.5 * sin(now / 650))) + replyGlow * 0.18
         context.fill(Path(CGRect(x: 0, y: 0, width: s, height: s)), with: .radialGradient(
-            Gradient(colors: [bright.color(glowA), bright.color(0)]), center: CGPoint(x: c, y: c), startRadius: 0, endRadius: s / 2))
+            PenGradient(colors: [bright.color(glowA), bright.color(0)]), center: CGPoint(x: c, y: c), startRadius: 0, endRadius: s / 2))
 
         // Rotate xw and yz, then project 4D to 3D to 2D.
         let ca = cos(p.a + spin), sa = sin(p.a + spin), cb = cos(p.b + pitch), sb = sin(p.b + pitch)
@@ -465,11 +501,8 @@ enum CharacterPainter {
         // The halo: every hot primitive in one tint, accumulated, blurred once and laid under the wires.
         let halo = min(1.6, neon * haloBoost)
         if halo > 0.02 {
-            var glow = context
-            glow.addFilter(.blur(radius: 7 * halo * (s / 280)))
-            glow.opacity = min(1, 0.9 * halo)
             let tint = hot.mix(RGB(255, 236, 200), 0.3)
-            glow.drawLayer { mask in
+            context.blurredLayer(bounds: CGRect(x: 0, y: 0, width: s, height: s), radius: 7 * halo * (s / 280), opacity: min(1, 0.9 * halo)) { mask in
                 mask.blendMode = .plusLighter
                 paint(cache.prims, cache.points, in: &mask) { _, _ in tint }
             }
@@ -506,7 +539,7 @@ enum CharacterPainter {
             let open = (1 - lid) * cur.eyeScale
             let rw = R * 0.085 * cur.eyeScale * eye.depth
             let socket = rw * 3.2
-            context.fill(circle(e.x, e.y, socket), with: .radialGradient(Gradient(colors: [bg.color(0.75), bg.color(0)]),
+            context.fill(circle(e.x, e.y, socket), with: .radialGradient(PenGradient(colors: [bg.color(0.75), bg.color(0)]),
                 center: CGPoint(x: e.x, y: e.y), startRadius: 0, endRadius: socket))
             if p.happy > 0.5 {
                 var arc = Path()
@@ -523,7 +556,7 @@ enum CharacterPainter {
             } else {
                 let rh = rw * 1.35 * max(0.1, open), glowR = rw * 2.1
                 context.fill(circle(e.x, e.y, glowR), with: .radialGradient(
-                    Gradient(stops: [.init(color: eyeCol.color(0.95), location: 0), .init(color: eyeBase.color(0.5), location: 0.45),
+                    PenGradient(stops: [.init(color: eyeCol.color(0.95), location: 0), .init(color: eyeBase.color(0.5), location: 0.45),
                                      .init(color: eyeBase.color(0), location: 1)]),
                     center: CGPoint(x: e.x, y: e.y), startRadius: 0, endRadius: glowR))
                 // The core leads the light along the gaze by half its offset, the Mac's resting pupil shift.
@@ -544,7 +577,7 @@ enum CharacterPainter {
     }
 
     /// Replays the resolved edges, their filament cores, the dots and their incandescent cores.
-    private static func paint(_ prims: Primitives, _ points: [Point], in context: inout GraphicsContext,
+    private static func paint(_ prims: Primitives, _ points: [Point], in context: inout ScenePen,
                               color: (Kind, Double) -> RGB) {
         let wire = StrokeStyle(lineWidth: 1.4, lineCap: .round), filament = StrokeStyle(lineWidth: 0.7, lineCap: .round)
         for (i, (p, q)) in edges.enumerated() where !prims.edgeSkip[i] {

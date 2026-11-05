@@ -175,10 +175,10 @@ import XCTest
         let stage = OrbitGapStage(try roster(1, waiting: false))
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = UIWindow(windowScene: scene)
-        defer { stage.clock.setRunning(false); window.isHidden = true; window.rootViewController = nil }
+        defer { window.isHidden = true; window.rootViewController = nil }
         CharacterCues.greetingPending = false
         window.rootViewController = UIHostingController(rootView: OrbitGapView(stage: stage, bounds: window.bounds.size))
-        window.makeKeyAndVisible(); stage.clock.setRunning(true)
+        window.makeKeyAndVisible()
         func ticks(_ count: Int) async {
             let sample = DisplaySample(ticks: count)
             let result = await sample.complete(within: 20)
@@ -253,16 +253,15 @@ import XCTest
 /// The recording renders the production scene in an owned native test window.
 @Observable @MainActor private final class OrbitGapStage {
     var roster: PhoneSceneRoster
-    let clock = CharacterDisplayClock(), character = CharacterMotion(), crew = PhoneSceneMotion()
+    let renderer = PhoneSceneRenderer()
+    var crew: PhoneSceneMotion { renderer.crew }
     init(_ roster: PhoneSceneRoster) { self.roster = roster }
 }
 @MainActor private struct OrbitGapView: View {
     let stage: OrbitGapStage
     let bounds: CGSize
     var body: some View {
-        PhoneSceneFrame(roster: stage.roster, state: .idle, observed: true, clock: stage.clock,
-                        character: stage.character, crew: stage.crew, still: false, offset: .zero,
-                        preview: .constant(nil), computerPreview: .constant(nil), previewComputer: .constant(nil))
+        PhoneSceneSurface(renderer: stage.renderer, roster: stage.roster, state: .idle, still: false, running: true)
             .frame(width: stage.roster.width, height: stage.roster.height)
             .offset(x: bounds.width / 2 - stage.roster.homeX, y: bounds.height / 2 - stage.roster.height / 2)
             .frame(width: bounds.width, height: bounds.height, alignment: .topLeading).clipped()
