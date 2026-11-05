@@ -5,6 +5,7 @@ struct PhoneTasks: View {
     let session: ReadOnlySession
     @Environment(PhoneMessageContext.self) private var messageContext
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    @Environment(\.verticalSizeClass) private var verticalSize
     @State private var query = ""
     @State private var searchOpen = false
     @State private var focusOnOpen = false
@@ -34,11 +35,18 @@ struct PhoneTasks: View {
     // VoiceOver cannot pull past the top of a list, so it always finds the field.
     private var searchShown: Bool { searchOpen || !query.isEmpty || voiceOver }
 
+    /// INF-2553: on an iPhone on its side, a card brought back and put aside again by its refusal says why on this
+    /// list's line, as a refused bring-back did before.
+    private var asideLine: String? {
+        guard phoneOnItsSide(verticalSize) else { return nil }
+        return session.cards.first { $0.minimized && session.takenBack[$0.id] != nil }.flatMap { session.takenBack[$0.id] }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: PhoneTheme.space3) {
                 if searchShown { search }
-                if let problem { Text(problem).foregroundStyle(PhoneTheme.warning) }
+                if let problem = problem ?? asideLine { Text(problem).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("tasks-problem") }
                 LazyVStack(alignment: .leading, spacing: PhoneTheme.space2) {
                     if rows.isEmpty && (board?.tasklessMinimized(session.cards).isEmpty ?? true) { Text(query.isEmpty ? "No tasks yet." : "No matching tasks.").foregroundStyle(PhoneTheme.secondary) }
                     if query.isEmpty {
@@ -189,14 +197,16 @@ struct PhoneTasks: View {
         if aside.isEmpty { messageContext.taskID = task.id; selected = task } else { restore(aside) }
     }
 
+    /// INF-2553: the cards are back on Home at the tap, the first one up; one request per card, sent together, each
+    /// settling on its own.
+    /// A refusal puts that card aside again and the session says why.
     private func restore(_ cards: [PhoneCard]) {
         guard let first = cards.first, session.canChange else { return }
         problem = nil
-        Task {
-            do { for card in cards { _ = try await session.ask(.minimize, [.string(card.id), .bool(false)]) } }
-            catch { problem = error.localizedDescription; return }
-            messageContext.restoring = first.id
+        for card in cards {
+            Task { try? await session.change(.bringBack(card: card.id), .minimize, [.string(card.id), .bool(false)]) }
         }
+        messageContext.restoring = first.id
     }
 
     // A card put aside with no task: the Mac's presentation-only row, titled by the card, with no key or project.
@@ -235,11 +245,13 @@ struct PhoneTaskRecord: View {
     @State private var readProblem: String?
     @State private var sent = 0
     @ScaledMetric(relativeTo: .caption) private var markLift: CGFloat = 4
-    private var task: PhoneTask { detail ?? initial }
+    /// INF-2553: the record as the home last read it, with the captain's pending start, interrupt or steer drawn over it.
+    private var task: PhoneTask { session.shown(detail ?? initial) }
+    private var transcript: PhoneCrew? { crew.map(session.shown) }
     private var steerable: Bool { showingCrew && task.canSteer }
     private var canStart: Bool { task.moves?["start-task"]?.ok == true }
     private var canContinue: Bool { task.moves?["continue-task"]?.ok == true }
-    private var canInterrupt: Bool { steerable && live?.since != nil }
+    private var canInterrupt: Bool { steerable && live?.since != nil && task.activity != "stopping" }
     private var hasActions: Bool {
         (task.status == "open" || task.status == "active") && (steerable || canStart || canContinue)
     }
@@ -270,7 +282,7 @@ struct PhoneTaskRecord: View {
                     if showingCrew { crewContent } else { infoContent }
                 }.padding().frame(maxWidth: 750).frame(maxWidth: .infinity)
             }
-            if hasActions || problem != nil { foot }
+            if hasActions || problem != nil || session.changeNotice != nil { foot }
         }.background(PhoneTheme.background).navigationBarTitleDisplayMode(.inline)
             // INF-589 item 12: a soft tap once the computer accepts a start, continue, interrupt or steer.
             .sensoryFeedback(.phone, trigger: sent)
@@ -296,8 +308,23 @@ struct PhoneTaskRecord: View {
             }
             if let outcome = task.outcome { section("Latest report", outcome) }
             if let problem = task.problem { section("What happened", problem) }
-            if !task.blockedBy.isEmpty { section("Waiting for", task.blockedBy.joined(separator: ", ")) }
+            // INF-2528: the details the crew summary leaves out live here - when each wait was recorded, the reasoning
+            // level with its note, and the check counts with any reason they could not all be read.
+            if !task.blockedBy.isEmpty {
+                section("Waiting for", task.blockedBy.map { key in
+                    task.blockedSince?[key].map { "\(key) recorded \(Self.time(Date(timeIntervalSince1970: $0 / 1000), now: .now))" } ?? key
+                }.joined(separator: ", "), id: "task-record-waiting")
+            }
+            let facts = PhoneTaskFacts(task, modelName: { model in task.modelLabel ?? PhoneCrewSummary.modelTail(model) })
             if let model = task.modelLabel { section("Crewmate", "\(task.assignee ?? "Crewmate") · \(model)") }
+            if let reasoning = facts.reasoning {
+                section("Reasoning", [reasoning, facts.reason].compactMap { $0 }.joined(separator: ". "), id: "task-record-reasoning")
+            }
+            if let checks = facts.delivery?.checks {
+                let change = facts.delivery?.change.map { $0.label ?? $0.noun }
+                section("Checks", [change, checks.spanWords(now: Date.now.timeIntervalSince1970 * 1000)].compactMap { $0 }
+                    .joined(separator: " · "), id: "task-record-checks")
+            }
             Text("Timeline").font(PhoneFont.headline)
             timeline
         }
@@ -338,18 +365,20 @@ struct PhoneTaskRecord: View {
 
     /// The transcript's rows sit straight in the record's lazy stack, so only the lines on screen are laid out.
     @ViewBuilder private var crewContent: some View {
-        if let crew {
+        if let crew = transcript {
             if crew.earlier > 0 { Text("\(crew.earlier) earlier entries are not shown.").font(PhoneFont.caption) }
             if crew.lines.isEmpty { Text("Nothing from the crewmate yet.").foregroundStyle(PhoneTheme.secondary) }
             ForEach(crew.lines) { line in
                 VStack(alignment: .leading, spacing: PhoneTheme.space2) {
                     if line.kind == "sent" { Text(line.from == "captain" ? "You" : line.from == "firstmate" ? "Your first mate" : "Infinitary").font(PhoneFont.caption) }
+                    if line.sending { Text("Sending…").font(PhoneFont.micro).foregroundStyle(PhoneTheme.muted).accessibilityIdentifier("crew-sending") }
                     if let name = line.name { Text("\(name) · \(line.target ?? "")").font(PhoneFont.mono) }
                     if line.kind == "brief" || line.kind == "report" {
                         DisclosureGroup(line.summary ?? (line.kind == "brief" ? "The brief" : "Report")) { Text(line.words).textSelection(.enabled) }
                     } else { Text(line.words).textSelection(.enabled) }
                     if let result = line.result { CrewResult(session: session, taskID: task.id, result: result) }
-                }.accessibilityIdentifier("crew-line-\(line.kind)")
+                // A container keeps its rows' own names; an identifier on a bare stack is handed to every row inside it.
+                }.accessibilityElement(children: .contain).accessibilityIdentifier("crew-line-\(line.kind)")
             }
         }
         if let text = live?.text, !text.isEmpty { Text(text).accessibilityIdentifier("crew-live") }
@@ -359,6 +388,10 @@ struct PhoneTaskRecord: View {
     private var foot: some View {
         VStack(alignment: .leading, spacing: PhoneTheme.space3) {
             if let problem { Text(problem).font(PhoneFont.callout).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("task-problem") }
+            // INF-2553: why a start, interrupt or steer shown at the tap was taken back, said where the captain is.
+            if let notice = session.changeNotice {
+                Text(notice.words).font(PhoneFont.callout).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("task-change-notice")
+            }
             if hasActions { actions }
         }.padding(PhoneTheme.space4).frame(maxWidth: 750).frame(maxWidth: .infinity)
             .background(PhoneTheme.panel)
@@ -371,9 +404,9 @@ struct PhoneTaskRecord: View {
             if canInterrupt || canStart || canContinue {
                 // The card's row (INF-944 item 5): the default lit and last at the trailing edge, Interrupt outlined beside it.
                 PhoneChoiceRow {
-                    if canInterrupt { choice("Interrupt", id: "interrupt-task", primary: false) { change(.interrupt, args: [task.id], from: "interrupt-task") } }
-                    if canStart { choice("Start", id: "start-task", primary: true) { change(.run, args: [task.id, "start-task"], from: "start-task") } }
-                    if canContinue { choice("Continue", id: "continue-task", primary: true) { change(.run, args: [task.id, "continue-task"], from: "continue-task") } }
+                    if canInterrupt { choice("Interrupt", id: "interrupt-task", primary: false) { change(.interrupt(task: task.id), .interrupt, args: [task.id], from: "interrupt-task") } }
+                    if canStart { choice("Start", id: "start-task", primary: true) { change(.start(task: task.id, move: "start-task"), .run, args: [task.id, "start-task"], from: "start-task") } }
+                    if canContinue { choice("Continue", id: "continue-task", primary: true) { change(.start(task: task.id, move: "continue-task"), .run, args: [task.id, "continue-task"], from: "continue-task") } }
                 }
             }
         }.disabled(busy || !session.canChange)
@@ -382,12 +415,15 @@ struct PhoneTaskRecord: View {
     // The composer's capsule, with Steer as its send arrow, dimmed until there are words to send.
     private var steerBox: some View {
         HStack(alignment: .center, spacing: PhoneTheme.space2) {
+            // INF-2553: the steer shows in the transcript at the tap, so the box stays open for the next one.
             TextField("Message to the crewmate", text: $draft, axis: .vertical).lineLimit(1...4)
-                .disabled(busy).accessibilityIdentifier("steer-box")
-            Button { change(.steer, args: [task.id, draft], clearDraft: true, from: "steer-task") } label: {
+                .accessibilityIdentifier("steer-box")
+            Button {
+                change(.steer(task: task.id, text: draft, before: PhoneIntentLedger.captainSteers(transcript)), .steer,
+                       args: [task.id, draft], clearDraft: true, from: "steer-task")
+            } label: {
                 Group {
-                    if busy && pressed == "steer-task" { ProgressView() }
-                    else { Label("Steer", systemImage: "arrow.up.circle.fill").labelStyle(.iconOnly) }
+                    Label("Steer", systemImage: "arrow.up.circle.fill").labelStyle(.iconOnly)
                 }.frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
             }.disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .keyboardShortcut(.return, modifiers: .command).accessibilityIdentifier("steer-task")
@@ -404,17 +440,20 @@ struct PhoneTaskRecord: View {
         }.buttonStyle(PhoneChoiceStyle(primary: primary)).accessibilityIdentifier(id)
     }
 
-    private func section(_ title: String, _ text: String) -> some View {
-        VStack(alignment: .leading, spacing: PhoneTheme.space2) { Text(title).font(PhoneFont.headline); Text(text).textSelection(.enabled) }
+    private func section(_ title: String, _ text: String, id: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: PhoneTheme.space2) {
+            Text(title).font(PhoneFont.headline)
+            if let id { Text(text).textSelection(.enabled).accessibilityIdentifier(id) } else { Text(text).textSelection(.enabled) }
+        }
     }
 
     private func refresh() async {
         do {
-            let next: PhoneTask = try await session.request(.detail, args: [initial.id])
+            let next = try await session.readDetail(initial.id)
             guard !Task.isCancelled else { return }
             detail = next; readProblem = nil
             if showingCrew && next.startedAt != nil {
-                let transcript: PhoneCrew = try await session.request(.crew, args: [initial.id])
+                let transcript = try await session.readCrew(initial.id)
                 let running: PhoneCrewLive = try await session.request(.live, args: [initial.id])
                 guard !Task.isCancelled else { return }
                 crew = transcript; live = running
@@ -422,19 +461,24 @@ struct PhoneTaskRecord: View {
         } catch { if !Task.isCancelled { readProblem = error.localizedDescription } }
     }
 
-    private func change(_ channel: PhoneRequest, args: [Any], clearDraft: Bool = false, from control: String) {
+    /// INF-2553: the record shows the change at the tap and a steer's draft clears; the session takes a refused change
+    /// back, says why in the foot and puts the draft back.
+    private func change(_ kind: PhoneIntent.Kind, _ channel: PhoneRequest, args: [Any], clearDraft: Bool = false, from control: String) {
         guard !busy, session.canChange else { return }
         if clearDraft && draft.utf16.count > PhoneLimits.steer { problem = "This message is too long. Shorten it before sending."; return }
+        let words = draft
         busy = true; pressed = control; problem = nil
+        if clearDraft { draft = "" }
+        let box = $draft
+        var restore: (@MainActor () -> Void)?
+        if clearDraft { restore = { @MainActor in if box.wrappedValue.isEmpty { box.wrappedValue = words } } }
         Task {
             defer { busy = false }
             do {
-                let answer: PhoneAnswer = try await session.request(channel, args: args)
-                try answer.accepted()
+                try await session.change(kind, channel, args: args, restore: restore)
                 sent += 1
-                if clearDraft { draft = "" }
                 await refresh()
-            } catch { problem = error.localizedDescription }
+            } catch {}
         }
     }
 }

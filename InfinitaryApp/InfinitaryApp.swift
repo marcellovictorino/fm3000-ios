@@ -85,7 +85,7 @@ struct PhoneView: View {
                         Button { details = true } label: {
                             PhoneSymbol.computer.image
                                 .overlay(alignment: .topTrailing) {
-                                    if session.contact == "lost" || session.contact == "closed" {
+                                    if session.contact == "lost" {
                                         Circle().fill(PhoneTheme.warning).frame(width: 7, height: 7).offset(x: 3, y: -3)
                                     }
                                 }

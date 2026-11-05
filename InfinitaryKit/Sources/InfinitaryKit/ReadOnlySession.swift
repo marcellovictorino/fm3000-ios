@@ -39,6 +39,7 @@ public struct PhoneNotice: Equatable, Sendable {
     /// The last authenticated route, separate from saved preference. Never a route merely attempted.
     public private(set) var reachedAddress: String?
     public private(set) var mac: JoinedMac
+    /// What the screens show: the home's last snapshot with the captain's pending intents folded over it (INF-2553).
     public private(set) var cards: [PhoneCard] = []
     public private(set) var activity: [ActivityLine] = []
     public private(set) var threads: [String: PhoneJSON] = [:]
@@ -47,6 +48,23 @@ public struct PhoneNotice: Equatable, Sendable {
     @ObservationIgnored private var threadRevisions: [String: Int] = [:]
     public private(set) var board: PhoneBoard?
     public private(set) var lastTurn: PhoneLastTurn?
+    /// INF-2553: the home's own snapshots, never edited; the shown values above are these with `intents` folded over.
+    @ObservationIgnored private var syncedCards: [PhoneCard] = []
+    @ObservationIgnored private var syncedThreads: [String: PhoneJSON] = [:]
+    @ObservationIgnored private var syncedBoard: PhoneBoard?
+    @ObservationIgnored private var syncedTurn: PhoneLastTurn?
+    /// The captain's changes this phone already shows and its computer has not yet confirmed, in the order sent.
+    public private(set) var ledger = PhoneIntentLedger()
+    /// Why a change shown at the tap was taken back: the home refused it, or could not confirm it after reconnecting.
+    public var changeNotice: PhoneChangeNotice?
+    /// INF-2553, the captain's pick: an iPhone on its side shows no notice pill, so the same words stay on the place's
+    /// own line (`PhoneIntent.place`) until that place's next change or the upright pill shows them, never cleared unseen.
+    public private(set) var takenBack: [String: String] = [:]
+    @ObservationIgnored private var restorers: [Int: @MainActor () -> Void] = [:]
+    /// Each welcome counts, so a change whose result was lost is settled by a snapshot read after the next one.
+    @ObservationIgnored private var welcomes = 0
+    /// The journal's newest push when the last welcome came: the pushes up to it are replayed catch-up.
+    @ObservationIgnored private var welcomeSeq = 0
     /// Only the home's busy snapshot or numbered firstmate_state event establishes a conversational turn.
     /// An older home keeps event-only activity; there is still no phone dictation/listening signal.
     public private(set) var firstmateBusy = false
@@ -61,11 +79,12 @@ public struct PhoneNotice: Equatable, Sendable {
     public private(set) var homeVersion: String?
     public var notice: PhoneNotice?
     /// Offers the stage has drawn while the person could see it, kept for this computer's session only.
-    public private(set) var seenCards = Set<String>()
+    private var seenCards = Set<String>()
+    public private(set) var sharedCardSeen = false
     /// The Mac's stage rule: a new card waits for its author's close-out, but a replied-under card stays.
     /// A minimized card leaves the phone's stack and count too (INF-944 item 3).
     public var stack: [PhoneCard] { cards.filter { ($0.awaiting == nil || $0.sentBackAt != nil) && !$0.minimized } }
-    public var unreadCards: Int { stack.filter { !seenCards.contains($0.offerID ?? $0.id) }.count }
+    public var unreadCards: Int { stack.filter { !hasSeen($0) }.count }
     public var canChange: Bool { contact == "in-reach" && access == "full" }
     public var changeRefusal: String? {
         if contact != "in-reach" { return "Your computer is out of reach. Nothing will be sent later." }
@@ -119,7 +138,7 @@ public struct PhoneNotice: Equatable, Sendable {
         try Task.checkCancellation()
         do { return try JSONDecoder().decode(T.self, from: answer) }
         catch {
-            if channel.changes { throw PhoneError.refused("Could not confirm the change. Check your computer before sending it again.") }
+            if channel.changes { throw PhoneError.unconfirmed }
             throw PhoneError.invalidReply
         }
     }
@@ -146,7 +165,7 @@ public struct PhoneNotice: Equatable, Sendable {
         try Task.checkCancellation()
         do { return try JSONDecoder().decode(PhoneJSON.self, from: answer) }
         catch {
-            if channel.changes { throw PhoneError.refused("Could not confirm the change. Check your computer before sending it again.") }
+            if channel.changes { throw PhoneError.unconfirmed }
             throw PhoneError.invalidReply
         }
     }
@@ -188,7 +207,7 @@ public struct PhoneNotice: Equatable, Sendable {
     public func readThread(_ id: String) async throws {
         let revision = threadRevisions[id, default: 0]
         let thread = try await ask(.thread, [.string(id)])
-        if revision == threadRevisions[id, default: 0] { threads[id] = thread }
+        if revision == threadRevisions[id, default: 0] { syncedThreads[id] = thread; saw(.thread(card: id, thread)) }
     }
 
     public func readPast(_ id: String) async throws {
@@ -201,24 +220,43 @@ public struct PhoneNotice: Equatable, Sendable {
     private func failCall(_ id: Int) {
         waitingSince.removeValue(forKey: id)
         guard let (changes, continuation) = calls.removeValue(forKey: id) else { return }
-        continuation.resume(throwing: changes
-            ? PhoneError.refused("Could not confirm the change. Check your computer before sending it again.")
-            : PhoneError.unavailable)
+        continuation.resume(throwing: changes ? PhoneError.unconfirmed : PhoneError.unavailable)
     }
     private func failCalls() { for id in Array(calls.keys) { failCall(id) } }
 
     private func clearContent() {
         computers = []
-        cards = []; activity = []; board = nil; lastTurn = nil; notice = nil; firstmateBusy = false; firstmateObserved = false
-        threads = [:]; pastCards = []; showCardID = nil; threadRevisions = [:]; seenCards = []
+        syncedCards = []; activity = []; syncedBoard = nil; syncedTurn = nil; notice = nil; firstmateBusy = false; firstmateObserved = false
+        syncedThreads = [:]; pastCards = []; showCardID = nil; threadRevisions = [:]; seenCards = []
+        ledger.clear(); restorers = [:]; changeNotice = nil; takenBack = [:]; refold()
         notified = [:]; awaited = []; primed = false; workRevision += 1
         wakeReachWaiters()
     }
 
-    /// Reading a card ends the notice about it.
+    /// Updated homes own every current-update mark; the set is only the older-home fallback.
+    public func hasSeen(_ card: PhoneCard) -> Bool {
+        sharedCardSeen ? card.currentUpdateSeen : seenCards.contains(card.offerID ?? card.id)
+    }
+
+    /// Called only after the current pane drew in an active, visible, connected scene.
     public func markSeen(_ card: PhoneCard) {
-        seenCards.insert(card.offerID ?? card.id)
+        guard contact == "in-reach", let current = cards.first(where: { $0.id == card.id }),
+              current.lifecycleID == card.lifecycleID, current.offerID == card.offerID,
+              current.currentUpdateID == card.currentUpdateID else { return }
+        if !sharedCardSeen { seenCards.insert(card.offerID ?? card.id) }
         if notice?.cardID == card.id { notice = nil }
+        let currentGeneration = generation
+        Task {
+            guard currentGeneration == generation, contact == "in-reach",
+                  let newest = cards.first(where: { $0.id == card.id }),
+                  newest.lifecycleID == card.lifecycleID, newest.currentUpdateID == card.currentUpdateID else { return }
+            if sharedCardSeen {
+                guard let lifecycle = card.lifecycleID, let update = card.currentUpdateID else { return }
+                _ = try? await ask(.seenUpdate, [.string(card.id), .string(lifecycle), .string(update)])
+            } else if let offer = card.offerID {
+                _ = try? await ask(.seen, [.string(card.id), .string(offer)])
+            }
+        }
     }
 
     private func observeCards(_ snapshot: [PhoneCard]) {
@@ -236,23 +274,215 @@ public struct PhoneNotice: Equatable, Sendable {
             let enabled = try? await request(.notifications, as: Bool.self)
             guard enabled == true, current == generation, contact == "in-reach" else { return }
             // A new card the stage drew while this question was out is already read.
-            if !reply && seenCards.contains(newest.offerID ?? newest.id) { return }
+            if let current = cards.first(where: { $0.id == newest.id }), (sharedCardSeen || !reply) && hasSeen(current) { return }
             notice = PhoneNotice(cardID: newest.id, title: newest.title, reply: reply)
         }
     }
 
+    // MARK: INF-2553, the captain's direction B: every tap shows at once and settles on the home's evidence.
+
+    /// Sends a card change and shows it at once. A refusal takes it back with the home's words in `changeNotice` and
+    /// runs `restore`; a lost result keeps it shown until a snapshot read after reconnecting settles it. Nothing is
+    /// queued or sent again.
+    @discardableResult
+    public func change(_ kind: PhoneIntent.Kind, _ channel: PhoneCardRequest, _ args: [PhoneJSON],
+                       restore: (@MainActor () -> Void)? = nil) async throws -> PhoneJSON {
+        let id = begin(kind, restore)
+        do {
+            let result = try await ask(channel, args)
+            if let refusal = result["refusal"].text { refuse(id, refusal); throw PhoneRequestError(refusal) }
+            accept(id)
+            return result
+        } catch { settle(id, after: error); throw error }
+    }
+
+    /// The same for a message, a start, an interrupt or a steer, each answered as accepted or not.
+    public func change(_ kind: PhoneIntent.Kind, _ channel: PhoneRequest, args: [Any],
+                       restore: (@MainActor () -> Void)? = nil) async throws {
+        let id = begin(kind, restore)
+        do {
+            let answer: PhoneAnswer = try await request(channel, args: args)
+            if !answer.ok {
+                let words = answer.text ?? "Your computer could not make this change."
+                refuse(id, words); throw PhoneError.refused(words)
+            }
+            accept(id)
+        } catch { settle(id, after: error); throw error }
+    }
+
+    /// A task record's own read, which also settles the intents it speaks about; the record draws `shown(_:)` of it.
+    public func readDetail(_ id: String) async throws -> PhoneTask {
+        let task: PhoneTask = try await request(.detail, args: [id])
+        saw(.task(task))
+        return task
+    }
+
+    public func readCrew(_ id: String) async throws -> PhoneCrew {
+        let crew: PhoneCrew = try await request(.crew, args: [id])
+        saw(.crew(crew))
+        return crew
+    }
+
+    /// A record's task or transcript as the screens show it, with the pending intents drawn over it.
+    public func shown(_ task: PhoneTask) -> PhoneTask { PhoneIntentFold.task(task, ledger.intents) }
+    public func shown(_ crew: PhoneCrew) -> PhoneCrew { PhoneIntentFold.crew(crew, ledger.intents) }
+
+    /// A message to the first mate is on its way: the last turn shows it, marked sending.
+    public var messageSending: Bool { ledger.intents.contains { if case .send = $0.kind { true } else { false } } }
+
+    /// How long an accepted change may wait for the snapshot that shows it, the serve watchdog's own wait.
+    static let acceptedWait: Duration = .seconds(15)
+
+    private func begin(_ kind: PhoneIntent.Kind, _ restore: (@MainActor () -> Void)?) -> Int {
+        let id = ledger.add(kind)
+        if let restore { restorers[id] = restore }
+        changeNotice = nil
+        if let place = ledger.intent(id)?.place { takenBack[place] = nil }
+        refold()
+        return id
+    }
+
+    /// The home accepted it. The snapshot that holds the change retires it; one that never comes lets it go quietly.
+    private func accept(_ id: Int) {
+        ledger.accept(id)
+        guard ledger.intent(id)?.state == .accepted else { restorers.removeValue(forKey: id); return }
+        // Ids are never reused, so a reconnect in between leaves the wait to end as it would have.
+        Task { [weak self] in
+            try? await Task.sleep(for: Self.acceptedWait)
+            guard let self, self.ledger.intent(id)?.state == .accepted else { return }
+            self.ledger.drop(id); self.restorers.removeValue(forKey: id); self.refold()
+        }
+    }
+
+    private func settle(_ id: Int, after error: Error) {
+        guard ledger.intent(id)?.state == .sent else { return }
+        switch error {
+        case PhoneError.unconfirmed, is CancellationError: ledger.lose(id, welcome: welcomes)
+        case PhoneError.unavailable: refuse(id, changeRefusal ?? error.localizedDescription)
+        default: refuse(id, error.localizedDescription)
+        }
+    }
+
+    private func refuse(_ id: Int, _ words: String) {
+        guard let intent = ledger.drop(id) else { return }
+        restorers.removeValue(forKey: id)?()
+        say(words, at: intent)
+        refold()
+    }
+
+    private func say(_ words: String, at intent: PhoneIntent) {
+        changeNotice = PhoneChangeNotice(words: words, place: intent.place)
+        if let place = intent.place { takenBack[place] = words }
+    }
+
+    /// The upright pill showed the notice, so its place's line has nothing left unseen to say.
+    public func noticeShown(_ change: PhoneChangeNotice) {
+        guard changeNotice == change, let place = change.place else { return }
+        takenBack[place] = nil
+    }
+
+    /// A snapshot from the home: retire what it holds, void what changed under it, and take back with today's
+    /// unconfirmed words what it contradicts after reconnecting.
+    private func saw(_ snapshot: PhoneSnapshot, replayed: Bool = false) {
+        let before = ledger.intents.map(\.id)
+        // A push the welcome replays can predate a change whose result was lost, so it settles only what it holds.
+        let contradicted = ledger.saw(snapshot, welcome: replayed ? Int.min : welcomes)
+        for intent in contradicted {
+            restorers.removeValue(forKey: intent.id)?()
+            say(PhoneError.unconfirmed.localizedDescription, at: intent)
+        }
+        let after = Set(ledger.intents.map(\.id))
+        for id in before where !after.contains(id) { restorers.removeValue(forKey: id) }
+        if after.count != before.count { refold(); return }
+        switch snapshot {
+        case .cards: cards = PhoneIntentFold.cards(syncedCards, ledger.intents)
+        case .thread: threads = PhoneIntentFold.threads(syncedThreads, ledger.intents)
+        case .board: board = PhoneIntentFold.board(syncedBoard, ledger.intents)
+        case .turn: lastTurn = PhoneIntentFold.lastTurn(syncedTurn, ledger.intents)
+        case .task, .crew: break
+        }
+    }
+
+    private func refold() {
+        cards = PhoneIntentFold.cards(syncedCards, ledger.intents)
+        threads = PhoneIntentFold.threads(syncedThreads, ledger.intents)
+        board = PhoneIntentFold.board(syncedBoard, ledger.intents)
+        lastTurn = PhoneIntentFold.lastTurn(syncedTurn, ledger.intents)
+    }
+
     public init(mac: JoinedMac, phone: PhoneIdentity) { self.mac = mac; self.phone = phone }
 
+    /// INF-2157: the app's reopen, and a change of network, start the loop or, while it runs, look again at once:
+    /// a kept connection must answer a ping within `reopenAnswer`, and a wait between rounds ends now.
     public func start() {
-        guard loop == nil, !removed else { return }
+        guard !removed else { return }
+        guard loop == nil else { lookAgain(); return }
         generation += 1
         let current = generation
+        contact = "reaching"
         loop = Task { [weak self] in await self?.run(generation: current) }
+    }
+
+    /// INF-2157: how long a kept connection has to answer the reopen's ping before it is cut and redialed.
+    static let reopenAnswer: Duration = .seconds(2)
+    /// INF-2157 (RFC 8305's attempt delay): the private network's lead over the other addresses, so it wins when both answer.
+    static let privateLead: Duration = .milliseconds(250)
+    /// How long a round's addresses have to open before the round fails, as the watchdog allowed one address before.
+    static let dialLimit: Duration = .seconds(10)
+
+    /// Why the last connection that opened ended, for the app-hosted tests.
+    enum Cut: Equatable { case unanswered, quiet, failed }
+    @ObservationIgnored private(set) var lastCut: Cut?
+    /// When the wait between rounds is due to end, while the loop waits.
+    @ObservationIgnored private(set) var pausedUntil: ContinuousClock.Instant?
+    @ObservationIgnored private var pause: CheckedContinuation<Void, Never>?
+    @ObservationIgnored private var pauseTimer: Task<Void, Never>?
+    @ObservationIgnored private var checking: URLSessionWebSocketTask?
+    @ObservationIgnored private var cutting: Cut?
+    /// A reopen or a change of network ended the wait, so the next round says it is reaching again.
+    @ObservationIgnored private var woken = false
+
+    private func lookAgain() {
+        if pause != nil { woken = true; contact = "reaching" }
+        endPause()
+        guard contact == "in-reach", let socket, checking !== socket else { return }
+        checking = socket
+        socket.sendPing { [weak self, weak socket] error in
+            Task { @MainActor in
+                guard let self, let socket, self.socket === socket, self.checking === socket else { return }
+                self.checking = nil
+                if error != nil { self.cut(socket, .failed) } else { self.heardAt = Date() }
+            }
+        }
+        Task { [weak self, weak socket] in
+            try? await Task.sleep(for: Self.reopenAnswer)
+            guard let self, let socket, self.socket === socket, self.checking === socket else { return }
+            self.checking = nil
+            self.cut(socket, .unanswered)
+        }
+    }
+
+    private func waitBetweenRounds(_ seconds: Int) async {
+        let until = ContinuousClock.now + .seconds(seconds)
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            pause = continuation; pausedUntil = until
+            pauseTimer = Task { [weak self] in
+                try? await Task.sleep(until: until)
+                self?.endPause()
+            }
+        }
+    }
+
+    private func endPause() {
+        pauseTimer?.cancel(); pauseTimer = nil; pausedUntil = nil
+        let continuation = pause; pause = nil
+        continuation?.resume()
     }
 
     public func stop() {
         generation += 1
         loop?.cancel(); loop = nil
+        endPause()
         finishLeave(PhoneError.unavailable)
         failCalls(); notice = nil; access = "read"; firstmateBusy = false; firstmateObserved = false
         socket?.cancel(with: .goingAway, reason: nil); socket = nil
@@ -279,10 +509,11 @@ public struct PhoneNotice: Equatable, Sendable {
         }
     }
 
-    private func abort(_ socket: URLSessionWebSocketTask) {
+    private func cut(_ socket: URLSessionWebSocketTask, _ why: Cut) {
         guard self.socket === socket else { return }
+        // The first reason holds: cancelling fails every ping still out, which is not why it was cut.
+        if cutting == nil { cutting = why }
         socket.cancel(with: .goingAway, reason: nil)
-        // Also cancel a handshake that has not become a WebSocket yet.
         transport?.close()
     }
 
@@ -291,107 +522,169 @@ public struct PhoneNotice: Equatable, Sendable {
         if let error { continuation?.resume(throwing: error) } else { continuation?.resume() }
     }
 
+    private func alive(_ current: Int) -> Bool { !Task.isCancelled && !removed && current == generation }
+
+    /// Each round dials every saved and nearby address together, keeps the first whose WebSocket opens and greets
+    /// only that one. "Out of reach" is said once a whole round failed; until then the words say it is reaching.
     private func run(generation current: Int) async {
         var attempt = 0
-        while !Task.isCancelled && !removed && current == generation {
-            let addresses = PhoneAddresses.preferred(mac.addresses + discoveries)
-            for address in addresses {
-                if Task.isCancelled || removed || current != generation { return }
-                let transport = PinnedTransport(pin: mac.pin, phone: phone, purpose: .connection)
-                self.transport = transport
-                var connection: URLSessionWebSocketTask?
-                do {
-                    let socket = try transport.socket(at: address)
-                    connection = socket; self.socket = socket
-                    failCalls()
-                    pending.removeAll(); waitingSince.removeAll(); dirty.removeAll(); ready.removeAll()
-                    access = "read"; firstmateBusy = false; firstmateObserved = false
-                    contact = heardAt == nil ? "reaching" : "lost"
-                    var hello: [String: Any] = ["t": "hello", "protocolVersion": PhoneContract.version,
-                        "as": "view", "viewFloor": PhoneContract.viewFloor, "system": "ios", "spellings": ["inf"], "appVersion": "0.1.0"]
-                    if let epoch { hello["cursor"] = ["epoch": epoch, "seq": sequence] }
-                    let watchdog = Task { [weak self, weak socket] in
-                        // Bound the handshake too: send(hello) can wait for a connection to open.
-                        // Each successful pong proves liveness; welcome/reads have a separate bounded wait.
-                        var welcomed = false
-                        while !Task.isCancelled {
-                            try? await Task.sleep(for: .seconds(10))
-                            guard !Task.isCancelled, let self, let socket, self.socket === socket else { return }
-                            let waiting = self.waitingSince.values.contains { Date().timeIntervalSince($0) > 15 }
-                            let leaveWait = self.leaveStarted.map { Date().timeIntervalSince($0) > 15 } ?? false
-                            if waiting || leaveWait { self.abort(socket); return }
-                            if !welcomed && self.contact != "in-reach" {
-                                self.abort(socket); return
-                            }
-                            welcomed = true
-                            if let heard = self.heardAt, Date().timeIntervalSince(heard) > 25 {
-                                self.abort(socket); return
-                            }
-                            socket.sendPing { [weak self, weak socket] error in
-                                Task { @MainActor in
-                                    guard let self, let socket, self.socket === socket else { return }
-                                    if error != nil { self.abort(socket) }
-                                    else { self.heardAt = Date() }
-                                }
-                            }
-                        }
-                    }
-                    defer { watchdog.cancel() }
-                    try await send(hello, on: socket)
-                    while !Task.isCancelled {
-                        let message = try await socket.receive()
-                        guard current == generation, !Task.isCancelled else { break }
-                        let data: Data
-                        switch message {
-                        case .string(let text): data = Data(text.utf8)
-                        default: throw PhoneError.invalidReply
-                        }
-                        try await receive(data, on: socket)
-                        guard current == generation, !Task.isCancelled else { break }
-                        if contact == "in-reach" {
-                            attempt = 0; refused = 0
-                            reachedAddress = address
-                            let preferred = Array(PhoneAddresses.preferred(mac.addresses + [address]).prefix(25))
-                            if mac.addresses != preferred {
-                                mac.addresses = preferred
-                                onMacChanged?(mac)
-                            }
-                        }
-                    }
-                } catch {
-                    guard current == generation, !Task.isCancelled else { transport.close(); return }
-                    let code = connection?.closeCode.rawValue
-                    let status = (connection?.response as? HTTPURLResponse)?.statusCode
-                    if code == 4401 {
-                        removed = true; clearContent()
-                        contact = "removed"; finishLeave(); onRemoved?()
-                    } else {
-                        if status == 401 { refused += 1 }
-                        else if status != nil { refused = 0 }
-                        if refused >= 2 {
-                            removed = true; clearContent(); contact = "removed"
-                            finishLeave(); onRemoved?()
-                        } else {
-                            contact = code == 1001 ? "closed" : "lost"
-                            missed = true
-                            finishLeave(PhoneError.unavailable)
-                        }
-                    }
-                }
-                failCalls(); firstmateBusy = false; firstmateObserved = false
-                transport.close()
-                guard current == generation else { return }
-                self.socket = nil; self.transport = nil
-                if Task.isCancelled || removed || current != generation { return }
+        while alive(current) {
+            failCalls()
+            pending.removeAll(); waitingSince.removeAll(); dirty.removeAll(); ready.removeAll()
+            access = "read"; firstmateBusy = false; firstmateObserved = false
+            // Out of reach stays while later rounds try again on their own; a reopen says it is reaching.
+            if attempt == 0 || woken { contact = "reaching" }
+            woken = false
+            let dialed = await dial(PhoneAddresses.preferred(mac.addresses + discoveries), generation: current)
+            guard alive(current) else { dialed?.transport.close(); return }
+            if let dialed, await serve(dialed, generation: current) {
+                attempt = 0
+                continue
             }
+            guard alive(current) else { return }
+            contact = "lost"; missed = true
+            finishLeave(PhoneError.unavailable)
             attempt = min(attempt + 1, 5)
-            try? await Task.sleep(for: .seconds(attempt))
+            await waitBetweenRounds(attempt)
         }
     }
 
-    private func receive(_ data: Data, on socket: URLSessionWebSocketTask) async throws {
-        guard let frame = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let kind = frame["t"] as? String else { throw PhoneError.invalidReply }
+    private struct Dialed: @unchecked Sendable { let address: String; let transport: PinnedTransport; let socket: URLSessionWebSocketTask }
+    private enum Dial: Sendable { case opened(Dialed), failed(status: Int?), timedOut }
+    private struct Attempt: Sendable { let address: String; let transport: PinnedTransport; let delay: Duration }
+
+    private nonisolated static func open(_ attempt: Attempt) async -> Dial {
+        if attempt.delay > .zero { try? await Task.sleep(for: attempt.delay) }
+        if Task.isCancelled { attempt.transport.close(); return .failed(status: nil) }
+        guard let socket = try? attempt.transport.socket(at: attempt.address) else {
+            attempt.transport.close(); return .failed(status: nil)
+        }
+        do {
+            try await attempt.transport.opened()
+            return .opened(Dialed(address: attempt.address, transport: attempt.transport, socket: socket))
+        } catch {
+            return .failed(status: (socket.response as? HTTPURLResponse)?.statusCode)
+        }
+    }
+
+    /// The private network dials first and the rest `privateLead` later; nothing else orders the addresses.
+    private func dial(_ addresses: [String], generation current: Int) async -> Dialed? {
+        let lead = addresses.contains(where: PhoneAddresses.isPrivate) ? Self.privateLead : .zero
+        let attempts = addresses.map { address in
+            Attempt(address: address, transport: PinnedTransport(pin: mac.pin, phone: phone, purpose: .connection),
+                    delay: PhoneAddresses.isPrivate(address) ? .zero : lead)
+        }
+        guard !attempts.isEmpty else { return nil }
+        var kept: PinnedTransport?
+        defer { for attempt in attempts where attempt.transport !== kept { attempt.transport.close() } }
+        return await withTaskGroup(of: Dial.self) { group in
+            for attempt in attempts { group.addTask { await Self.open(attempt) } }
+            group.addTask { try? await Task.sleep(for: Self.dialLimit); return .timedOut }
+            var left = attempts.count
+            for await outcome in group {
+                guard alive(current) else { break }
+                switch outcome {
+                case .opened(let dialed):
+                    group.cancelAll()
+                    kept = dialed.transport
+                    transport = dialed.transport
+                    return dialed
+                case .failed(let status):
+                    if status == 401 { refused += 1 } else if status != nil { refused = 0 }
+                    if refused >= 2 {
+                        group.cancelAll()
+                        removed = true; clearContent(); contact = "removed"
+                        finishLeave(); onRemoved?()
+                        return nil
+                    }
+                    left -= 1
+                    if left == 0 { group.cancelAll(); return nil }
+                case .timedOut:
+                    group.cancelAll()
+                    return nil
+                }
+            }
+            group.cancelAll()
+            return nil
+        }
+    }
+
+    /// Greets the opened socket and reads it until it ends; true when the computer was in reach on it.
+    private func serve(_ dialed: Dialed, generation current: Int) async -> Bool {
+        let (address, transport, socket) = (dialed.address, dialed.transport, dialed.socket)
+        self.socket = socket; cutting = nil
+        var reached = false
+        var hello: [String: Any] = ["t": "hello", "protocolVersion": PhoneContract.version,
+            "as": "view", "viewFloor": PhoneContract.viewFloor, "system": "ios", "spellings": ["inf"], "appVersion": "0.1.0"]
+        if let epoch { hello["cursor"] = ["epoch": epoch, "seq": sequence] }
+        let watchdog = Task { [weak self, weak socket] in
+            // Each successful pong proves liveness; welcome/reads have a separate bounded wait.
+            var welcomed = false
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(10))
+                guard !Task.isCancelled, let self, let socket, self.socket === socket else { return }
+                let waiting = self.waitingSince.values.contains { Date().timeIntervalSince($0) > 15 }
+                let leaveWait = self.leaveStarted.map { Date().timeIntervalSince($0) > 15 } ?? false
+                if waiting || leaveWait { self.cut(socket, .quiet); return }
+                if !welcomed && self.contact != "in-reach" {
+                    self.cut(socket, .quiet); return
+                }
+                welcomed = true
+                if let heard = self.heardAt, Date().timeIntervalSince(heard) > 25 {
+                    self.cut(socket, .quiet); return
+                }
+                socket.sendPing { [weak self, weak socket] error in
+                    Task { @MainActor in
+                        guard let self, let socket, self.socket === socket else { return }
+                        if error != nil { self.cut(socket, .failed) }
+                        else { self.heardAt = Date() }
+                    }
+                }
+            }
+        }
+        defer { watchdog.cancel() }
+        do {
+            try await send(hello, on: socket)
+            while !Task.isCancelled {
+                let message = try await socket.receive()
+                guard current == generation, !Task.isCancelled else { break }
+                guard case .string(let text) = message else { throw PhoneError.invalidReply }
+                // INF-2566: the frame is parsed and its payload decoded off the main thread, then read here in order.
+                let frame = try await PhoneFrame.decode(text, reads: pending)
+                guard current == generation, !Task.isCancelled else { break }
+                try await receive(frame, on: socket)
+                guard current == generation, !Task.isCancelled else { break }
+                if contact == "in-reach" {
+                    reached = true; refused = 0
+                    reachedAddress = address
+                    let preferred = Array(PhoneAddresses.preferred(mac.addresses + [address]).prefix(25))
+                    if mac.addresses != preferred {
+                        mac.addresses = preferred
+                        onMacChanged?(mac)
+                    }
+                }
+            }
+        } catch {
+            guard current == generation, !Task.isCancelled else { transport.close(); return reached }
+            lastCut = cutting ?? .failed; cutting = nil
+            if socket.closeCode.rawValue == 4401 {
+                removed = true; clearContent()
+                contact = "removed"; finishLeave(); onRemoved?()
+            } else {
+                missed = true
+                finishLeave(PhoneError.unavailable)
+            }
+        }
+        failCalls(); firstmateBusy = false; firstmateObserved = false
+        transport.close()
+        guard current == generation else { return reached }
+        self.socket = nil; self.transport = nil; checking = nil
+        return reached
+    }
+
+    private func receive(_ decoded: PhoneFrame, on socket: URLSessionWebSocketTask) async throws {
+        let frame = decoded.frame
+        guard let kind = frame["t"] as? String else { throw PhoneError.invalidReply }
         heardAt = Date()
         switch kind {
         case "welcome":
@@ -403,6 +696,8 @@ public struct PhoneNotice: Equatable, Sendable {
             access = frame["access"] as? String == "full" ? "full" : "read"
             homeVersion = frame["protocolVersion"] as? String
             self.epoch = epoch
+            welcomeSeq = seq
+            welcomes += 1
             refused = 0
             if let name = frame["name"] as? String, !name.isEmpty {
                 mac.name = name; onMacChanged?(mac)
@@ -417,6 +712,8 @@ public struct PhoneNotice: Equatable, Sendable {
             }
             // A major folds every earlier change name in, so a home from sceneObservationsSince on has them without naming them.
             let homeMajor = ((frame["protocolVersion"] as? String)?.split(separator: ".").first).flatMap { Int($0) } ?? 0
+            sharedCardSeen = homeMajor >= PhoneContract.cardCurrentUpdateSeenSince
+                || (frame["changes"] as? [String] ?? []).contains(PhoneContract.cardCurrentUpdateSeen)
             sceneObservations = homeMajor >= PhoneContract.sceneObservationsSince
                 || (frame["changes"] as? [String] ?? []).contains(PhoneContract.sceneObservations)
             if !sceneObservations { computers = [] }
@@ -431,29 +728,34 @@ public struct PhoneNotice: Equatable, Sendable {
             if seq <= sequence { return }
             guard seq == sequence + 1 else { epoch = nil; throw PhoneError.invalidReply }
             sequence = seq
+            let replayed = seq <= welcomeSeq
             if frame["channel"] as? String == "inf:cards" {
-                guard let snapshot = frame["payload"] else { throw PhoneError.invalidReply }
-                let updated = try JSONDecoder().decode([PhoneCard].self, from: JSONSerialization.data(withJSONObject: snapshot))
-                let departed = cards.filter { old in !updated.contains { $0.id == old.id } }.map(\.id)
-                cards = updated
+                guard frame["payload"] != nil else { throw PhoneError.invalidReply }
+                let updated = try decoded.cards()
+                let departed = syncedCards.filter { old in !updated.contains { $0.id == old.id } }.map(\.id)
+                syncedCards = updated
                 for id in departed { Task { try? await self.readPast(id) } }
-                observeCards(cards)
-                supersede(PhoneContract.cards)
+                observeCards(syncedCards)
+                saw(.cards(updated), replayed: replayed)
+                // A replayed push can predate a lost change, so the cards read sent at the welcome still settles it.
+                if !replayed { supersede(PhoneContract.cards) }
             }
-            if frame["channel"] as? String == "inf:computers:presence", let payload = frame["payload"], sceneObservations {
-                computers = try JSONDecoder().decode([PhoneComputerPresence].self, from: JSONSerialization.data(withJSONObject: payload))
+            if frame["channel"] as? String == "inf:computers:presence", frame["payload"] != nil, sceneObservations {
+                computers = try decoded.computers()
                 supersede(PhoneRequest.computers.rawValue)
             }
-            if frame["channel"] as? String == "inf:tasks", let payload = frame["payload"] {
-                board = try JSONDecoder().decode(PhoneBoard.self, from: JSONSerialization.data(withJSONObject: payload))
-                supersede(PhoneRequest.board.rawValue); workRevision += 1
+            if frame["channel"] as? String == "inf:tasks", frame["payload"] != nil {
+                syncedBoard = try decoded.board()
+                saw(.board(syncedBoard!), replayed: replayed)
+                if !replayed { supersede(PhoneRequest.board.rawValue) }
+                workRevision += 1
             }
             // A delta folds onto the board held, as on the Mac (INF-1854); a full read is the contract's resync path
             // for a delta with no base to apply to.
-            if frame["channel"] as? String == "inf:tasks:delta", let payload = frame["payload"] {
-                let delta = try JSONDecoder().decode(PhoneBoardDelta.self, from: JSONSerialization.data(withJSONObject: payload))
-                if let held = board, let next = held.applying(delta) {
-                    if next.seq != held.seq { board = next; supersede(PhoneRequest.board.rawValue); workRevision += 1 }
+            if frame["channel"] as? String == "inf:tasks:delta", frame["payload"] != nil {
+                let delta = try decoded.delta()
+                if let held = syncedBoard, let next = held.applying(delta) {
+                    if next.seq != held.seq { syncedBoard = next; saw(.board(next), replayed: replayed); if !replayed { supersede(PhoneRequest.board.rawValue) }; workRevision += 1 }
                 } else {
                     try await refresh(PhoneRequest.board.rawValue, on: socket)
                 }
@@ -474,7 +776,8 @@ public struct PhoneNotice: Equatable, Sendable {
                 let thread = try PhoneJSON.read(payload)
                 if let id = thread["cardId"].text {
                     threadRevisions[id, default: 0] += 1
-                    threads[id] = thread
+                    syncedThreads[id] = thread
+                    saw(.thread(card: id, thread), replayed: replayed)
                 }
             }
             if frame["channel"] as? String == "inf:event", let event = frame["payload"] as? [String: Any],
@@ -494,9 +797,9 @@ public struct PhoneNotice: Equatable, Sendable {
             guard let id = frame["id"] as? Int else { throw PhoneError.invalidReply }
             if let (_, continuation) = calls.removeValue(forKey: id) {
                 waitingSince.removeValue(forKey: id)
-                if frame["ok"] as? Bool == true, let value = frame["value"] {
-                    do { continuation.resume(returning: try JSONSerialization.data(withJSONObject: value, options: .fragmentsAllowed)) }
-                    catch { continuation.resume(throwing: PhoneError.invalidReply) }
+                if frame["ok"] as? Bool == true, frame["value"] != nil {
+                    if let answer = decoded.answer { continuation.resume(returning: answer) }
+                    else { continuation.resume(throwing: PhoneError.invalidReply) }
                 } else {
                     continuation.resume(throwing: PhoneError.refused((frame["error"] as? [String: Any])?["message"] as? String ?? frame["error"] as? String ?? "Your computer refused this request."))
                 }
@@ -504,19 +807,21 @@ public struct PhoneNotice: Equatable, Sendable {
             }
             guard let channel = pending.removeValue(forKey: id) else { return }
             waitingSince.removeValue(forKey: id)
-            guard frame["ok"] as? Bool == true, let value = frame["value"] else {
+            guard frame["ok"] as? Bool == true, frame["value"] != nil else {
                 throw PhoneError.invalidReply
             }
-            let bytes = try JSONSerialization.data(withJSONObject: value, options: .fragmentsAllowed)
             switch channel {
-            case PhoneContract.cards: cards = try JSONDecoder().decode([PhoneCard].self, from: bytes); observeCards(cards)
-            case PhoneContract.feed: activity = try JSONDecoder().decode([ActivityLine].self, from: bytes)
-            case PhoneRequest.board.rawValue: board = try JSONDecoder().decode(PhoneBoard.self, from: bytes); workRevision += 1
+            case PhoneContract.cards:
+                syncedCards = try decoded.cards(); observeCards(syncedCards); saw(.cards(syncedCards))
+            case PhoneContract.feed: activity = try decoded.feed()
+            case PhoneRequest.board.rawValue:
+                syncedBoard = try decoded.board(); saw(.board(syncedBoard!)); workRevision += 1
             case PhoneRequest.conversationState.rawValue:
-                firstmateBusy = try JSONDecoder().decode(PhoneConversationState.self, from: bytes).busy
+                firstmateBusy = try decoded.conversation().busy
                 firstmateObserved = true
-            case PhoneRequest.computers.rawValue: computers = try JSONDecoder().decode([PhoneComputerPresence].self, from: bytes)
-            case PhoneRequest.lastTurn.rawValue: lastTurn = try JSONDecoder().decode(PhoneLastTurn?.self, from: bytes)
+            case PhoneRequest.computers.rawValue: computers = try decoded.computers()
+            case PhoneRequest.lastTurn.rawValue:
+                syncedTurn = try decoded.lastTurn(); saw(.turn(syncedTurn))
             default: break
             }
             markReady(channel)

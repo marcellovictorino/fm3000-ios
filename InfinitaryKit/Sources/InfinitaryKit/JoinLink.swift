@@ -2,6 +2,9 @@ import Foundation
 
 public enum PhoneError: LocalizedError, Sendable {
     case damagedLink, unsupportedLink, wrongMac, unavailable, invalidReply, refused(String)
+    /// A change was sent and its result never came back: its outcome is unknown (INF-2553 keeps it shown until the
+    /// next snapshot after reconnecting says otherwise).
+    case unconfirmed
     public var errorDescription: String? {
         switch self {
         case .damagedLink: "This link is damaged. Copy a new link from Devices on your computer."
@@ -10,6 +13,7 @@ public enum PhoneError: LocalizedError, Sendable {
         case .unavailable: "Your computer is out of reach. Check that Infinitary is open and both devices share a network."
         case .invalidReply: "This computer sent an answer Infinitary could not read."
         case .refused(let reason): reason
+        case .unconfirmed: "Could not confirm the change. Check your computer before sending it again."
         }
     }
 }

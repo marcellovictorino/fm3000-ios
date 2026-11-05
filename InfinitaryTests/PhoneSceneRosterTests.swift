@@ -16,22 +16,54 @@ import XCTest
     }
     private func captureCrowdedScene(_ roster: PhoneSceneRoster, state: PhoneCharacter.State, reply: CharacterMachine.Emote? = nil) async throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
-        let window = UIWindow(windowScene: scene), clock = CharacterDisplayClock()
-        defer { clock.setRunning(false); window.isHidden = true; window.rootViewController = nil }
+        let window = UIWindow(windowScene: scene), renderer = PhoneSceneRenderer()
+        defer { window.isHidden = true; window.rootViewController = nil }
         CharacterCues.greetingPending = false
-        let bounds = window.bounds, character = CharacterMotion()
+        let bounds = window.bounds, character = renderer.character
         let source = "crowded-" + (reply?.rawValue ?? state.rawValue)
-        window.rootViewController = UIHostingController(rootView: PhoneSceneFrame(
-            roster: roster, state: state, observed: true, clock: clock,
-            character: character, crew: PhoneSceneMotion(), still: false, offset: .zero,
-            preview: .constant(nil), computerPreview: .constant(nil), previewComputer: .constant(nil))
+        window.rootViewController = UIHostingController(rootView: PhoneSceneSurface(
+            renderer: renderer, roster: roster, state: state, still: false, running: true)
             .frame(width: roster.width, height: roster.height)
             .offset(x: bounds.width / 2 - roster.homeX, y: bounds.height / 2 - roster.height / 2)
             .frame(width: bounds.width, height: bounds.height, alignment: .topLeading).clipped()
             .background(PhoneTheme.background).environment(\.colorScheme, .dark)
             .environment(\.characterEvidenceSource, source))
-        window.makeKeyAndVisible(); clock.setRunning(true)
+        window.makeKeyAndVisible()
         _ = try await recordNativeSceneCadence(window: window, state: state, source: source, drawing: .scene, reaction: reply.map { (character, $0) })
+    }
+
+    /// INF-2566, the captain's approved direction B: "the scene on its own render thread". While the main thread is
+    /// held, as a busy board read or a card's web view once held it, the crowded scene keeps drawing and moving.
+    private func drawThroughMainThreadStall(_ roster: PhoneSceneRoster) async throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene), renderer = PhoneSceneRenderer()
+        defer { window.isHidden = true; window.rootViewController = nil }
+        CharacterCues.greetingPending = false
+        let source = "crowded-stall"
+        window.rootViewController = UIHostingController(rootView: PhoneSceneSurface(
+            renderer: renderer, roster: roster, state: .working, still: false, running: true)
+            .frame(width: roster.width, height: roster.height)
+            .background(PhoneTheme.background).environment(\.colorScheme, .dark)
+            .environment(\.characterEvidenceSource, source))
+        window.makeKeyAndVisible()
+        let warmup = DisplaySample(ticks: 30)
+        let warmed = await warmup.complete(within: 20)
+        XCTAssertEqual(warmed, .completed, "The display warms up before the stall")
+        warmup.stop()
+        CharacterFrameMetrics.shared.start(source: source, drawing: .scene)
+        // Hold the main thread for a second, as a long synchronous main-thread job would.
+        let held = ProcessInfo.processInfo.systemUptime
+        usleep(1_000_000)
+        let released = ProcessInfo.processInfo.systemUptime
+        let after = DisplaySample(ticks: 10)
+        _ = await after.complete(within: 20)
+        after.stop()
+        let frames = CharacterFrameMetrics.shared.finish()
+        let during = frames.filter { $0.timestamp > held && $0.timestamp < released }
+        let summary = "frames=\(frames.count) during_stall=\(during.count) stall_s=\(released - held)"
+        print("NATIVE_SCENE_STALL \(summary)")
+        XCTAssertGreaterThan(during.count, 1, "The scene draws while the main thread is held; \(summary)")
+        XCTAssertNotEqual(during.first?.rotation, during.last?.rotation, "The scene moves while the main thread is held; \(summary)")
     }
 
     func testPublicFactsKeepEveryLiveGlyphAndSettleReconnects() async throws {
@@ -111,6 +143,26 @@ import XCTest
             let advanced = motion.frame(roster: roster, now: 2, settled: false)
             XCTAssertEqual(advanced.glyphs.first { $0.task.id == remoteID }?.point, remote.point)
             XCTAssertEqual(advanced.glyphs.first { $0.task.id == remoteID }?.spin, remote.spin)
+            // INF-2566: the render thread draws on between touch-down and the tap's recognition (the phone check's iPhone
+            // rest part missed an orbiting crewmate so), so a tap reads the frame on screen when the finger landed.
+            let riding = PhoneSceneMotion()
+            _ = riding.frame(roster: empty, now: 0, settled: false)
+            let shown = riding.frame(roster: roster, now: 1, settled: false)
+            let landedAt = ProcessInfo.processInfo.systemUptime
+            var drawnOn = shown
+            for tick in 1...120 { drawnOn = riding.frame(roster: roster, now: 1 + Double(tick) / 60, settled: false) }
+            let touches = PhoneSceneTouchView(crew: riding)
+            touches.roster = roster
+            let landed = riding.frame(at: landedAt)
+            XCTAssertEqual(landed.glyphs.map(\.point), shown.glyphs.map(\.point), "Touch-down reads the frame on screen then")
+            func travel(_ glyph: PhoneSceneMotion.Glyph) -> Double {
+                guard let later = drawnOn.glyphs.first(where: { $0.task.id == glyph.task.id }) else { return 0 }
+                return max(abs(later.point.x - glyph.point.x), abs(later.point.y - glyph.point.y))
+            }
+            let rider = try XCTUnwrap(shown.glyphs.filter { $0.task.executionDeviceId == nil && !$0.programPart }.max { travel($0) < travel($1) })
+            XCTAssertGreaterThan(travel(rider), 22, "\(rider.task.title) leaves its 44-point square over two seconds of frames")
+            XCTAssertEqual(touches.target(at: rider.point, in: landed)?.id, rider.task.id, "A finger on its drawn place opens it")
+            XCTAssertNotEqual(touches.target(at: rider.point)?.id, rider.task.id, "The latest frame no longer has it there")
             // INF-1520: a reachable crewmate whose posture reads unknown/unobserved, the reviewer among them, still orbits as on the desktop.
             let reviewID = try XCTUnwrap(fixture["review"] as? String)
             let unobserved = first.glyphs.filter { $0.task.executionDeviceId == nil && $0.task.workPosture?.state == "unknown" }
@@ -164,6 +216,7 @@ import XCTest
             // Include the production scene's glyph targets, shared drawing and full real task roster in its cadence evidence.
             try await captureCrowdedScene(roster, state: .working)
             try await captureCrowdedScene(roster, state: .idle, reply: .salute)
+            try await drawThroughMainThreadStall(roster)
             let stage = try await home("scene-stage-finished")
             let finishedBoard = try JSONDecoder().decode(PhoneBoard.self, from: JSONSerialization.data(withJSONObject: XCTUnwrap(stage["board"])))
             let between = cache.read(board: finishedBoard, presence: computers, homeName: "Test Mac mini", inReach: true, generation: 1, revision: finishedBoard.seq)

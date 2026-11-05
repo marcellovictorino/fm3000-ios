@@ -217,7 +217,9 @@ struct PhoneSceneRoster {
 }
 
 /// Native frame-only state. Board changes are settled once, never stored in the shell's display clock.
-@MainActor final class PhoneSceneMotion {
+/// The scene's render thread advances it while signals and keyboard reads arrive on the main thread, so every entry takes its lock.
+final class PhoneSceneMotion: @unchecked Sendable {
+    private let lock = NSLock()
     struct Glyph {
         var task: PhoneTask
         var point: CGPoint
@@ -273,11 +275,23 @@ struct PhoneSceneRoster {
     private var drawingBooks: [String: PhoneSceneRoster.SeatBook] = [:]
     private var ride = CharacterWarp.Ride()
     /// The warp the crew ride this frame and how many ride it, for the backdrop under them.
-    private(set) var warp: CharacterWarp.Frame?
-    private(set) var riders = 0
-    var current = Frame(glyphs: [], marks: [], packets: [], links: [])
+    private var playing: CharacterWarp.Frame?
+    private var riding = 0
+    private var latest = Frame(glyphs: [], marks: [], packets: [], links: [])
+    var warp: CharacterWarp.Frame? { lock.withLock { playing } }
+    var riders: Int { lock.withLock { riding } }
+    /// The last frame drawn, which touch, the keyboard and accessibility read between frames.
+    var current: Frame { lock.withLock { latest } }
+    /// The frames drawn over the last half second, each with the uptime it was drawn at, so a touch finds the frame
+    /// that was on screen when the finger landed rather than the one drawn when its tap was recognized.
+    private var drawn: [(at: Double, frame: Frame)] = []
+    /// The frame drawn last at or before `uptime` (a `UITouch.timestamp`), or the oldest kept when it is older still.
+    func frame(at uptime: Double) -> Frame {
+        lock.withLock { drawn.last { $0.at <= uptime }?.frame ?? drawn.first?.frame ?? latest }
+    }
 
-    func receive(_ signal: PhoneSceneSignal) {
+    func receive(_ signal: PhoneSceneSignal) { lock.withLock { receiveLocked(signal) } }
+    private func receiveLocked(_ signal: PhoneSceneSignal) {
         guard var member = members[signal.taskID], !member.glyph.unknown, member.left == nil else { return }
         switch signal.kind {
         case .report, .steer: packets.append(Packet(id: UUID(), taskID: signal.taskID, report: signal.kind == .report, started: time))
@@ -288,7 +302,8 @@ struct PhoneSceneRoster {
         }
         members[signal.taskID] = member
     }
-    func discardEffects() {
+    func discardEffects() { lock.withLock { discardLocked() } }
+    private func discardLocked() {
         packets = []
         for id in Array(members.keys) {
             if members[id]?.left != nil { members.removeValue(forKey: id); continue }
@@ -300,10 +315,13 @@ struct PhoneSceneRoster {
 
     /// `warp` is the warp the first mate plays (CharacterWarp.frame), nil when none.
     func frame(roster: PhoneSceneRoster, now: Double, settled: Bool, warp playing: CharacterWarp.Frame? = nil) -> Frame {
+        lock.withLock { frameLocked(roster: roster, now: now, settled: settled, warp: playing) }
+    }
+    private func frameLocked(roster: PhoneSceneRoster, now: Double, settled: Bool, warp playing: CharacterWarp.Frame?) -> Frame {
         let dt = min(0.05, max(0, now - (last ?? now))); last = now; time = now
         if settled { ride = CharacterWarp.Ride() }
         let warp = settled ? nil : ride.resolve(playing, now: now)
-        self.warp = warp
+        self.playing = warp
         if generation != roster.generation { rosterReady = false }
         let initial = generation != roster.generation || !rosterReady
         if initial { members = [:]; packets = []; computerTime = [:]; drawingBooks = [:]; generation = roster.generation; home = nil }
@@ -503,10 +521,10 @@ struct PhoneSceneRoster {
             member.glyph.depth += member.companionDepth
             members[id] = member
         }
-        if settled { discardEffects() }
+        if settled { discardLocked() }
         var glyphs = members.values.map(\.glyph)
-        riders = 0
-        if let warp { riders = Self.ride(&glyphs, warp: warp, roster: roster, home: firstmate, offsets: members.mapValues(\.companion)) }
+        riding = 0
+        if let warp { riding = Self.ride(&glyphs, warp: warp, roster: roster, home: firstmate, offsets: members.mapValues(\.companion)) }
         glyphs.sort { $0.depth < $1.depth }
         let byID = Dictionary(uniqueKeysWithValues: glyphs.map { ($0.task.id, $0) })
         let byKey = Dictionary(uniqueKeysWithValues: glyphs.map { ($0.task.key, $0) })
@@ -535,8 +553,11 @@ struct PhoneSceneRoster {
             let progress = clamp01((now - packet.started) / Self.duration(orbit["packetMs"]!, glyph: glyph, home: firstmate))
             return (Self.travel(from: packet.report ? glyph.point : firstmate, to: packet.report ? firstmate : glyph.point, at: easeInOut(progress)), sin(progress * .pi))
         }
-        current = Frame(glyphs: glyphs, marks: marks, packets: flying, links: links)
-        return current
+        latest = Frame(glyphs: glyphs, marks: marks, packets: flying, links: links)
+        let drawnAt = ProcessInfo.processInfo.systemUptime
+        drawn.append((drawnAt, latest))
+        if let stale = drawn.firstIndex(where: { drawnAt - $0.at <= 0.5 }), stale > 0 { drawn.removeFirst(stale) }
+        return latest
     }
     /// The warp's riders, on the drawn frame only: every home crewmate on its orbit, opened face-on and drawn in as
     /// the tunnel and sphere do, then moved by CharacterWarp.ride. Returns how many ride.

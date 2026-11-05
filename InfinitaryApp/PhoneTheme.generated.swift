@@ -10,6 +10,7 @@ enum PhoneTheme {
     static let space5: CGFloat = 24
     static let controlRadius: CGFloat = 10
     static let cardRadius: CGFloat = 16
+    static let surfaceMove = Animation.timingCurve(0.32, 0.72, 0, 1, duration: 0.36)
     static let background = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .light ? UIColor(red: 0.9333333333333333, green: 0.9450980392156862, blue: 0.9686274509803922, alpha: 1) : UIColor(red: 0.0196078431372549, green: 0.027450980392156862, blue: 0.050980392156862744, alpha: 1)
     })

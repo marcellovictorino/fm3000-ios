@@ -8,9 +8,8 @@ struct PhoneCrewScene: View {
     @Environment(PhoneMessageContext.self) private var messageContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var phase
-    @State private var clock = CharacterDisplayClock()
-    @State private var character = CharacterMotion()
-    @State private var crew = PhoneSceneMotion()
+    /// INF-2566: the scene's motion and drawing live on their own render thread; this view only hands it inputs.
+    @State private var renderer = PhoneSceneRenderer()
     @State private var rosters = PhoneSceneRoster.Cache()
     @State private var visible = false
     @State private var preview: PhoneTask?
@@ -19,27 +18,35 @@ struct PhoneCrewScene: View {
     @State private var record: PhoneTask?
     @State private var position = ScrollPosition()
     @State private var centered = false
-    @State private var pan = CGPoint.zero
+    /// The scroller's offset, read on input; the renderer takes it straight from the scroller, never through a body update.
+    @State private var pan = PanReading()
     @State private var browsing = false
     @State private var selectedCrew: String?
 
     var body: some View {
         let roster = rosters.read(board: session.board, presence: session.computers, homeName: session.mac.name,
                                   inReach: session.contact == "in-reach", generation: session.sceneGeneration, revision: session.workRevision)
+        let still = reduceMotion || phase != .active || !messageContext.cardsVisible || !visible || record != nil
         GeometryReader { geometry in
             let viewport = PhoneSceneViewport(scene: CGSize(width: roster.width, height: roster.height),
                                               home: CGPoint(x: roster.homeX, y: roster.height / 2),
                                               size: geometry.size, generation: roster.generation)
             ScrollView(geometry.size.height < roster.height ? [.horizontal, .vertical] : [.horizontal]) {
-                PhoneSceneFrame(roster: roster, state: session.firstmateBusy ? .working : .idle, observed: session.firstmateObserved,
-                                clock: clock, character: character, crew: crew, still: reduceMotion || phase != .active || !messageContext.cardsVisible || !visible || record != nil,
-                                offset: viewport.offset, preview: $preview, computerPreview: $computerPreview, previewComputer: $previewComputer, selection: selectedCrew)
+                PhoneSceneControls(roster: roster, crew: renderer.crew, state: session.firstmateBusy ? .working : .idle, observed: session.firstmateObserved,
+                                   offset: viewport.offset, preview: $preview, computerPreview: $computerPreview, previewComputer: $previewComputer, selection: selectedCrew)
                     .frame(width: viewport.content.width, height: viewport.content.height)
             }
             .scrollPosition($position).defaultScrollAnchor(.topLeading)
             // The captain pans the scene by touch; scroll bars at its edges say nothing (INF-1328).
             .scrollIndicators(.hidden)
-            .onScrollGeometryChange(for: CGPoint.self) { $0.contentOffset } action: { _, point in pan = point }
+            .onScrollGeometryChange(for: CGPoint.self) { $0.contentOffset } action: { _, point in pan.point = point; renderer.pan(to: point) }
+            .overlay {
+                // The drawing stays over the viewport and draws the scene where the scroller has panned it.
+                PhoneSceneSurface(renderer: renderer, roster: roster, state: session.firstmateBusy ? .working : .idle, still: still,
+                                  running: !still && preview == nil, offset: viewport.offset, selection: selectedCrew,
+                                  bracketed: preview.map { ($0.id, previewComputer ?? PhoneSceneRoster.computerID($0)) })
+                    .allowsHitTesting(false).accessibilityHidden(true)
+            }
             .overlay {
                 RoundedRectangle(cornerRadius: PhoneTheme.controlRadius)
                     .stroke(browsing ? PhoneTheme.accent : .clear, lineWidth: 1.5)
@@ -57,8 +64,8 @@ struct PhoneCrewScene: View {
                 }
             }
             .onChange(of: viewport) { old, new in
-                let next = new.preserving(pan, from: old)
-                if next != pan { position.scrollTo(point: next) }
+                let next = new.preserving(pan.point, from: old)
+                if next != pan.point { position.scrollTo(point: next) }
                 if old.generation != new.generation { preview = nil; computerPreview = nil; previewComputer = nil; stopBrowsing() }
             }
             .onChange(of: roster.sequence) { _, _ in
@@ -76,7 +83,7 @@ struct PhoneCrewScene: View {
             }
         }
         .onAppear { visible = true; syncClock() }
-        .onDisappear { visible = false; stopBrowsing(); syncClock(); CharacterCues.left(character) }
+        .onDisappear { visible = false; stopBrowsing(); syncClock(); CharacterCues.left(renderer.character) }
         .onChange(of: phase) { _, _ in if phase != .active { stopBrowsing() }; syncClock() }
         .onChange(of: reduceMotion) { _, _ in syncClock() }
         .onChange(of: messageContext.cardsVisible) { _, _ in if !messageContext.cardsVisible { stopBrowsing() }; syncClock() }
@@ -144,10 +151,10 @@ struct PhoneCrewScene: View {
         let id: String, task: PhoneTask, computer: String, point: CGPoint
     }
     private func keyboardTargets(roster: PhoneSceneRoster) -> [KeyboardTarget] {
-        let glyphs = crew.current.glyphs.filter { roster.order[$0.task.id] != nil }.map {
+        let glyphs = renderer.crew.current.glyphs.filter { roster.order[$0.task.id] != nil }.map {
             KeyboardTarget(id: $0.task.id, task: $0.task, computer: PhoneSceneRoster.computerID($0.task), point: $0.point)
         }
-        let marks = crew.current.marks.filter { mark in
+        let marks = renderer.crew.current.marks.filter { mark in
             roster.computers.contains { $0.id == mark.computerID && $0.programs.contains { $0.id == mark.task.id } }
         }.map { KeyboardTarget(id: $0.id, task: $0.task, computer: $0.computerID, point: $0.point) }
         return (glyphs + marks).sorted {
@@ -156,7 +163,7 @@ struct PhoneCrewScene: View {
         }
     }
     private func panBy(x: CGFloat, y: CGFloat, viewport: PhoneSceneViewport) {
-        position.scrollTo(point: viewport.clamped(CGPoint(x: pan.x + x, y: pan.y + y)))
+        position.scrollTo(point: viewport.clamped(CGPoint(x: pan.point.x + x, y: pan.point.y + y)))
     }
     private func browseNext(roster: PhoneSceneRoster, viewport: PhoneSceneViewport) {
         let targets = keyboardTargets(roster: roster)
@@ -175,11 +182,10 @@ struct PhoneCrewScene: View {
     private func syncClock() {
         // The captain's pick: the scene stands still where it is while a summary is open, so its brackets stay put.
         let running = visible && messageContext.cardsVisible && record == nil && preview == nil && !reduceMotion && phase == .active
-        clock.setRunning(running)
-        if running { CharacterCues.shown.add(character); CharacterCues.crews.add(crew) }
+        if running { CharacterCues.shown.add(renderer.character); CharacterCues.crews.add(renderer.crew) }
         else {
-            CharacterCues.shown.remove(character); CharacterCues.crews.remove(crew)
-            character.discardReactions(); crew.discardEffects()
+            CharacterCues.shown.remove(renderer.character); CharacterCues.crews.remove(renderer.crew)
+            renderer.character.discardReactions(); renderer.crew.discardEffects()
         }
     }
     private func computerCard(_ computer: PhoneSceneRoster.Computer) -> some View {
@@ -206,61 +212,29 @@ struct PhoneCrewScene: View {
     }
 }
 
-/// Only this scene subtree observes display callbacks. No animation state invalidates cards or the composer.
-struct PhoneSceneFrame: View {
+/// The scene's controls in the scroller's content: the first mate's accessibility, each crewmate's touch square and the
+/// other computers' names. None of it observes a display tick; the drawing is `PhoneSceneSurface`'s, on its own thread.
+struct PhoneSceneControls: View {
     let roster: PhoneSceneRoster
+    let crew: PhoneSceneMotion
     let state: PhoneCharacter.State
     let observed: Bool
-    let clock: CharacterDisplayClock
-    let character: CharacterMotion
-    let crew: PhoneSceneMotion
-    let still: Bool
     let offset: CGSize
     @Binding var preview: PhoneTask?
     @Binding var computerPreview: String?
     @Binding var previewComputer: String?
-    @State private var cache = CharacterPainter.Cache()
     var selection: String? = nil
 
     var body: some View {
-        let now = still ? 0 : clock.now
-        let pose = still ? CharacterPose.still(state, at: 0) : character.advance(to: now, state: state)
-        // A warp takes the home crew along (CharacterWarp), as the first mate's 280-point drawing plays it.
-        let frame = crew.frame(roster: roster, now: now, settled: still, warp: CharacterWarp.frame(pose, coreR: 280 * 0.27))
         ZStack(alignment: .topLeading) {
-            Canvas { context, _ in
-                #if DEBUG
-                let started = ProcessInfo.processInfo.systemUptime
-                let source = context.environment.characterEvidenceSource
-                // The scene scope excludes the nested first mate's separate character reading.
-                defer { CharacterFrameMetrics.shared.record(start: started, source: source, mode: pose.mode.rawValue, heat: pose.heat, rotation: pose.a, drawing: .scene) }
-                #endif
-                context.translateBy(x: offset.width, y: offset.height)
-                let palette = cache.palette(context.environment)
-                // A warp's wormhole and stars lie behind every crewmate and the first mate.
-                if let warp = crew.warp {
-                    CharacterWarp.drawBackdrop(warp, at: CGPoint(x: roster.homeX, y: roster.height / 2), riders: crew.riders,
-                                               scale: PhoneSceneRoster.ringScale, palette: palette, in: &context)
-                }
-                PhoneCrewPainter.draw(frame, roster: roster, now: now, still: still, in: &context, palette: palette)
-                var firstmate = context
-                firstmate.translateBy(x: roster.homeX - 140, y: roster.height / 2 - 140)
-                CharacterPainter.draw(pose, in: &firstmate, size: CGSize(width: 280, height: 280), cache: cache)
-            }.accessibilityHidden(true)
+            PhoneSceneTouches(crew: crew, roster: roster, offset: offset, selection: selection) { task, computer in
+                preview = task; previewComputer = computer; computerPreview = nil
+            }
             Color.clear.frame(width: 280, height: 280)
                 .accessibilityElement(children: .ignore).accessibilityLabel("Your first mate")
                 .accessibilityValue(observed ? state.rawValue : "Activity unknown").accessibilityIdentifier("phone-character")
                 .position(x: roster.homeX + offset.width, y: roster.height / 2 + offset.height)
-            let touchPoints = frame.glyphs.map(\.point) + frame.marks.map(\.point)
-            ForEach(frame.glyphs, id: \.task.id) { glyph in
-                let computer = roster.computers.first { $0.id == PhoneSceneRoster.computerID(glyph.task) }
-                glyphButton(glyph.task, at: glyph.point, near: touchPoints, reach: glyph.size / 2 + 4,
-                            words: computer.map { PhoneSceneRoster.words(glyph.task, computer: $0) } ?? glyph.task.state)
-                    .accessibilitySortPriority(Double(roster.tasks.count - (roster.order[glyph.task.id] ?? roster.tasks.count)))
-            }
-            ForEach(frame.marks) { mark in
-                glyphButton(mark.task, at: mark.point, near: touchPoints, reach: CharacterCatalog.shared.program["rootMarkPx"]! + 4, words: "Program, " + String(mark.parts.count) + " running parts", identity: mark.id, computer: mark.computerID)
-            }
+                .allowsHitTesting(false)
             if roster.computers.count > 1 {
                 ForEach(roster.computers) { computer in
                     VStack(spacing: 2) {
@@ -272,21 +246,6 @@ struct PhoneSceneFrame: View {
                 }
             }
         }
-    }
-    private func glyphButton(_ task: PhoneTask, at point: CGPoint, near points: [CGPoint], reach: Double, words: String, identity: String? = nil, computer: String? = nil) -> some View {
-        let id = identity ?? task.id, location = computer ?? PhoneSceneRoster.computerID(task)
-        return Button { preview = task; previewComputer = location; computerPreview = nil } label: {
-            RoundedRectangle(cornerRadius: PhoneTheme.controlRadius)
-                .stroke(selection == id ? PhoneTheme.accent : .clear, lineWidth: 1.5)
-                // INF-1926: the crewmate whose summary is open wears the desktop's corner brackets.
-                .overlay { if preview?.id == task.id && previewComputer == location { PhoneCrewBrackets(reach: reach).stroke(PhoneTheme.muted, lineWidth: 1) } }
-                .frame(width: 44, height: 44).contentShape(PhoneTouchCell(center: point, neighbors: points))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(task.key + ", " + task.title).accessibilityValue(selection == id ? "Selected, " + words : words)
-        .accessibilityAddTraits(selection == id ? .isSelected : [])
-        .accessibilityIdentifier("crew-task-" + id)
-        .position(x: point.x + offset.width, y: point.y + offset.height)
     }
 }
 
@@ -384,4 +343,9 @@ struct PhoneBrowsingKeys: UIViewRepresentable {
             if let key { handle(key) }
         }
     }
+}
+
+/// The scroller's latest offset, kept outside SwiftUI's observation so a pan never re-runs the scene's body.
+final class PanReading {
+    var point = CGPoint.zero
 }

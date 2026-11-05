@@ -148,6 +148,64 @@ import XCTest
     }
 }
 
+/// INF-1832: selection and a visible preview outrank a settled grid; absence alone proves nothing.
+enum PhonePhotoOutcome: String { case selected, preview, settled }
+
+enum PhonePhotoRecoveryFailure: String {
+    case unresolved = "The photo picker neither selected a photo, showed a preview nor settled"
+    case previewAfterClose = "The photo picker showed another preview after its one closing tap"
+}
+
+struct PhonePhotoObservation {
+    private var steady = PhoneSteadyReading<PhoneTargetReading>()
+
+    mutating func read(selected: Bool, preview: Bool, target: PhoneTargetReading?) -> PhonePhotoOutcome? {
+        if selected { _ = steady.read(nil); return .selected }
+        if preview { _ = steady.read(nil); return .preview }
+        // Offscreen targets have no pixels. Missing/unreadable targets reset the consecutive-reading proof.
+        return steady.read(target?.drawn == nil ? nil : target) ? .settled : nil
+    }
+}
+
+/// Called only after the picker's positive press-and-hold proof and before the one allowed additional photo tap.
+/// The closures also let the native regression replay real picker readings without sending another touch.
+@MainActor func recoverPhonePhoto(
+    selected: @escaping () -> Bool, preview: @escaping () -> Bool,
+    target: @escaping () -> PhoneTargetReading?, closedPreview: inout Bool,
+    timeout: TimeInterval = 10, failure: (PhonePhotoRecoveryFailure) -> Void = { XCTFail($0.rawValue) },
+    close: () -> Void
+) -> PhonePhotoOutcome? {
+    let started = ProcessInfo.processInfo.systemUptime
+    var observation = PhonePhotoObservation()
+    var outcome: PhonePhotoOutcome?
+    while true {
+        let result = waitForPhonePredicate(NSPredicate { _, _ in
+            let chosen = selected(), shown = preview()
+            outcome = observation.read(selected: chosen, preview: shown, target: chosen || shown ? nil : target())
+            return outcome != nil
+        }, object: nil, timeout: timeout)
+        guard result == .completed, let observed = outcome else {
+            failure(.unresolved)
+            return nil
+        }
+        print("Photo picker readiness: \(observed.rawValue), elapsed=\(ProcessInfo.processInfo.systemUptime - started)s")
+        if observed == .selected || selected() { return .selected }
+        // Recheck immediately before authorizing another tap: a preview can arrive after the grid's second reading.
+        if observed == .preview || preview() {
+            guard !closedPreview else {
+                failure(.previewAfterClose)
+                return nil
+            }
+            closedPreview = true
+            close()
+            guard !PhoneFailures.recorded else { return nil }
+            observation = PhonePhotoObservation()
+            continue
+        }
+        return .settled
+    }
+}
+
 /// INF-1477 (the captain's choice "Allow one more photo tap"): a photo tap the iPhone delivered can reach the picker as a
 /// press-and-hold when its lift arrives late, as in phone run 40486884004, and the picker then previews the photo and
 /// chooses nothing. Only the picker's own line for that press (the test home's picker-preview) sends one more tap, once the
@@ -160,6 +218,7 @@ import XCTest
     let point = photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
     let chosen = NSPredicate { _, _ in add.exists && add.isEnabled }
     var held: [String] = []
+    var closedPreview = false
     for _ in 0..<2 {
         let since = Date().timeIntervalSince1970 * 1000
         tapOnPhone(point)
@@ -181,21 +240,21 @@ import XCTest
         }
         print("Photo picker press-and-hold: \(proof)")
         held.append(proof)
-        // UIKit labels the open preview "Preview"; a photo the picker chose shows no preview.
-        let preview = app.otherElements["Preview"]
-        _ = waitForPhonePredicate(NSPredicate { _, _ in chosen.evaluate(with: nil) || preview.exists }, object: nil, timeout: 10)
         if chosen.evaluate(with: nil) { return }
         guard held.count < 2 else { break }
-        if preview.exists { closePhonePickerPreview(preview, in: app) }
-        guard !PhoneFailures.recorded else { return }
-        waitForSteadyTarget(photo)
-        if chosen.evaluate(with: nil) { return }
+        let preview = app.otherElements["Preview"]
+        let recovered = recoverPhonePhoto(
+            selected: { chosen.evaluate(with: nil) }, preview: { preview.exists },
+            target: { readPhoneTarget(photo) }, closedPreview: &closedPreview,
+            close: { closePhonePickerPreview(preview, in: app) })
+        guard !PhoneFailures.recorded, recovered != nil else { return }
+        if recovered == .selected { return }
     }
     XCTFail("The photo picker read both photo taps as a press-and-hold: \(held)")
 }
 
 /// The preview's dimmed screen closes it on a tap outside the preview; below it lies only the photo grid.
-@MainActor private func closePhonePickerPreview(_ preview: XCUIElement, in app: XCUIApplication) {
+@MainActor func closePhonePickerPreview(_ preview: XCUIElement, in app: XCUIApplication) {
     let window = app.windows.firstMatch
     waitForSteadyTarget(preview)
     let screen = window.frame, shown = preview.frame

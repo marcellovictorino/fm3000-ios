@@ -79,7 +79,8 @@ import XCTest
         restored.start(); defer { restored.stop() }
         try await ready(restored)
         XCTAssertEqual(restored.mac.addresses, localRestoration.addresses)
-        XCTAssertEqual(restored.reachedAddress, alternative)
+        // INF-2157: a reopen dials the saved addresses together, so either restored route may be the one that answers.
+        XCTAssertTrue(localRestoration.addresses.contains(try XCTUnwrap(restored.reachedAddress)), "A restored saved route answered")
         XCTAssertEqual(PhoneIdentity.pin(of: try PhoneIdentity.loadOrCreate().certificate), phonePin)
         restored.stop()
 

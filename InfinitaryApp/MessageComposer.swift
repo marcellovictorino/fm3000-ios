@@ -10,7 +10,6 @@ struct MessageComposer: View {
     @State private var photos: [Photo] = []
     @State private var selection: [PhotosPickerItem] = []
     @State private var loading = false
-    @State private var sending = false
     @State private var problem: String?
     @State private var sent = 0
     @FocusState private var focused: Bool
@@ -33,7 +32,7 @@ struct MessageComposer: View {
     }
 
     private var canSend: Bool {
-        session.canChange && !sending && !loading && !(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && photos.isEmpty)
+        session.canChange && !loading && !(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && photos.isEmpty)
     }
 
     typealias Photo = PhonePhoto
@@ -55,7 +54,7 @@ struct MessageComposer: View {
                                 }.accessibilityLabel("Remove photo").accessibilityIdentifier("photo-chip")
                             }
                         }
-                    }.frame(maxWidth: compact ? 96 : .infinity).disabled(sending)
+                    }.frame(maxWidth: compact ? 96 : .infinity)
                 }
                 // INF-1517, the captain's pick from ChatGPT's input: 48 points tall, the photo glyph 16 points in,
                 // the words 52 points in, and send a 32-point circle 8 points from the end, each in a 44-point touch area.
@@ -65,9 +64,9 @@ struct MessageComposer: View {
                         // inside the button, so its frame starts where the box does, on the reading column.
                         Label("Photos", systemImage: "photo").labelStyle(.iconOnly).frame(width: 44, height: 48)
                             .padding(.leading, 5).contentShape(Rectangle())
-                    }.disabled(loading || sending || photos.count >= PhoneLimits.images).accessibilityIdentifier("add-photos")
+                    }.disabled(loading || photos.count >= PhoneLimits.images).accessibilityIdentifier("add-photos")
                     TextField("Give your first mate a task", text: $text, axis: .vertical)
-                        .lineLimit(1...(compact ? 2 : 4)).focused($focused).disabled(sending)
+                        .lineLimit(1...(compact ? 2 : 4)).focused($focused)
                         .padding(.vertical, PhoneTheme.space3).frame(minHeight: 48)
                         .padding(.leading, 3)
                         .accessibilityIdentifier("message-box")
@@ -86,13 +85,13 @@ struct MessageComposer: View {
                     .opacity(session.canChange ? 1 : 0.5)
             }
             if loading { ProgressView("Adding photos…") }
-            if sending { ProgressView("Sending…") }
             if let words = session.changesOffLine {
                 Text(words).font(PhoneFont.caption).foregroundStyle(PhoneTheme.secondary)
                     .frame(maxWidth: .infinity).multilineTextAlignment(.center)
                     .accessibilityIdentifier("connection-refusal")
             }
-            if let problem {
+            // INF-2553: on its side there is no notice pill, so a message taken back says why here, as a refusal did before.
+            if let problem = problem ?? (compact ? session.takenBack[PhoneIntent.messagePlace] : nil) {
                 Text(problem).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("message-problem")
             }
         }.font(PhoneFont.callout).padding(.top, compact ? PhoneTheme.space2 : PhoneTheme.space3)
@@ -112,8 +111,8 @@ struct MessageComposer: View {
 
     /// The Mac's last turn (src/renderer/src/app/LastTurn.tsx), drawn as INF-1770's Chat layout: the last two rounds,
     /// each the captain's words in a soft grey bubble on the right and the first mate's reply beside its mark on the
-    /// left, the older round at half strength and only the newest while a card is up. While the first mate works, ember
-    /// dots follow the newest reply, or stand with Working… where no reply is yet. After 15 seconds of a completed
+    /// left, the older round at half strength and only the newest while a card is up. While the first mate works, the
+    /// newest round's mark turns ember and spins (INF-2483), beside its reply or Working…. After 15 seconds of a completed
     /// reply on screen the older round dissolves and keeps its room, so the input never moves. INF-1846 chose "A quiet
     /// glance": 15-point rows, 12 points between rounds and 12 above the box, one line each.
     private func lastTurn(_ turn: PhoneLastTurn) -> some View {
@@ -151,22 +150,22 @@ struct MessageComposer: View {
                         topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 5, topTrailingRadius: 14))
                     .accessibilityIdentifier("\(id)-you")
             }
-            if round.reply != nil || busy {
+            if round.reply != nil || busy || (newest && session.messageSending) {
                 HStack(spacing: 8) {
-                    MateMark().frame(width: 16, height: 16)
+                    MateMark(working: busy, still: reduceMotion).frame(width: 16, height: 16)
                     if let reply = round.reply {
                         Button { replyOpen = OpenedReply(round: round) } label: {
-                            HStack(spacing: 8) {
-                                Text(reply.text).foregroundStyle(reply.problem == true ? PhoneTheme.danger : PhoneTheme.secondary)
-                                if busy { WorkingDots(still: reduceMotion) }
-                            }.frame(maxWidth: .infinity, minHeight: 24, alignment: .leading).contentShape(Rectangle())
+                            Text(reply.text).foregroundStyle(reply.problem == true ? PhoneTheme.danger : PhoneTheme.secondary)
+                                .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading).contentShape(Rectangle())
                         }.buttonStyle(.plain).accessibilityHint("Opens the whole reply")
                             .accessibilityIdentifier("\(id)-reply")
+                    } else if newest && session.messageSending {
+                        // INF-2553: the message is the last turn at the tap, marked sending until the computer has it.
+                        Text("Sending…").foregroundStyle(PhoneTheme.muted)
+                            .frame(minHeight: 24).accessibilityElement(children: .combine).accessibilityIdentifier("last-turn-sending")
                     } else {
-                        HStack(spacing: 6) {
-                            WorkingDots(still: reduceMotion)
-                            Text("Working…").foregroundStyle(PhoneTheme.muted)
-                        }.frame(minHeight: 24).accessibilityElement(children: .combine).accessibilityIdentifier("\(id)-reply")
+                        Text("Working…").foregroundStyle(PhoneTheme.muted)
+                            .frame(minHeight: 24).accessibilityElement(children: .combine).accessibilityIdentifier("\(id)-reply")
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             } else {
@@ -194,20 +193,29 @@ struct MessageComposer: View {
         withAnimation(reduceMotion ? nil : .linear(duration: 0.7)) { faded = true }
     }
 
+    /// INF-2553: the box clears at the tap and the message is the last turn, marked sending; a refusal puts the words and
+    /// pictures back in front of anything typed since, and the session says why.
     private func send() {
-        guard !sending, !loading, session.canChange else { return }
+        guard !loading, session.canChange else { return }
         guard text.utf16.count <= PhoneLimits.text else { problem = "This message is too long. Shorten it before sending."; return }
-        var payload: [String: Any] = ["text": text, "images": photos.map(\.wire)]
+        let words = text, pictures = photos
+        var payload: [String: Any] = ["text": words, "images": pictures.map(\.wire)]
         for (key, value) in messageContext.fields { payload[key] = value }
         focused = false
-        sending = true; problem = nil
+        problem = nil
+        text = ""; photos = []
+        // The computer keeps the words trimmed, and its turn for them follows the last turn shown now.
+        let intent = PhoneIntent.Kind.send(text: words.trimmingCharacters(in: .whitespacesAndNewlines), before: PhoneTurnMark(session.lastTurn))
         Task {
-            defer { sending = false }
             do {
-                let result: PhoneAnswer = try await session.request(.converse, args: [payload])
-                try result.accepted()
-                text = ""; photos = []; sent += 1
-            } catch { problem = error.localizedDescription }
+                let box = $text, shelf = $photos
+                let restore: @MainActor () -> Void = { @MainActor in
+                    box.wrappedValue = box.wrappedValue.isEmpty ? words : words + "\n" + box.wrappedValue
+                    shelf.wrappedValue = Array((pictures + shelf.wrappedValue).prefix(PhoneLimits.images))
+                }
+                try await session.change(intent, .converse, args: [payload], restore: restore)
+                sent += 1
+            } catch {}
         }
     }
 
@@ -225,30 +233,6 @@ struct MessageComposer: View {
             } catch is CancellationError { return }
             catch { problem = error.localizedDescription }
         }
-    }
-}
-
-/// The Mac's working dots (lastTurn.css) at the phone's size (INF-1846): three 5-point ember dots 4 points apart, each
-/// brightening in turn over 1.2 s.
-private struct WorkingDots: View {
-    let still: Bool
-    var body: some View {
-        TimelineView(.animation(paused: still)) { clock in
-            HStack(spacing: 4) {
-                ForEach(0..<3, id: \.self) { dot in
-                    Circle().fill(PhoneTheme.hot).frame(width: 5, height: 5)
-                        .opacity(still ? 1 : Self.opacity(clock.date.timeIntervalSinceReferenceDate - Double(dot) * 0.2))
-                }
-            }
-        }.accessibilityHidden(true)
-    }
-
-    /// 0.25 at rest and 1 at 30% of the cycle, eased in and out, as the Mac's keyframes.
-    static func opacity(_ time: Double) -> Double {
-        let phase = (time.truncatingRemainder(dividingBy: 1.2) + 1.2).truncatingRemainder(dividingBy: 1.2) / 1.2
-        guard phase < 0.6 else { return 0.25 }
-        let rise = phase < 0.3 ? phase / 0.3 : (0.6 - phase) / 0.3
-        return 0.25 + 0.75 * (0.5 - cos(rise * .pi) / 2)
     }
 }
 
@@ -276,48 +260,102 @@ private struct OpenedReply: Identifiable {
     let round: PhoneLastRound
 }
 
-/// The first mate's mark beside each reply line: the app's hexagon in accent, as the Mac draws it (lastTurn.css).
+/// The first mate's mark beside each reply line: the app's hexagon in accent, as the Mac draws it (lastTurn.css,
+/// LastTurn.tsx). While the first mate works it turns ember over 0.16 s and spins one steady turn every 2 s (INF-2483's
+/// plan, the captain's Approve and build: "turn the mark to orange and spin it"); when work ends it eases on to its next
+/// resting sixth of a turn over 0.36 s as it fades back to accent. Under reduced motion it turns ember and stands still.
 private struct MateMark: View {
+    let working: Bool
+    let still: Bool
+    /// One whole turn, in seconds: INF-2483's chosen steady turn.
+    static let turn = 2.0
+    @State private var started = Date()
+    @State private var resting = 0.0
+
     var body: some View {
-        Canvas { context, size in
-            let scale = min(size.width, size.height) / 16
-            func hexagon(_ points: [(CGFloat, CGFloat)]) -> Path {
-                var path = Path()
-                path.addLines(points.map { CGPoint(x: $0.0 * scale, y: $0.1 * scale) })
-                path.closeSubpath()
-                return path
+        TimelineView(.animation(paused: !working || still)) { clock in
+            ZStack {
+                MarkHexagon(points: [(8, 1.2), (13.9, 4.6), (13.9, 11.4), (8, 14.8), (2.1, 11.4), (2.1, 4.6)])
+                MarkHexagon(points: [(12, 8), (10, 11.46), (6, 11.46), (4, 8), (6, 4.54), (10, 4.54)]).opacity(0.45)
+                MarkDot()
             }
-            let stroke = StrokeStyle(lineWidth: 1.2 * scale)
-            context.stroke(hexagon([(8, 1.2), (13.9, 4.6), (13.9, 11.4), (8, 14.8), (2.1, 11.4), (2.1, 4.6)]),
-                           with: .color(PhoneTheme.accent), style: stroke)
-            context.stroke(hexagon([(12, 8), (10, 11.46), (6, 11.46), (4, 8), (6, 4.54), (10, 4.54)]),
-                           with: .color(PhoneTheme.accent.opacity(0.45)), style: stroke)
-            let dot = 1.3 * scale
-            context.fill(Path(ellipseIn: CGRect(x: 8 * scale - dot, y: 8 * scale - dot, width: dot * 2, height: dot * 2)),
-                         with: .color(PhoneTheme.accent))
-        }.accessibilityHidden(true)
+            .foregroundStyle(working ? PhoneTheme.hot : PhoneTheme.accent)
+            .rotationEffect(.degrees(working && !still ? angle(at: clock.date) : resting))
+        }
+        .animation(.linear(duration: working ? 0.16 : 0.36), value: working)
+        .onChange(of: working) { was, now in
+            if now { started = Date(); resting = 0; return }
+            guard was, !still else { resting = 0; return }
+            let at = angle(at: Date())
+            resting = at
+            withAnimation(.easeOut(duration: 0.36)) { resting = (at / 60).rounded(.up) * 60 }
+        }
+        .onAppear { started = Date() }
+        .accessibilityHidden(true)
+    }
+
+    private func angle(at date: Date) -> Double {
+        let turns = date.timeIntervalSince(started) / Self.turn
+        return (turns - turns.rounded(.down)) * 360
     }
 }
 
-/// INF-1517, the captain's pick: the reply line opens the whole reply in a half-height sheet, as the Mac's reply note.
-/// Its title is the captain's message in quotation marks; its body the reply as written, a problem in red.
+/// A hexagon of the mark as its 1.2-unit outline, its points on the mark's 16-unit grid, drawn at any size.
+private struct MarkHexagon: Shape {
+    let points: [(CGFloat, CGFloat)]
+    func path(in rect: CGRect) -> Path {
+        let scale = min(rect.width, rect.height) / 16
+        var path = Path()
+        path.addLines(points.map { CGPoint(x: rect.minX + $0.0 * scale, y: rect.minY + $0.1 * scale) })
+        path.closeSubpath()
+        return path.strokedPath(StrokeStyle(lineWidth: 1.2 * scale))
+    }
+}
+
+/// The mark's centre dot, 1.3 units of 16 in radius.
+private struct MarkDot: Shape {
+    func path(in rect: CGRect) -> Path {
+        let scale = min(rect.width, rect.height) / 16
+        let dot = 1.3 * scale
+        return Path(ellipseIn: CGRect(x: rect.midX - dot, y: rect.midY - dot, width: dot * 2, height: dot * 2))
+    }
+}
+
+/// INF-2218, A · Open reply: the saved question in the shared bubble above an unboxed answer.
+/// Reading stays inside the existing sheet, with native sizing and Done dismissal; nothing is sent.
 private struct PhoneReplySheet: View {
     let round: PhoneLastRound
     @Environment(\.dismiss) private var dismiss
+    @State private var questionOpen = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: PhoneTheme.space2) {
-                    Text(round.you.isEmpty ? "A picture" : "“\(round.you)”").font(PhoneFont.headline)
-                        .accessibilityIdentifier("reply-note-title")
+                VStack(alignment: .leading, spacing: PhoneTheme.space5) {
+                    BubbleColumn {
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("You").font(PhoneFont.mono).foregroundStyle(PhoneTheme.muted)
+                            PhoneQuestionBubble(
+                                text: round.you,
+                                open: $questionOpen,
+                                identifier: "reply-note-question")
+                        }
+                    }
                     if let reply = round.reply {
-                        Text(reply.words ?? reply.text).font(PhoneFont.callout)
-                            .foregroundStyle(reply.problem == true ? PhoneTheme.danger : PhoneTheme.text)
-                            .textSelection(.enabled).accessibilityIdentifier("reply-note-words")
+                        VStack(alignment: .leading, spacing: PhoneTheme.space2) {
+                            HStack(spacing: PhoneTheme.space2) {
+                                MateMark(working: false, still: true).frame(width: 16, height: 16)
+                                Text("First mate").font(PhoneFont.mono).foregroundStyle(PhoneTheme.muted)
+                            }
+                            Text(reply.words ?? reply.text).font(PhoneFont.callout)
+                                .foregroundStyle(reply.problem == true ? PhoneTheme.danger : PhoneTheme.text)
+                                .textSelection(.enabled).accessibilityIdentifier("reply-note-words")
+                                .padding(.leading, PhoneTheme.space4 + PhoneTheme.space2)
+                        }
                     }
                 }.padding(PhoneTheme.space5).frame(maxWidth: .infinity, alignment: .leading)
             }
+            .accessibilityIdentifier("reply-note-scroll")
             .phoneTitle("Reply")
             .toolbar { ToolbarItem(placement: .confirmationAction) {
                 Button("Done") { dismiss() }.accessibilityIdentifier("close-reply-note")

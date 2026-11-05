@@ -116,7 +116,7 @@ enum CharacterWarp {
 
     // MARK: drawing
 
-    private static func shade(_ color: RGB, _ alpha: Double) -> GraphicsContext.Shading { .color(color.color(max(0, min(1, alpha)))) }
+    private static func shade(_ color: RGB, _ alpha: Double) -> ScenePen.Shading { .color(color.color(max(0, min(1, alpha)))) }
     private static func line(_ points: [CGPoint]) -> Path {
         Path { p in for (i, at) in points.enumerated() { if i == 0 { p.move(to: at) } else { p.addLine(to: at) } } }
     }
@@ -134,7 +134,7 @@ enum CharacterWarp {
     }
 
     /// Stars rushing toward the viewer, head-on; a sphere's lens pushes them out past its rim.
-    private static func starsHead(_ b: Backdrop, lens: Double, in context: inout GraphicsContext) {
+    private static func starsHead(_ b: Backdrop, lens: Double, in context: inout ScenePen) {
         let w = b.w, f = 83.0, tail = 0.008 + 0.11 * w.sp * min(1.6, data.warpSpeed)
         func bend(_ x: Double, _ y: Double) -> CGPoint {
             guard lens > 0.5 else { return CGPoint(x: x, y: y) }
@@ -158,7 +158,7 @@ enum CharacterWarp {
     }
 
     /// The tunnel, head-on: a glow at its far end, six ribs twisting down its walls, rings pouring out.
-    private static func tunnel(_ b: Backdrop, in context: inout GraphicsContext) {
+    private static func tunnel(_ b: Backdrop, in context: inout ScenePen) {
         let w = b.w, k = w.k, rt = 67.0, z0 = w.tv * 0.5
         func off(_ z: Double) -> CGPoint {
             let m = pow(z, 1.6) * 29 * k
@@ -166,7 +166,7 @@ enum CharacterWarp {
         }
         let o = off(1), far = CGPoint(x: b.cx + o.x, y: b.cy + o.y)
         context.fill(Path(CGRect(x: far.x - 80, y: far.y - 80, width: 160, height: 160)), with: .radialGradient(
-            Gradient(colors: [b.col.mix(white, 0.6).color(clamp01(0.26 * k * b.boost)), b.col.color(0)]), center: far, startRadius: 0, endRadius: 69))
+            PenGradient(colors: [b.col.mix(white, 0.6).color(clamp01(0.26 * k * b.boost)), b.col.color(0)]), center: far, startRadius: 0, endRadius: 69))
         let rib = StrokeStyle(lineWidth: 0.8, lineCap: .round)
         for m in 0..<6 {
             var previous = CGPoint.zero
@@ -195,7 +195,7 @@ enum CharacterWarp {
     private static func endFade(_ x: Double) -> Double { pow(sin(.pi * clamp01((x + span / 2) / span)), 1.8) }
 
     /// The corkscrew's wormhole, side-on: streaming stars, its silhouette, twisting stripes and rings through the throat.
-    private static func tube(_ b: Backdrop, in context: inout GraphicsContext) {
+    private static func tube(_ b: Backdrop, in context: inout ScenePen) {
         let w = b.w, k = w.k, r0 = w.coreR, stretch = min(1.6, data.warpSpeed)
         for s in data.side {
             let d = s[2]
@@ -245,7 +245,7 @@ enum CharacterWarp {
 
     /// The backdrop, under every crewmate: the wormhole and its stars, the corkscrew's faint track, and the jump and exit rings.
     /// `scale` is the phone's share of the desktop's orbits, which the crew's own moves use.
-    static func drawBackdrop(_ w: Frame, at center: CGPoint, riders: Int, scale: Double, palette: CharacterPainter.Palette, in context: inout GraphicsContext) {
+    static func drawBackdrop(_ w: Frame, at center: CGPoint, riders: Int, scale: Double, palette: CharacterPainter.Palette, in context: inout ScenePen) {
         guard w.k > 0.001 else { return }
         let col = palette.acc.mix(palette.hot, w.heat)
         let b = Backdrop(w: w, cx: center.x, cy: center.y, col: col, boost: palette.boost)
@@ -274,12 +274,12 @@ enum CharacterWarp {
 
     /// The sphere itself, under the first mate's wires: the background swallowing what is inside, the far side's
     /// stars bent into arcs toward the rim, and a bright rim that flares as the crew pass through.
-    static func drawSphere(_ et: Double, c: Double, r: Double, time: Double, bright: RGB, background: RGB, boost: Double, in context: inout GraphicsContext) {
+    static func drawSphere(_ et: Double, c: Double, r: Double, time: Double, bright: RGB, background: RGB, boost: Double, in context: inout ScenePen) {
         let k = envelope(et), rs = sphereRadius(et, r)
         guard rs >= 0.5 else { return }
         let disc = ring(c, c, rs), center = CGPoint(x: c, y: c)
         context.fill(disc, with: shade(background, 0.95 * clamp01(k * 1.5)))
-        context.fill(disc, with: .radialGradient(Gradient(colors: [bright.mix(white, 0.4).color(0.13 * k), bright.color(0.03 * k)]), center: center, startRadius: 0, endRadius: rs))
+        context.fill(disc, with: .radialGradient(PenGradient(colors: [bright.mix(white, 0.4).color(0.13 * k), bright.color(0.03 * k)]), center: center, startRadius: 0, endRadius: rs))
         let swirl = time * 0.22 + 5 * easeInOut(clamp01((et - 0.44) / 0.14)), far = bright.mix(white, 0.55)
         for star in data.inner {
             let u = star[0], rho = rs * (0.1 + 0.86 * pow(u, 0.55)), length = 0.03 + 0.55 * pow(u, 5), angle = star[1] + swirl * (1.25 - u * 0.5)

@@ -195,6 +195,11 @@ struct PhoneCardThread: View {
     let messages: [PhoneJSON]
     let working: Bool
 
+    /// The color a message's writer is named in: the captain's own, the author's accent, the app's quiet one.
+    static func color(_ who: String) -> Color {
+        who == "captain" ? PhoneTheme.captain : who == "host" ? PhoneTheme.secondary : PhoneTheme.accent
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: PhoneTheme.space3) {
             ForEach(Array(messages.enumerated()), id: \.offset) { _, message in
@@ -215,7 +220,7 @@ private struct PhoneThreadMessage: View {
     @State private var settingsOpen = false
 
     private var who: String { message["who"].text ?? "host" }
-    private var color: Color { who == "captain" ? PhoneTheme.captain : who == "host" ? PhoneTheme.secondary : PhoneTheme.accent }
+    private var color: Color { PhoneCardThread.color(who) }
     private var time: String {
         guard let at = message["at"].numeric else { return "" }
         return Date(timeIntervalSince1970: at / 1000).formatted(date: .omitted, time: .shortened)
@@ -225,10 +230,24 @@ private struct PhoneThreadMessage: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: PhoneTheme.space2) {
                 Text(PhoneCardWords.threadWho[who] ?? who).font(PhoneFont.mono).foregroundStyle(color)
-                Text(time).font(PhoneFont.micro).foregroundStyle(PhoneTheme.muted)
+                // INF-2553: a reply the computer has not carried yet is marked sending where its time will be.
+                if message["sending"].flag {
+                    Text("Sending…").font(PhoneFont.micro).foregroundStyle(PhoneTheme.muted).accessibilityIdentifier("thread-sending")
+                } else {
+                    Text(time).font(PhoneFont.micro).foregroundStyle(PhoneTheme.muted)
+                }
             }
             Text(message["text"].text ?? "").textSelection(.enabled)
                 .foregroundStyle(who == "host" ? PhoneTheme.secondary : PhoneTheme.text)
+            let contributor = PhoneCardWords.contributor(
+                host: who == "host",
+                label: message["contributor"]["label"].text,
+                clarification: message["clarification"].flag
+            )
+            if !contributor.isEmpty {
+                Text(contributor).font(PhoneFont.micro).foregroundStyle(PhoneTheme.muted)
+                    .accessibilityIdentifier("thread-contributor")
+            }
             let rows = Self.settingsRows(message["answers"].list)
             if who == "captain", !rows.isEmpty {
                 DisclosureGroup(PhoneCardWords.settingsCount(rows.count), isExpanded: $settingsOpen) {

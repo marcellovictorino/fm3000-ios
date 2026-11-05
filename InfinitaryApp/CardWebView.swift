@@ -264,11 +264,15 @@ import SwiftUI
             Task {
                 defer { busy = false }
                 do {
-                    let result = try await session.ask(.act, [.string(card.id), .string(id), .string("frame"), payload["value"], card.submission()])
-                    if let refusal = result["refusal"].text { throw PhoneRequestError(refusal) }
+                    // INF-2553: a body choice leaves the stage at the tap, as a footer choice does.
+                    let result = try await session.change(.choose(card: card.id, lifecycle: card.lifecycleID, offer: card.offerID), .act,
+                        [.string(card.id), .string(id), .string("frame"), payload["value"], card.submission()])
                     chosen = true
                     replyHandler(try result.foundation, nil)
-                } catch { notice = error.localizedDescription; replyHandler(nil, error.localizedDescription) }
+                } catch {
+                    // The session's own notice says why a change was taken back; the page still hears the refusal.
+                    replyHandler(nil, error.localizedDescription)
+                }
             }
         default: replyHandler(nil, "This card cannot do that.")
         }

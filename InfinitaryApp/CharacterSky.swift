@@ -106,7 +106,7 @@ enum CharacterSky {
     static func path(_ count: Int, point: (Double) -> CGPoint) -> Path {
         Path { p in for i in 0...count { let at = point(Double(i) / Double(count)); if i == 0 { p.move(to: at) } else { p.addLine(to: at) } } }
     }
-    static func draw(_ pose: CharacterPose, over: Bool, context: inout GraphicsContext, c: Double, r: Double, color: Color, background: Color) {
+    static func draw(_ pose: CharacterPose, over: Bool, context: inout ScenePen, c: Double, r: Double, color: PenColor, background: PenColor) {
         let k = envelope(pose), blend = easeInOut(clamp01(k)), time = pose.milliseconds / 1000
         guard k > 0.001, let variant = pose.variant else { return }
         if let con = CharacterCatalog.shared.constellations[variant.rawValue], over {
@@ -125,7 +125,7 @@ enum CharacterSky {
             if !over {
                 let globe = Path(ellipseIn: CGRect(x: c - data.globe * r, y: c - data.globe * r, width: 2 * data.globe * r, height: 2 * data.globe * r))
                 context.fill(globe, with: .color(background.opacity(0.94 * blend)))
-                context.fill(globe, with: .radialGradient(Gradient(colors: [color.opacity(0), color.opacity(0.16 * blend)]), center: CGPoint(x: c, y: c), startRadius: data.globe * r * 0.55, endRadius: data.globe * r))
+                context.fill(globe, with: .radialGradient(PenGradient(colors: [color.opacity(0), color.opacity(0.16 * blend)]), center: CGPoint(x: c, y: c), startRadius: data.globe * r * 0.55, endRadius: data.globe * r))
                 context.stroke(globe, with: .color(color.opacity(0.7 * blend)), lineWidth: 1.2)
                 for y in [-0.38, 0.42] {
                     context.stroke(path(40) { v in let a = .pi * (y < 0 ? 1.1 : 0.1) + v * .pi * 0.8; return tilted(cos(a) * data.globe * r * 0.9, (y + sin(a) * 0.16) * data.globe * r, data.tilt, c) }, with: .color(color.opacity(0.25 * blend)), lineWidth: 1)
@@ -144,7 +144,7 @@ enum CharacterSky {
             for n in 0..<9 {
                 let rho = r * (0.59 + Double(n) / 8 * 1.03)
                 let ring = path(100) { lensed(rho, $0 * 2 * .pi, c, r) }
-                context.stroke(ring, with: .linearGradient(Gradient(colors: [color.opacity(0.7 * blend), color.opacity(0.15 * blend)]), startPoint: CGPoint(x: c - rho, y: c), endPoint: CGPoint(x: c + rho, y: c)), lineWidth: n == 0 ? 1.6 : 0.7)
+                context.stroke(ring, with: .linearGradient(PenGradient(colors: [color.opacity(0.7 * blend), color.opacity(0.15 * blend)]), startPoint: CGPoint(x: c - rho, y: c), endPoint: CGPoint(x: c + rho, y: c)), lineWidth: n == 0 ? 1.6 : 0.7)
             }
         } else if variant == .algol && !over {
             let a = CharacterCatalog.shared.algol, radius = r * a["sep"]!

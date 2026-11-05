@@ -14,6 +14,10 @@ import Observation
     var openTask: String?
     /// INF-1524: a card's draft button, for the message box to take its words, unsent.
     var draft: String?
+    /// INF-2568: the software keyboard is up, and a card's reply field holds its focus; a phone on its side then has no
+    /// room for the pager or, while a reply types, the message box beside the field (`PhoneCards`, `PhoneWorkspace.home`).
+    var keyboardUp = false
+    var replyFocused = false
     var fields: [String: String] {
         if let taskID { return ["taskId": taskID] }
         guard cardsVisible else { return [:] }
@@ -116,12 +120,29 @@ struct PhoneWorkspace<Stage: View, Tasks: View, Composer: View>: View {
             try? await Task.sleep(for: .seconds(5))
             if session.notice == notice { session.notice = nil }
         }
+        .task(id: session.changeNotice) {
+            // INF-2553: the words about a taken-back change stay long enough to read, then leave on their own.
+            guard let change = session.changeNotice, !voiceOver else { return }
+            try? await Task.sleep(for: .seconds(8))
+            if session.changeNotice == change { session.changeNotice = nil }
+        }
+        // INF-2095: the isolated phone gate's menu tap probe, in a simulator build with its switch only.
+        .overlay(alignment: .topLeading) {
+            if let probe = PhoneMenuTapProbe.shared { PhoneMenuTapProbeReading(probe: probe).id(probe.redraws) }
+        }
+        .task { PhoneMenuTapProbe.shared?.install(session) }
         .environment(messageContext)
         // The first reading is the layout the workspace opens in, so the bar starts there.
         .onChange(of: wide, initial: true) { old, wide in if old == wide { wideBar = wide } else { settle(wide) } }
         .onChange(of: shown == .home, initial: true) { _, visible in messageContext.cardsVisible = visible }
         // The message box is Home's alone, so a keyboard typing into it closes with the tab it leaves.
         .onChange(of: shown) { _, tab in if tab != .home { dismissPhoneKeyboard() } }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            messageContext.keyboardUp = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            messageContext.keyboardUp = false
+        }
         .onChange(of: messageContext.restoring) { _, id in if id != nil { selection = .home } }
         // INF-1524: a card's task key opens its record on Tasks, or in the sidebar beside the stage.
         .onChange(of: messageContext.openTask) { _, key in
@@ -185,12 +206,22 @@ struct PhoneWorkspace<Stage: View, Tasks: View, Composer: View>: View {
                 if let composer {
                     composer
                         .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityElement(children: .contain).accessibilityIdentifier("phone-composer")
+                        // Stepped aside, it answers to its own name, so a reading of the message box never finds it undrawn.
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier(composerAside ? "phone-composer-aside" : "phone-composer")
                         .padding(.horizontal, PhoneTheme.space4)
                         .padding(.bottom, PhoneTheme.space2)
+                        // INF-2568: on a phone on its side the keyboard leaves about two lines of room, so while a card's
+                        // reply types the message box steps aside for it, kept in place so its draft stays.
+                        .frame(height: composerAside ? 0 : nil, alignment: .top)
+                        .opacity(composerAside ? 0 : 1).allowsHitTesting(!composerAside).accessibilityHidden(composerAside)
                 }
             }
         }.background(PhoneTheme.background)
+    }
+
+    private var composerAside: Bool {
+        phoneOnItsSide(verticalSize) && messageContext.keyboardUp && messageContext.replyFocused
     }
 
     /// INF-1062, the captain's pick: the computer's name left the bar, so one line under it on every tab says the reach
@@ -206,13 +237,20 @@ struct PhoneWorkspace<Stage: View, Tasks: View, Composer: View>: View {
     }
 
     /// INF-589 item 6, placed by item 16: the pill sits at the top of what it is over, under the bar and beside the sidebar.
-    /// An iPhone on its side gives the card that height, so the pill waits until it is upright.
+    /// An iPhone on its side gives the card that height, so it shows no pill: a new card's waits until it is upright, and a
+    /// change taken back says why on its place's own line instead (`ReadOnlySession.takenBack`), until the pill shows it upright.
     /// INF-1524, the captain's pick: on Home a new card is counted beside the pager instead, so only a reply's pill shows there.
     private func noticed(_ content: some View, home: Bool = false) -> some View {
         content.overlay(alignment: .top) {
             ZStack {
-                // The card already on the stage needs no pill pointing at it.
-                if let notice = session.notice, !phoneOnItsSide(verticalSize), !(home && !notice.reply),
+                // INF-2553: a change shown at the tap that the computer refused or could not confirm says why here,
+                // in front of any other notice, since it is about what the captain just did.
+                if let change = session.changeNotice, !phoneOnItsSide(verticalSize) {
+                    PhoneChangePill(notice: change) { if session.changeNotice == change { session.changeNotice = nil } }
+                    .task(id: change.id) { session.noticeShown(change) }
+                    .padding(.top, PhoneTheme.space2).padding(.horizontal, PhoneTheme.space4)
+                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+                } else if let notice = session.notice, !phoneOnItsSide(verticalSize), !(home && !notice.reply),
                    !(messageContext.cardsVisible && messageContext.card == .current(notice.cardID)) {
                     PhoneNoticePill(notice: notice, open: {
                         selection = .home; session.showCardID = notice.cardID; session.notice = nil
@@ -220,7 +258,7 @@ struct PhoneWorkspace<Stage: View, Tasks: View, Composer: View>: View {
                     .padding(.top, PhoneTheme.space2).padding(.horizontal, PhoneTheme.space4)
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
                 }
-            }.animation(.snappy, value: session.notice)
+            }.animation(.snappy, value: session.notice).animation(.snappy, value: session.changeNotice)
         }
     }
 
@@ -361,6 +399,26 @@ private struct PhoneNoticePill: View {
         .accessibilityHint("Opens the card")
         .accessibilityAction(named: "Dismiss", dismiss)
         .accessibilityIdentifier("phone-notice")
+    }
+}
+
+/// INF-2553: why a change shown at the tap was taken back, in the notice pill's place and surface. A tap or a swipe
+/// dismisses it.
+private struct PhoneChangePill: View {
+    let notice: PhoneChangeNotice
+    let dismiss: () -> Void
+
+    var body: some View {
+        Button(action: dismiss) {
+            Text(notice.words).font(PhoneFont.callout).foregroundStyle(PhoneTheme.text).multilineTextAlignment(.leading)
+                .padding(.horizontal, PhoneTheme.space4).padding(.vertical, PhoneTheme.space2).frame(minHeight: 44)
+                .modifier(PhoneNoticeSurface())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain).frame(maxWidth: PhoneColumn.inside)
+        .highPriorityGesture(DragGesture(minimumDistance: 12).onEnded { _ in dismiss() })
+        .accessibilityHint("Dismisses this notice")
+        .accessibilityIdentifier("change-notice")
     }
 }
 
