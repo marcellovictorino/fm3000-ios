@@ -65,7 +65,7 @@ struct PhoneSteadyReading<Reading: Equatable> {
 }
 
 /// What a target shows: its frame, and the screen's own pixels inside that frame while it is on the screen.
-private struct PhoneTargetReading: Equatable {
+struct PhoneTargetReading: Equatable {
     let frame: CGRect
     let drawn: Data?
 }
@@ -104,24 +104,97 @@ private struct PhoneTargetReading: Equatable {
     _ = waitForTarget(moved, timeout: 10) { $0.frame != before }
 }
 
+/// One sampler owns native target frames and their on-screen pixels, including the photo recovery observation.
+@MainActor func readPhoneTarget(_ element: XCUIElement) -> PhoneTargetReading? {
+    // The screen's bounds are read again because a turn moves them.
+    let screen = XCUIApplication().frame
+    return (try? element.snapshot()).flatMap { snapshot in
+        // A target off the screen draws nothing there yet; XCTest scrolls it into view as it taps.
+        guard snapshot.frame.intersects(screen) else { return PhoneTargetReading(frame: snapshot.frame, drawn: nil) }
+        // INF-2101: element.screenshot() checks existence and resolves this same target again. Read the actual
+        // display instead and crop at the frame we just read; keep both fresh frame queries and the pixel check.
+        guard let drawn = phoneTargetPixels({ XCUIScreen.main.screenshot().image }, frame: snapshot.frame, screen: screen,
+                                            scale: UIScreen.main.scale, native: { element.screenshot().pngRepresentation }) else { return nil }
+        return PhoneTargetReading(frame: snapshot.frame, drawn: drawn)
+    }
+}
+
 /// Reads a load-clock tick apart until the target reads the same twice in a row and `settled` accepts it.
 @MainActor private func waitForTarget(_ element: XCUIElement, timeout: TimeInterval,
                                       until settled: @escaping (PhoneTargetReading) -> Bool) -> PhoneTargetReading? {
     var steady = PhoneSteadyReading<PhoneTargetReading>()
     var last: PhoneTargetReading?
     let held = NSPredicate { _, _ in
-        // The screen's bounds, in the same coordinates as every element's frame, read each time since a turn moves them.
-        let screen = XCUIApplication().frame
-        last = (try? element.snapshot()).map { snapshot in
-            // A target off the screen draws nothing there yet; XCTest scrolls it into view as it taps.
-            PhoneTargetReading(frame: snapshot.frame,
-                               drawn: snapshot.frame.intersects(screen) ? element.screenshot().pngRepresentation : nil)
-        }
+        last = readPhoneTarget(element)
         return steady.read(last) && last.map(settled) == true
     }
     XCTAssertEqual(waitForPhonePredicate(held, object: element, timeout: timeout), .completed,
                    "\(element) did not settle: its last frame read \(last.map { "\($0.frame)" } ?? "nothing")")
     return last
+}
+
+/// INF-2101 / INF-2251: XCTest truncates to test parity, retaining the original float when that integer is even.
+/// UIKit then allocates from Float, rounded to nearest with ties away. Do not round before testing parity.
+func phoneCaptureExtent(_ pixels: CGFloat) -> CGFloat {
+    let integer = pixels.rounded(.towardZero)
+    let supplied = integer.truncatingRemainder(dividingBy: 2) == 1 ? integer - 1 : pixels
+    return CGFloat(Float(supplied).rounded(.toNearestOrAwayFromZero))
+}
+
+/// Only pixel-aligned, fully visible frames can be reconstructed by an integer crop of the existing capture.
+/// Genuine subpixel origins keep their phase in UIKit's native rendering, so they must use native capture instead.
+func phoneTargetCrop(frame: CGRect, screen: CGRect, scale: CGFloat, orientation: UIImage.Orientation,
+                     backing: CGSize) -> CGRect? {
+    guard scale.isFinite, scale > 0, !screen.isEmpty, !screen.isInfinite, !frame.isEmpty, !frame.isInfinite,
+          screen.contains(frame) else { return nil }
+    let x = frame.minX - screen.minX, y = frame.minY - screen.minY, w = frame.width, h = frame.height
+    let raw: CGRect
+    switch orientation {
+    case .up: raw = CGRect(x: x, y: y, width: w, height: h)
+    case .down: raw = CGRect(x: screen.width - (x + w), y: screen.height - (y + h), width: w, height: h)
+    case .left: raw = CGRect(x: screen.height - (y + h), y: x, width: h, height: w)
+    case .right: raw = CGRect(x: y, y: screen.width - (x + w), width: h, height: w)
+    default: return nil
+    }
+    let pixelX = raw.minX * scale, pixelY = raw.minY * scale
+    // Permit only floating-point representation error around the pixel grid, not a visual tolerance.
+    // Sum one ULP for the input coordinates and each intermediate add/subtract, then the scaling operations.
+    let pointError = [frame.minX, frame.minY, w, h, screen.minX, screen.minY, screen.width, screen.height,
+                      x, y, x + w, y + h, raw.minX, raw.minY].reduce(CGFloat.zero) { $0 + $1.ulp }
+    let pixelError = pointError * scale + pixelX.ulp + pixelY.ulp
+    guard abs(pixelX - pixelX.rounded()) <= pixelError, abs(pixelY - pixelY.rounded()) <= pixelError else { return nil }
+    let crop = CGRect(x: pixelX.rounded(), y: pixelY.rounded(),
+                      width: phoneCaptureExtent(raw.width * scale), height: phoneCaptureExtent(raw.height * scale))
+    guard !crop.isEmpty, !crop.isInfinite, CGRect(origin: .zero, size: backing).contains(crop) else { return nil }
+    return crop
+}
+
+/// INF-2101: crop the raw backing before rotating. Its actual size can differ from logical screen points × scale.
+/// Unsupported geometry retains XCTest's native pixels; an unreadable supported crop is never a steady blank target.
+@MainActor func phoneTargetPixels(_ capture: () -> UIImage, frame: CGRect, screen: CGRect, scale: CGFloat,
+                                 native: () -> Data? = { nil }) -> Data? {
+    guard frame.intersects(screen) else { return nil }
+    // INF-2291: decide from the frame before spending a display capture on a native-fallback target.
+    // The capture supplies its orientation later. Conservatively require support in every unmirrored orientation;
+    // the same crop owner checks containment and pixel alignment, without duplicating its geometry rules here.
+    let upright = CGSize(width: screen.width * scale, height: screen.height * scale)
+    let turned = CGSize(width: upright.height, height: upright.width)
+    for (orientation, backing) in [(UIImage.Orientation.up, upright), (.down, upright), (.left, turned), (.right, turned)] {
+        guard phoneTargetCrop(frame: frame, screen: screen, scale: scale, orientation: orientation,
+                              backing: backing) != nil else { return native() }
+    }
+    let image = capture()
+    guard let pixels = image.cgImage else { return nil }
+    guard let crop = phoneTargetCrop(frame: frame, screen: screen, scale: image.scale, orientation: image.imageOrientation,
+                                    backing: CGSize(width: pixels.width, height: pixels.height)) else { return native() }
+    guard let target = pixels.cropping(to: crop) else { return nil }
+    let captured = UIImage(cgImage: target, scale: image.scale, orientation: image.imageOrientation)
+    if captured.imageOrientation == .up { return captured.pngData() }
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = captured.scale
+    return UIGraphicsImageRenderer(size: captured.size, format: format).image { _ in
+        captured.draw(in: CGRect(origin: .zero, size: captured.size))
+    }.pngData()
 }
 
 /// INF-1083 / INF-1122: presence is not keyboard focus. Send one tap, then observe

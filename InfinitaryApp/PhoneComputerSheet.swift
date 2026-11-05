@@ -27,9 +27,9 @@ extension ReadOnlySession {
         }
     }
 
-    /// When the computer was last heard, shown only while it is not in reach.
+    /// When the computer was last heard, shown only while it is out of reach; reaching it again needs no time.
     var reachTime: String? {
-        guard contact != "in-reach", let heardAt else { return nil }
+        guard contact != "in-reach", contact != "reaching", let heardAt else { return nil }
         return heardAt.formatted(date: .omitted, time: .shortened)
     }
 

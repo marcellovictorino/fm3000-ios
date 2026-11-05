@@ -1,5 +1,6 @@
 import Foundation
 import InfinitaryKit
+import Network
 import Observation
 import UIKit
 
@@ -34,6 +35,9 @@ struct AddressJoin: Equatable {
     private var joining: Task<Void, Never>?
     private var foreground = false
     private var backgroundTime = UIBackgroundTaskIdentifier.invalid
+    /// INF-2157: a change of network looks again at once, as a reopen does, rather than waiting on a quiet connection.
+    @ObservationIgnored private let network = NWPathMonitor()
+    @ObservationIgnored private var networkSeen: String?
     private let savedURL: URL
     private let trustedURL: URL
     private let loadIdentity: () throws -> PhoneIdentity
@@ -55,6 +59,19 @@ struct AddressJoin: Equatable {
         }
         // Prewarm can construct the model before first unlock. Read protected data on activation.
         nearby.changed = { [weak self] addresses in self?.connection?.found(addresses: addresses) }
+        network.pathUpdateHandler = { [weak self] path in
+            let seen = "\(path.status)|" + path.availableInterfaces.map(\.name).joined(separator: ",")
+            let usable = path.status == .satisfied
+            Task { @MainActor in self?.networkChanged(seen, usable: usable) }
+        }
+        network.start(queue: .main)
+    }
+
+    private func networkChanged(_ seen: String, usable: Bool) {
+        // The monitor's first answer is the network the app started on, not a change.
+        defer { networkSeen = seen }
+        guard let before = networkSeen, before != seen, usable, foreground else { return }
+        connection?.start()
     }
 
     @discardableResult func restore() -> Bool {

@@ -27,10 +27,15 @@ public struct PhoneTaskFacts: Sendable {
         public let problem: String?
         public let dot: String
         public let words: String
+        /// The checks as one state (`running`, `passed`, `failed`), the summary's (INF-2528); `words` carries the counts.
+        public let state: String
         public let at: Double?
         public let span: Span?
         /// The words with how long the checks have run or took: `running for 15m`, `passed in 14m`.
-        public func spanWords(now: Double) -> String {
+        public func spanWords(now: Double) -> String { withSpan(words, now: now) }
+        /// The one state with how long the checks have run or took, as the summary's footer says it (INF-2528).
+        public func stateWords(now: Double) -> String { withSpan(state, now: now) }
+        private func withSpan(_ words: String, now: Double) -> String {
             guard let span else { return words }
             return "\(words) \(span.joint) \(PhoneTaskFacts.checksDuration((span.finishedAt ?? now) - span.startedAt))"
         }
@@ -177,11 +182,14 @@ public struct PhoneTaskFacts: Sendable {
         let observed = currentCheckSummary(facts)
         var checks: Checks?
         if live && (observed != nil || change != nil || ci != "no-pr") {
+            let ciWords = ci == "no-pr" ? notReadWords : checkWords[ci] ?? ci
             checks = Checks(problem: observed?.problem, dot: observed?.dot ?? checksDot[ci] ?? "idle",
-                            words: observed?.words ?? (ci == "no-pr" ? notReadWords : checkWords[ci] ?? ci),
+                            words: observed?.words ?? ciWords,
+                            state: observed != nil ? facts.checks.map(checkState) ?? ciWords : ciWords,
                             at: facts.ciAt, span: checksSpan(facts))
         } else if live, let run = facts.runChecks {
-            checks = Checks(problem: nil, dot: runDot[run.state] ?? "idle", words: runWords[run.state] ?? run.state,
+            let words = runWords[run.state] ?? run.state
+            checks = Checks(problem: nil, dot: runDot[run.state] ?? "idle", words: words, state: words,
                             at: run.at, span: runChecksSpan(run))
         }
         let review = facts.reviewVerdict.map { verdict in
@@ -234,6 +242,19 @@ public struct PhoneTaskFacts: Sendable {
         }
         if counts["neutral"] != nil { return CheckSummary(overall: "pending", words: words, dot: "warn", problem: nil) }
         return CheckSummary(overall: "green", words: words, dot: "ok", problem: nil)
+    }
+
+    /// The checks as one state, as the summary says them (`checkSnapshotState`, INF-2528): `running`, `passed`, `failed`.
+    /// The counts and a refusal's reason are the task record's (`checkSummary`).
+    public static func checkState(_ reading: PhoneTask.Delivery.CheckSnapshot) -> String {
+        let summary = checkSummary(reading)
+        if summary.overall == "red" { return "failed" }
+        if reading.problem != nil { return "cannot read all checks" }
+        if reading.items.isEmpty { return summary.words }
+        if summary.overall == "green" { return "passed" }
+        if reading.items.contains(where: { $0.state == "pending" }) { return "running" }
+        if reading.complete == false { return "reading incomplete" }
+        return "neutral"
     }
 
     /// The reading for the change's current version; one of an earlier version says so.

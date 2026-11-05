@@ -31,7 +31,7 @@ struct PhoneCrewSummary: View {
                     head(facts)
                     if let review = task.reviewOf { reviewing(review) }
                     if let parent = task.parentId { partOf(parent) }
-                    if !task.blockedBy.isEmpty { blockedBy(now: now) }
+                    if !task.blockedBy.isEmpty { blockedBy() }
                     if task.program == true { parts() }
                     rows(facts, now: now)
                     if facts.model != nil || facts.delivery != nil { strip(facts, now: now) }
@@ -117,18 +117,10 @@ struct PhoneCrewSummary: View {
         }
     }
 
-    private func blockedBy(now: Double) -> some View {
+    /// Each blocker by its key only (INF-2528); when each wait was recorded is the task record's.
+    private func blockedBy() -> some View {
         keyRow("Blocked by", id: "crew-summary-blocked") {
-            ForEach(task.blockedBy, id: \.self) { key in
-                HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    keyButton(key, task: roster.allTasks.first { $0.key == key })
-                    if let at = task.blockedSince?[key] {
-                        Text(" recorded " + PhoneTaskRecord.time(Date(timeIntervalSince1970: at / 1000),
-                                                                 now: Date(timeIntervalSince1970: now / 1000)))
-                            .font(PhoneFont.label).foregroundStyle(PhoneTheme.muted)
-                    }
-                }
-            }
+            ForEach(task.blockedBy, id: \.self) { key in keyButton(key, task: roster.allTasks.first { $0.key == key }) }
         }
     }
 
@@ -232,40 +224,47 @@ struct PhoneCrewSummary: View {
         if let plan { PhonePlanDots(nodes: PhoneTaskFacts.planNodes(plan.items)).padding(.top, 8).padding(.horizontal, 2) }
     }
 
-    // MARK: The fact strip (TaskFactStrip)
+    // MARK: The footer (TaskFactRows' summary strip)
 
+    /// INF-2528, the captain's direction B: one row that never wraps - the model with its intelligence badge, then the
+    /// change with its checks as one state and its time (`#813 running for 11m`); a long model name gives way first,
+    /// ending in an ellipsis. A review's verdict takes a second row. Reasoning, its footnote, the check counts, a
+    /// refusal's reason and when the checks finished are the task record's.
     private func strip(_ facts: PhoneTaskFacts, now: Double) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PhoneFactCells(columnGap: PhoneTheme.space4, rowGap: PhoneTheme.space2) {
-                if let model = facts.model { cell("Model") { Text(model).lineLimit(1).accessibilityIdentifier("crew-summary-model") } }
-                if let tier = facts.tier { cell("Intelligence") { PhoneSlotBadge(slot: tier) } }
-                if let reasoning = facts.reasoning { cell("Reasoning") { Text(reasoning).accessibilityIdentifier("crew-summary-reasoning") } }
-                if let change = facts.delivery?.change {
-                    cell(change.noun) { Text(change.label ?? change.noun).lineLimit(1).accessibilityIdentifier("crew-summary-change") }
-                }
-                if let checks = facts.delivery?.checks {
-                    cell("Checks") {
-                        HStack(alignment: checks.problem == nil ? .center : .top, spacing: 4) {
-                            PhoneFactDot(state: checks.dot).padding(.top, checks.problem == nil ? 0 : 4)
-                            Text(checks.spanWords(now: now)).fixedSize(horizontal: false, vertical: checks.problem != nil)
-                                .lineLimit(checks.problem == nil ? 1 : nil).accessibilityIdentifier("crew-summary-checks")
-                            if let finished = checks.span?.finishedAt {
-                                Text("·").foregroundStyle(PhoneTheme.muted)
-                                PhoneFactAge(words: PhoneTaskFacts.checksFinishedAgo(finished, now: now))
+        let change = facts.delivery?.change, checks = facts.delivery?.checks
+        return VStack(alignment: .leading, spacing: PhoneTheme.space2) {
+            if facts.model != nil || change != nil || checks != nil {
+                HStack(alignment: .top, spacing: PhoneTheme.space4) {
+                    if let model = facts.model {
+                        cell("Model") {
+                            HStack(spacing: PhoneTheme.space2) {
+                                Text(model).lineLimit(1).truncationMode(.tail).accessibilityIdentifier("crew-summary-model")
+                                if let tier = facts.tier { PhoneSlotBadge(slot: tier).fixedSize() }
                             }
-                        }
+                        }.layoutPriority(0)
                     }
-                }
-                if let review = facts.delivery?.review {
-                    cell("Review") {
-                        HStack(spacing: 4) { PhoneFactDot(state: review.dot); Text(review.words).accessibilityIdentifier("crew-summary-review") }
+                    if change != nil || checks != nil {
+                        cell(change?.noun ?? "Checks") {
+                            HStack(spacing: PhoneTheme.space2) {
+                                if let change {
+                                    Text(change.label ?? change.noun).lineLimit(1).accessibilityIdentifier("crew-summary-change")
+                                }
+                                if let checks {
+                                    HStack(spacing: 4) {
+                                        PhoneFactDot(state: checks.dot)
+                                        Text(checks.stateWords(now: now)).lineLimit(1).accessibilityIdentifier("crew-summary-checks")
+                                    }
+                                }
+                            }.fixedSize()
+                        }.layoutPriority(1)
                     }
+                    Spacer(minLength: 0)
                 }
             }
-            if let reason = facts.reason {
-                Text(reason).font(PhoneFont.label).foregroundStyle(PhoneTheme.muted).lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true).padding(.top, Self.rowGap)
-                    .accessibilityIdentifier("crew-summary-reason")
+            if let review = facts.delivery?.review {
+                cell("Review") {
+                    HStack(spacing: 4) { PhoneFactDot(state: review.dot); Text(review.words).accessibilityIdentifier("crew-summary-review") }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -293,39 +292,6 @@ private struct PhoneFactLabel: View {
 private struct PhoneFactAge: View {
     let words: String
     var body: some View { Text(words).font(PhoneFont.micro).foregroundStyle(PhoneTheme.muted).fixedSize() }
-}
-
-/// The fact strip's cells wrap whole, each at most the strip's width (a check-read refusal wraps inside its cell).
-private struct PhoneFactCells: Layout {
-    let columnGap: CGFloat
-    let rowGap: CGFloat
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? .infinity
-        let placed = arrange(width: width, subviews)
-        return CGSize(width: proposal.width ?? placed.map { $0.frame.maxX }.max() ?? 0, height: placed.map { $0.frame.maxY }.max() ?? 0)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        for item in arrange(width: bounds.width, subviews) {
-            subviews[item.index].place(at: CGPoint(x: bounds.minX + item.frame.minX, y: bounds.minY + item.frame.minY),
-                                       proposal: ProposedViewSize(item.frame.size))
-        }
-    }
-
-    private func arrange(width: CGFloat, _ subviews: Subviews) -> [(index: Int, frame: CGRect)] {
-        var placed: [(index: Int, frame: CGRect)] = []
-        var x: CGFloat = 0, y: CGFloat = 0, line: CGFloat = 0
-        for index in subviews.indices {
-            let ideal = subviews[index].sizeThatFits(.unspecified)
-            let fitted = ideal.width <= width ? ideal : subviews[index].sizeThatFits(ProposedViewSize(width: width, height: nil))
-            if x > 0 && x + fitted.width > width { x = 0; y += line + rowGap; line = 0 }
-            placed.append((index, CGRect(origin: CGPoint(x: x, y: y), size: CGSize(width: min(fitted.width, width), height: fitted.height))))
-            x += fitted.width + columnGap
-            line = max(line, fitted.height)
-        }
-        return placed
-    }
 }
 
 /// TaskStatusMark: the task's state as a 12-point mark in the desktop's 16-unit box; shape carries it as well as color.

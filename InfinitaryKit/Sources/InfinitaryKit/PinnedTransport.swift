@@ -3,11 +3,14 @@ import Security
 import Synchronization
 
 /// Each attempt owns an ephemeral session. No ambient cookies, cache, credentials or redirects.
-public final class PinnedTransport: NSObject, URLSessionDelegate, URLSessionTaskDelegate, @unchecked Sendable {
+public final class PinnedTransport: NSObject, URLSessionDelegate, URLSessionTaskDelegate, URLSessionWebSocketDelegate,
+    @unchecked Sendable {
     private let pin: String
     private let phone: PhoneIdentity
     private var session: URLSession!
     private let rejectedPin = Mutex(false)
+    private enum Opening { case waiting([CheckedContinuation<Void, Error>]), opened, failed }
+    private let opening = Mutex(Opening.waiting([]))
 
     public enum Purpose { case pairing, connection }
 
@@ -27,7 +30,41 @@ public final class PinnedTransport: NSObject, URLSessionDelegate, URLSessionTask
         session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
     }
 
-    public func close() { session.invalidateAndCancel() }
+    public func close() { session.invalidateAndCancel(); settle(opened: false) }
+
+    /// INF-2157: returns once this transport's socket is a WebSocket: the pinned TLS, the phone's key and the upgrade
+    /// all passed. Throws once it failed or was closed first; cancelling the wait closes the transport.
+    public func opened() async throws {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                let settled: Bool? = opening.withLock { state in
+                    switch state {
+                    case .opened: return true
+                    case .failed: return false
+                    case .waiting(let waiters): state = .waiting(waiters + [continuation]); return nil
+                    }
+                }
+                if let settled { settled ? continuation.resume() : continuation.resume(throwing: PhoneError.unavailable) }
+            }
+        } onCancel: { close() }
+    }
+
+    private func settle(opened: Bool) {
+        let waiters: [CheckedContinuation<Void, Error>] = opening.withLock { state in
+            guard case .waiting(let waiters) = state else { return [] }
+            state = opened ? .opened : .failed
+            return waiters
+        }
+        for waiter in waiters { opened ? waiter.resume() : waiter.resume(throwing: PhoneError.unavailable) }
+    }
+
+    public func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
+        settle(opened: true)
+    }
+
+    public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        settle(opened: false)
+    }
 
     public func pair(_ link: JoinLink, name: String) async throws -> JoinedMac {
         // Preflight is non-mutating: even a timeout here cannot spend the invitation.

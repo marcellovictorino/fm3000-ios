@@ -13,7 +13,7 @@ struct PhoneTaskFactsTests {
     }
     private struct Now: Decodable { let text: String; let at: Double }
     private struct Span: Decodable { let startedAt: Double; let finishedAt: Double?; let joint: String }
-    private struct Checks: Decodable { let problem: String?; let dot: String; let words: String; let at: Double?; let span: Span? }
+    private struct Checks: Decodable { let problem: String?; let dot: String; let words: String; let state: String; let at: Double?; let span: Span? }
     private struct Review: Decodable { let dot: String; let words: String }
     private struct Change: Decodable { let noun: String; let label: String?; let url: String? }
     private struct Delivery: Decodable { let change: Change?; let checks: Checks?; let review: Review? }
@@ -27,11 +27,13 @@ struct PhoneTaskFactsTests {
         let model: String?; let tier: String?; let reasoningWords: String?; let reason: String?
         let delivery: Delivery?
         let nowAge: String?; let planAge: String?; let checksWords: String?; let checksAgo: String?
+        /// INF-2528, the captain's direction B: the summary's footer says the checks as one state with its time.
+        let checksStateWords: String?
         let planWords: PlanWords?; let planDots: [PlanDot]?
 
         enum CodingKeys: String, CodingKey {
             case key, title, label, status, now, plan, model, tier, reasoningWords, reason, delivery, nowAge, planAge,
-                 checksWords, checksAgo, planWords, planDots
+                 checksWords, checksAgo, checksStateWords, planWords, planDots
         }
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -51,6 +53,7 @@ struct PhoneTaskFactsTests {
             planAge = try c.decodeIfPresent(String.self, forKey: .planAge)
             checksWords = try c.decodeIfPresent(String.self, forKey: .checksWords)
             checksAgo = try c.decodeIfPresent(String.self, forKey: .checksAgo)
+            checksStateWords = try c.decodeIfPresent(String.self, forKey: .checksStateWords)
             planWords = try c.decodeIfPresent(PlanWords.self, forKey: .planWords)
             planDots = try c.decodeIfPresent([PlanDot].self, forKey: .planDots)
         }
@@ -98,11 +101,13 @@ struct PhoneTaskFactsTests {
             #expect(checks?.problem == want.delivery?.checks?.problem, named)
             #expect(checks?.dot == want.delivery?.checks?.dot, named)
             #expect(checks?.words == want.delivery?.checks?.words, named)
+            #expect(checks?.state == want.delivery?.checks?.state, named)
             #expect(checks?.at == want.delivery?.checks?.at, named)
             #expect(checks?.span?.startedAt == want.delivery?.checks?.span?.startedAt, named)
             #expect(checks?.span?.finishedAt == want.delivery?.checks?.span?.finishedAt, named)
             #expect(checks?.span?.joint == want.delivery?.checks?.span?.joint, named)
             #expect(checks?.spanWords(now: sample.now) == want.checksWords, named)
+            #expect(checks?.stateWords(now: sample.now) == want.checksStateWords, named)
             #expect(checks?.span?.finishedAt.map { PhoneTaskFacts.checksFinishedAgo($0, now: sample.now) } == want.checksAgo, named)
             #expect(facts.delivery?.review?.dot == want.delivery?.review?.dot, named)
             #expect(facts.delivery?.review?.words == want.delivery?.review?.words, named)
