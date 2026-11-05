@@ -20,4 +20,6 @@ Each line says what changed, then **Job:** the job to be done, for feedback to t
   **Job:** see where every task stands at a glance, as on the desktop, and narrow it to one project.
 - Cards: swiping the card left or right turns to the next or previous card, as the pager arrows do (the arrows stay). The card follows the finger with a slight tilt, springs back on a short drag, and on a full one slides off while the next slides in from the other side; with Reduce Motion it fades instead: new `InfinitaryApp/PhoneSwipePaging.swift`, one line added in `InfinitaryApp/PhoneCards.swift`.
   **Job:** get through a stack of cards quickly with one hand, without reaching for the small arrows, and see the card move as I push it.
+- Cards: while typing a card's reply, a swipe down on the card, a tap on its head or body, or Done above the keyboard closes the keyboard and keeps the draft; before, with the keyboard up the body had no room to scroll, so nothing closed it: edits to `InfinitaryApp/PhoneCards.swift`.
+  **Job:** put the keyboard away mid-reply to read the card again, without losing what I typed.
 - Added `InfinitaryTests/PhoneAppearanceTests.swift` (the appearance choice's default and persistence).

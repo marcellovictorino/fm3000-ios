@@ -382,6 +382,7 @@ private struct PhoneCardPane: View {
     private var measuredHead: some View {
         head.padding([.horizontal, .top], PhoneTheme.space4).padding(.bottom, PhoneTheme.space3)
             .fixedSize(horizontal: false, vertical: true)
+            .contentShape(Rectangle()).simultaneousGesture(tapClosesReply, isEnabled: replyFocus != nil)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headHeight = $0 }
     }
 
@@ -406,6 +407,20 @@ private struct PhoneCardPane: View {
         .onChange(of: replyFocus == nil) { _, unfocused in if unfocused { shapeFrame() } }
         .onChange(of: replyFocus != nil, initial: true) { _, focused in messageContext.replyFocused = focused }
         .onDisappear { if replyFocus != nil { messageContext.replyFocused = false } }
+        // fm3000-ios: with the keyboard up the head, the reply and the choices can fill the pane and leave the body no room
+        // to scroll, so scrolling alone never closed the keyboard. A swipe down on the card, a tap on its head or body, or
+        // Done above the keyboard closes it; the draft stays in the field.
+        .simultaneousGesture(DragGesture(minimumDistance: 20).onEnded { drag in
+            if drag.translation.height > 40 && drag.translation.height > abs(drag.translation.width) { closeReplyKeyboard() }
+        }, isEnabled: replyFocus != nil)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                if replyFocus != nil {
+                    Spacer()
+                    Button("Done") { closeReplyKeyboard() }.accessibilityIdentifier("card-reply-done")
+                }
+            }
+        }
         .background(alignment: .topTrailing) {
             if showsNext {
                 // The stack follows the card's frame, which never reaches the pager; the sliver is raised as the card is.
@@ -475,6 +490,10 @@ private struct PhoneCardPane: View {
 
     private func followCaret() { if replyFocus == .face { replyGrew += 1 } }
 
+    private func closeReplyKeyboard() { replyFocus = nil }
+    /// A tap on the card's head or body closes the reply's keyboard; the head's own buttons still take the tap.
+    private var tapClosesReply: some Gesture { TapGesture().onEnded { if replyFocus != nil { closeReplyKeyboard() } } }
+
     /// A card's scroller closes the keyboard as a person starts to scroll it, never as the scroller follows the caret.
     private func scrolled(_ phase: ScrollPhase) {
         // INF-2568, the captain: "scrolling a card should dismiss the keyboard if keyboard is up".
@@ -513,6 +532,7 @@ private struct PhoneCardPane: View {
                         if !pinsFrame { measuredHead }
                         content.padding([.horizontal], PhoneTheme.space4).padding(.bottom, PhoneTheme.space4)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle()).simultaneousGesture(tapClosesReply, isEnabled: replyFocus != nil)
                         if hasFoot && !pinsFrame { measuredFoot }
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
