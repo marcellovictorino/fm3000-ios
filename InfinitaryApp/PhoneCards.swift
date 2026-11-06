@@ -9,7 +9,6 @@ struct PhoneCards: View {
     @State private var selected: String?
     @State private var past: PhoneCard?
     @State private var drafts: [String: PhoneJSON] = [:]
-    @State private var replies: [String: String] = [:]
     @State private var previousIDs: [String] = []
     @State private var sent = 0
     /// INF-1524, the captain's yes on iPad only: the card takes the stage's whole width, as the Mac's maximize does.
@@ -25,7 +24,7 @@ struct PhoneCards: View {
             if let card {
                 PhoneCardPane(card: card, session: session,
                     fill: card.isPast ? card.value["answers"] : drafts[card.id] ?? .array([]),
-                    reply: Binding(get: { replies[card.id] ?? "" }, set: { replies[card.id] = $0 }),
+                    reply: Binding(get: { messageContext.replyDrafts[card.id] ?? "" }, set: { messageContext.replyDrafts[card.id] = $0 }),
                     onReading: { drafts[card.id] = $0["answers"] },
                     onSeen: { session.markSeen(card) },
                     onHide: { past = nil },
@@ -271,7 +270,11 @@ private struct PhoneCardPane: View {
     @State private var retry = 0
     /// INF-1524: the choice pressed and still on its way, which shows its pending mark.
     @State private var pending: String?
-    @State private var photos: [PhonePhoto] = []
+    /// fm3000-ios: the message box at Home's foot adds the reply's photos, so they live in the message context.
+    private var photos: [PhonePhoto] {
+        get { messageContext.replyPhotos[card.id] ?? [] }
+        nonmutating set { messageContext.replyPhotos[card.id] = newValue.isEmpty ? nil : newValue }
+    }
     @State private var photoSelection: [PhotosPickerItem] = []
     @State private var libraryOpen = false
     @State private var cameraOpen = false
@@ -327,6 +330,18 @@ private struct PhoneCardPane: View {
     /// The words or photos alone, which the send checks again once its change has begun and the card counts as changing.
     private var replyFits: Bool { reply.utf16.count <= PhoneLimits.reply && (!replyWords.isEmpty || !photos.isEmpty) }
     private var takesReply: Bool { card.takesReplies && !card.isPast }
+    /// fm3000-ios: the reply is typed in the message box at Home's foot, so the card draws no field of its own.
+    private var replyAtFoot: Bool { true }
+    private var replierToken: String { "\(card.id):\(card.offerID ?? card.body)" }
+    /// fm3000-ios: tells the message box this card can take a reply, and how to send one.
+    private func publishReplier() {
+        if takesReply {
+            messageContext.replier = .init(token: replierToken, cardID: card.id, title: card.title,
+                                           ready: host.drawn && !host.changing, send: { sendReply() })
+        } else if messageContext.replier?.token == replierToken {
+            messageContext.replier = nil
+        }
+    }
     /// The task the card is about, which leads its head as its door to the task's record.
     private var task: PhoneTask? {
         guard let id = card.value["taskId"].text ?? card.reviewTaskId else { return nil }
@@ -346,7 +361,7 @@ private struct PhoneCardPane: View {
     private var line: String? { problem ?? (phoneOnItsSide(verticalSize) ? session.takenBack[card.id] : nil) }
 
     private var hasFoot: Bool {
-        !card.actions.isEmpty || line != nil || takesReply || factsHost != nil || !card.value["requiredActions"].list.isEmpty
+        !card.actions.isEmpty || line != nil || (takesReply && !replyAtFoot) || factsHost != nil || !card.value["requiredActions"].list.isEmpty
             || !messages.isEmpty
     }
     /// The back shows: a card has a back only once its thread has a message.
@@ -380,7 +395,7 @@ private struct PhoneCardPane: View {
     private var measuredHead: some View {
         head.padding([.horizontal, .top], PhoneTheme.space4).padding(.bottom, PhoneTheme.space3)
             .fixedSize(horizontal: false, vertical: true)
-            .contentShape(Rectangle()).simultaneousGesture(tapClosesReply, isEnabled: replyFocus != nil)
+            .contentShape(Rectangle()).simultaneousGesture(tapClosesReply, isEnabled: keyboardOpen)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headHeight = $0 }
     }
 
@@ -404,13 +419,17 @@ private struct PhoneCardPane: View {
         .onChange(of: [paneHeight, headHeight, footHeight]) { shapeFrame() }
         .onChange(of: replyFocus == nil) { _, unfocused in if unfocused { shapeFrame() } }
         .onChange(of: replyFocus != nil, initial: true) { _, focused in messageContext.replyFocused = focused }
-        .onDisappear { if replyFocus != nil { messageContext.replyFocused = false } }
+        .onDisappear {
+            if replyFocus != nil { messageContext.replyFocused = false }
+            if messageContext.replier?.token == replierToken { messageContext.replier = nil }
+        }
+        .onChange(of: [takesReply, host.drawn, host.changing], initial: true) { publishReplier() }
         // fm3000-ios: with the keyboard up the head, the reply and the choices can fill the pane and leave the body no room
         // to scroll, so scrolling alone never closed the keyboard. A swipe down on the card, a tap on its head or body, or
         // Done above the keyboard closes it; the draft stays in the field.
         .simultaneousGesture(DragGesture(minimumDistance: 20).onEnded { drag in
             if drag.translation.height > 40 && drag.translation.height > abs(drag.translation.width) { closeReplyKeyboard() }
-        }, isEnabled: replyFocus != nil)
+        }, isEnabled: keyboardOpen)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 if replyFocus != nil {
@@ -478,9 +497,11 @@ private struct PhoneCardPane: View {
 
     private func followCaret() { if replyFocus == .face { replyGrew += 1 } }
 
-    private func closeReplyKeyboard() { replyFocus = nil }
+    private func closeReplyKeyboard() { replyFocus = nil; dismissPhoneKeyboard() }
+    /// fm3000-ios: the keyboard is the message box's, so the card closes it whoever has the focus.
+    private var keyboardOpen: Bool { replyFocus != nil || messageContext.keyboardUp }
     /// A tap on the card's head or body closes the reply's keyboard; the head's own buttons still take the tap.
-    private var tapClosesReply: some Gesture { TapGesture().onEnded { if replyFocus != nil { closeReplyKeyboard() } } }
+    private var tapClosesReply: some Gesture { TapGesture().onEnded { if keyboardOpen { closeReplyKeyboard() } } }
 
     /// A card's scroller closes the keyboard as a person starts to scroll it, never as the scroller follows the caret.
     private func scrolled(_ phase: ScrollPhase) {
@@ -526,7 +547,7 @@ private struct PhoneCardPane: View {
                         if !pinsFrame { measuredHead }
                         content.padding([.horizontal], PhoneTheme.space4).padding(.bottom, PhoneTheme.space4)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle()).simultaneousGesture(tapClosesReply, isEnabled: replyFocus != nil)
+                            .contentShape(Rectangle()).simultaneousGesture(tapClosesReply, isEnabled: keyboardOpen)
                         if hasFoot && !pinsFrame { measuredFoot }
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
@@ -625,7 +646,7 @@ private struct PhoneCardPane: View {
     private var backFoot: some View {
         VStack(alignment: .leading, spacing: PhoneTheme.space2) {
             if let problem { Text(problem).foregroundStyle(PhoneTheme.warning) }
-            if takesReply { replyField(.back) }
+            if takesReply && !replyAtFoot { replyField(.back) }
             choiceRow
         }
         .padding(.horizontal, PhoneTheme.space4).padding(.top, PhoneTheme.space2).padding(.bottom, PhoneTheme.space3)
@@ -808,7 +829,7 @@ private struct PhoneCardPane: View {
             if let line { Text(line).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("card-error") }
             // INF-2565: a pane built again while its back shows starts turned, and its latest line gives way as the field does.
             if !messages.isEmpty { latestLine.modifier(PhoneFaceOnly(angle: turnAngle)) }
-            if takesReply {
+            if takesReply && !replyAtFoot {
                 replyField(.face).modifier(PhoneFaceOnly(angle: turnAngle)).id(Self.replyAnchor)
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.paneSpace)) } action: { frame in
                         if pinsFrame { faceReplyFrame = frame }
@@ -966,7 +987,7 @@ private struct PhoneCardPane: View {
             let before = PhoneIntentLedger.captainMessages(session.threads[card.id])
             let delivered = await self.send(.reply(card: card.id, text: text, before: before), .reply,
                 [.string(card.id), .object(payload), card.submission(reading: reading, fresh: snapshot.fresh), .bool(replyLeaves)],
-                restore: { [reply = $reply, photos = $photos] in
+                restore: { [reply = $reply, photos = Binding(get: { photos }, set: { photos = $0 })] in
                     if reply.wrappedValue.isEmpty { reply.wrappedValue = text }
                     photos.wrappedValue = sent + photos.wrappedValue
                 })
