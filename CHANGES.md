@@ -47,6 +47,11 @@ Each entry says the PR, what changes for you, why, and whether the original app 
   - **Why:** with the card's own field mid-screen and the first mate's box at the foot, I kept typing a card reply in the wrong place and pressing the wrong send arrow. I would rarely message the first mate while reading a card.
   - **In the original app:** the same layout at 0.6.3-alpha.191: the card's "anything to add?" field sits inside the card, and the box under it always goes to the first mate. For the official app's developer: two inputs on one screen with one thumb zone invite sending to the wrong one; one box with a visible target label removes the ambiguity. A suggestion, not a defect report.
   - **Not tested on a phone.** Checked in a simulator only: the box in card, first-mate and empty states with the label. The send path to a real card, choice buttons with words, and the keyboard Done were not run, as the journeys need a Mac test home.
+- **PR #13.** Fix: one tap on the send arrow sends. The Done that PR #11 put above the keyboard is removed from the message box: on iOS 27 it floats as a pill over the send arrow, so the first tap only closed the keyboard. Files: `InfinitaryApp/MessageComposer.swift`.
+  - **Changes for you:** type, then press send once. To put the keyboard away without sending, use Done at the left of the top bar, swipe down on the card, or tap the card.
+  - **Why:** you reported pressing twice to send, first Done, then send.
+  - **In the original app:** not a defect there. The original app has no Done above the keyboard on its message box, only the top bar's Done, which this build keeps.
+  - **Checked in a simulator only** (iOS 27.1, a stand-in screen with the real message box): the Done pill covered the send arrow before, and the send arrow is clear after. Not tried on a phone.
 
 - **PR #5.** Swiping a card left or right turns to the next or previous card, as the pager arrows do (the arrows stay). Files: new `InfinitaryApp/PhoneSwipePaging.swift`, one line in `InfinitaryApp/PhoneCards.swift`.
   - **Changes for you:** get through a stack of cards with one hand, without reaching for the small arrows.
