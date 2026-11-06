@@ -1,6 +1,20 @@
 import InfinitaryKit
 import SwiftUI
 
+/// The record's corner changes only which local view is shown, never the task.
+struct PhoneRecordLeaveButton: View {
+    @Binding var record: PhoneTask?
+    var body: some View {
+        Button { record = nil } label: {
+            Label(PhoneCardWords.recordLeave, systemImage: "minus").labelStyle(.iconOnly)
+        }.frame(minWidth: 44, minHeight: 44)
+            .foregroundStyle(PhoneTheme.secondary)
+            .keyboardShortcut("m", modifiers: [.command, .shift])
+            .accessibilityHint(PhoneCardWords.recordLeaveRest)
+            .accessibilityIdentifier("close-record")
+    }
+}
+
 struct PhoneTasks: View {
     let session: ReadOnlySession
     @Environment(PhoneMessageContext.self) private var messageContext
@@ -19,20 +33,20 @@ struct PhoneTasks: View {
     @State private var project: String?
     @State private var boardColumn: PhoneTaskGroup? = .waiting
 
-    /// INF-1517: the board as the Mac's Tasks presents it, with each card put aside under Waiting on you.
-    private var board: PhoneBoard? { session.board?.presenting(session.cards) }
+    /// INF-2764: whether this list is on screen. The tab controller keeps a tab that is away, so a hidden list keeps
+    /// its last reading and reads nothing from the session: a board update while another tab shows rebuilds nothing.
+    @Environment(\.phoneTasksShown) private var shown
+    @State private var kept = PhoneTasksKept()
 
-    private var rows: [PhoneTask] {
-        let current = (board?.tasks ?? []).filter { project == nil || $0.projectId == project }.filter {
-            query.isEmpty || "\($0.key) \($0.title) \($0.goal ?? "")".localizedCaseInsensitiveContains(query)
-        }
-        let ids = Set(current.map(\.id))
-        return (current + earlier.filter { !ids.contains($0.id) }).sorted {
-            let leftLive = $0.status == "open" || $0.status == "active"
-            let rightLive = $1.status == "open" || $1.status == "active"
-            if leftLive != rightLive { return leftLive }
-            return $0.createdAt > $1.createdAt
-        }
+    /// The list as it reads now, built once per drawing while it shows, and the last one kept while it is hidden.
+    private func reading() -> PhoneTasksKept.Reading {
+        if !shown, let last = kept.last { return last }
+        let reading = PhoneTasksKept.Reading(
+            list: PhoneTaskList(board: session.board, cards: session.cards, query: query, earlier: earlier),
+            asideLine: asideLine)
+        kept.last = reading
+        PhoneTasksKept.built(shown: shown, seq: reading.list.board?.seq)
+        return reading
     }
 
     // INF-589 item 9: search waits above the list until it is pulled down, as the Mac's sits behind its icon.
@@ -40,10 +54,13 @@ struct PhoneTasks: View {
     private var searchShown: Bool { searchOpen || !query.isEmpty || voiceOver }
 
     /// The pills: one per project that has tasks, in the board's own order.
-    private var projectsWithTasks: [PhoneBoard.Project] {
-        let used = Set((board?.tasks ?? []).map(\.projectId))
-        return (board?.projects ?? []).filter { used.contains($0.id) }
+    private func projectsWithTasks(_ list: PhoneTaskList) -> [PhoneBoard.Project] {
+        let used = Set((list.board?.tasks ?? []).map(\.projectId))
+        return (list.board?.projects ?? []).filter { used.contains($0.id) }
     }
+
+    /// The project pill narrows the board and the list to one project's tasks.
+    private func inProject(_ task: PhoneTask) -> Bool { project == nil || task.projectId == project }
 
     /// INF-2553: on an iPhone on its side, a card brought back and put aside again by its refusal says why on this
     /// list's line, as a refused bring-back did before.
@@ -53,23 +70,25 @@ struct PhoneTasks: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
+        let reading = reading()
+        return GeometryReader { geometry in
             let landscape = geometry.size.width > geometry.size.height
+            let rows = reading.list.rows.filter(inProject)
             VStack(spacing: 0) {
-                PhoneTaskControls(showBoard: $showBoard, project: $project, projects: projectsWithTasks, wide: landscape)
+                PhoneTaskControls(showBoard: $showBoard, project: $project, projects: projectsWithTasks(reading.list), wide: landscape)
                     .frame(maxWidth: showBoard && landscape ? .infinity : PhoneColumn.width).frame(maxWidth: .infinity)
                 if showBoard && !searchShown {
                     // INF-2553's refusal line, which the list shows, also sits above the board.
-                    if let problem = problem ?? asideLine {
+                    if let problem = problem ?? reading.asideLine {
                         Text(problem).foregroundStyle(PhoneTheme.warning).padding(.horizontal, PhoneTheme.space4).accessibilityIdentifier("tasks-problem")
                     }
-                    if rows.isEmpty && (board?.tasklessMinimized(session.cards).isEmpty ?? true) {
+                    if rows.isEmpty && reading.list.aside.isEmpty {
                         Text("No tasks yet.").foregroundStyle(PhoneTheme.secondary).padding(PhoneTheme.space4)
                     }
-                    PhoneTaskBoard(board: board, tasks: rows, aside: project == nil ? board?.tasklessMinimized(session.cards) ?? [] : [],
+                    PhoneTaskBoard(board: reading.list.board, tasks: rows, aside: project == nil ? reading.list.aside : [],
                                    landscape: landscape, width: geometry.size.width, column: $boardColumn,
                                    open: open, restore: { restore([$0]) }, canRestore: session.canChange)
-                } else { list }
+                } else { list(reading) }
             }
         }
         .background { Button("Find a task") { openSearch() }.keyboardShortcut("f", modifiers: [.command, .shift]).hidden() }
@@ -96,35 +115,36 @@ struct PhoneTasks: View {
         .sheet(item: $selected, onDismiss: { messageContext.taskID = nil }) { task in
             NavigationStack {
                 PhoneTaskRecord(session: session, initial: task)
-                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { selected = nil }.accessibilityIdentifier("close-record") } }
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { PhoneRecordLeaveButton(record: $selected) } }
             }.font(PhoneFont.body).tint(PhoneTheme.accent)
         }
     }
 
-    private var list: some View {
-        ScrollView {
+    private func list(_ reading: PhoneTasksKept.Reading) -> some View {
+        let tasks = reading.list
+        let rows = tasks.rows.filter(inProject)
+        return ScrollView {
             VStack(alignment: .leading, spacing: PhoneTheme.space3) {
                 if searchShown { search }
-                if let problem = problem ?? asideLine { Text(problem).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("tasks-problem") }
+                if let problem = problem ?? reading.asideLine { Text(problem).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("tasks-problem") }
                 LazyVStack(alignment: .leading, spacing: PhoneTheme.space2) {
-                    if rows.isEmpty && (board?.tasklessMinimized(session.cards).isEmpty ?? true) { Text(query.isEmpty ? "No tasks yet." : "No matching tasks.").foregroundStyle(PhoneTheme.secondary) }
+                    if rows.isEmpty && tasks.aside.isEmpty { Text(query.isEmpty ? "No tasks yet." : "No matching tasks.").foregroundStyle(PhoneTheme.secondary) }
                     if query.isEmpty {
-                        let groups = board?.groups ?? [:]
                         ForEach(PhoneTaskGroup.allCases, id: \.rawValue) { group in
-                            let members = rows.filter { groups[$0.id] == group }
+                            let members = (tasks.members[group] ?? []).filter(inProject)
                             // A card put aside with no task is a row of its own under Waiting on you.
-                            let aside = group == .waiting && project == nil ? board?.tasklessMinimized(session.cards) ?? [] : []
+                            let aside = group == .waiting && project == nil ? tasks.aside : []
                             VStack(spacing: 0) {
                                 groupHeader(group, count: members.count + aside.count)
                                 if expanded.contains(group) {
-                                    ForEach(members) { task in taskRow(task, last: aside.isEmpty && task.id == members.last?.id) }
+                                    ForEach(members) { task in taskRow(task, project: tasks.project(of: task), last: aside.isEmpty && task.id == members.last?.id) }
                                     ForEach(aside) { card in asideRow(card, last: card.id == aside.last?.id) }
                                 }
                             }
                         }
                     } else {
                         VStack(spacing: 0) {
-                            ForEach(rows) { task in taskRow(task, last: task.id == rows.last?.id) }
+                            ForEach(rows) { task in taskRow(task, project: tasks.project(of: task), last: task.id == rows.last?.id) }
                         }
                     }
                 }
@@ -193,9 +213,8 @@ struct PhoneTasks: View {
     }
 
     // The title row stays as on the Mac; an unstarted task adds the home’s full dated wait below it.
-    private func taskRow(_ task: PhoneTask, last: Bool) -> some View {
-        let project = board?.projects.first(where: { $0.id == task.projectId })?.name
-        return Button { open(task) } label: {
+    private func taskRow(_ task: PhoneTask, project: String?, last: Bool) -> some View {
+        Button { open(task) } label: {
             HStack(alignment: .firstTextBaseline, spacing: PhoneTheme.space3) {
                 Image(systemName: task.status == "open" && task.waitingCardId == nil && task.minimizedCardId == nil ? "circle" : "circle.fill")
                     .font(.system(size: PhoneTheme.space2)).foregroundStyle(task.waitingCardId != nil || task.minimizedCardId != nil ? PhoneTheme.accent : task.activity == "running" ? PhoneTheme.warning : PhoneTheme.secondary)
@@ -206,6 +225,10 @@ struct PhoneTasks: View {
                         Text(task.title).font(PhoneFont.body).foregroundStyle(PhoneTheme.text).lineLimit(1)
                         Spacer(minLength: PhoneTheme.space2)
                         if let project { Text(project).font(PhoneFont.mono).foregroundStyle(PhoneTheme.muted).lineLimit(1) }
+                    }
+                    if let since = task.answerSince {
+                        HStack { Text("Answer waiting"); Text(Date(timeIntervalSince1970: since / 1000), style: .relative) }
+                            .font(PhoneFont.caption).foregroundStyle(PhoneTheme.secondary)
                     }
                     if let wait = task.queueWait {
                         Text(wait.line).font(PhoneFont.mono).foregroundStyle(PhoneTheme.secondary)
@@ -282,10 +305,12 @@ struct PhoneTaskRecord: View {
     private var transcript: PhoneCrew? { crew.map(session.shown) }
     private var steerable: Bool { showingCrew && task.canSteer }
     private var canStart: Bool { task.moves?["start-task"]?.ok == true }
+    private var canDone: Bool { task.moves?["answer-done"]?.ok == true }
+    private var canDismiss: Bool { task.moves?["dismiss-question"]?.ok == true }
     private var canContinue: Bool { task.moves?["continue-task"]?.ok == true }
     private var canInterrupt: Bool { steerable && live?.since != nil && task.activity != "stopping" }
     private var hasActions: Bool {
-        (task.status == "open" || task.status == "active") && (steerable || canStart || canContinue)
+        (task.status == "open" || task.status == "active") && (steerable || canStart || canContinue || canDone || canDismiss)
     }
 
     var body: some View {
@@ -433,9 +458,11 @@ struct PhoneTaskRecord: View {
     @ViewBuilder private var actions: some View {
         VStack(spacing: PhoneTheme.space3) {
             if steerable { steerBox }
-            if canInterrupt || canStart || canContinue {
+            if canInterrupt || canStart || canContinue || canDone || canDismiss {
                 // The card's row (INF-944 item 5): the default lit and last at the trailing edge, Interrupt outlined beside it.
                 PhoneChoiceRow {
+                    if canDismiss { choice("Dismiss", id: "dismiss-question", primary: false) { change(.finish(task: task.id, ending: .dismissQuestion), .run, args: [task.id, PhoneTaskEnding.dismissQuestion.rawValue], from: "dismiss-question") } }
+                    if canDone { choice(PhoneCardWords.done, id: "record-answer-done", primary: true) { change(.finish(task: task.id, ending: .answerDone), .run, args: [task.id, PhoneTaskEnding.answerDone.rawValue], from: "record-answer-done") }.accessibilityHint(PhoneCardWords.doneRest(task.key)) }
                     if canInterrupt { choice("Interrupt", id: "interrupt-task", primary: false) { change(.interrupt(task: task.id), .interrupt, args: [task.id], from: "interrupt-task") } }
                     if canStart { choice("Start", id: "start-task", primary: true) { change(.start(task: task.id, move: "start-task"), .run, args: [task.id, "start-task"], from: "start-task") } }
                     if canContinue { choice("Continue", id: "continue-task", primary: true) { change(.start(task: task.id, move: "continue-task"), .run, args: [task.id, "continue-task"], from: "continue-task") } }
@@ -533,4 +560,25 @@ private struct CrewResult: View {
             } catch { text = error.localizedDescription }
         }
     }
+}
+
+/// INF-2764: the Tasks list's last reading, in a plain class so keeping it draws nothing.
+@MainActor final class PhoneTasksKept {
+    struct Reading {
+        let list: PhoneTaskList
+        let asideLine: String?
+    }
+    var last: Reading?
+
+    /// For the app-hosted check that a hidden list builds nothing on a board update (`PhoneTasksHiddenTests`): how
+    /// many lists were built while hidden, and the board a shown list was last built from.
+    private(set) static var hiddenBuilds = 0
+    private(set) static var shownSeq: Int?
+    static func built(shown: Bool, seq: Int?) { if shown { shownSeq = seq } else { hiddenBuilds += 1 } }
+}
+
+extension EnvironmentValues {
+    /// Whether the Tasks list is the view on screen; the workspace sets it on the Tasks tab, and the iPad sidebar's
+    /// list, drawn only while it shows, keeps the default.
+    @Entry var phoneTasksShown = true
 }

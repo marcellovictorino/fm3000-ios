@@ -23,6 +23,8 @@ public struct PhoneIntent: Sendable, Equatable, Identifiable {
         case send(text: String, before: PhoneTurnMark?)
         /// Start or Continue a task: the record and its row read Starting.
         case start(task: String, move: String)
+        /// Explicit Done or Dismiss: the record and row show the selected ending.
+        case finish(task: String, ending: PhoneTaskEnding)
         /// Interrupt a crewmate's turn: the record reads Stopping.
         case interrupt(task: String)
         /// Steer a crewmate: the words show as sent in its transcript. `before` counts the captain's steers the
@@ -38,6 +40,14 @@ public struct PhoneIntent: Sendable, Equatable, Identifiable {
     public internal(set) var kind: Kind
     public internal(set) var state: State
     public let at: Date
+}
+
+/// The two explicit task endings offered by the home; never inferred from a card leaving.
+public enum PhoneTaskEnding: String, Sendable, CaseIterable {
+    case answerDone = "answer-done"
+    case dismissQuestion = "dismiss-question"
+    public var status: String { self == .answerDone ? "done" : "dropped" }
+    public var reason: String { self == .answerDone ? "answered" : "cancelled" }
 }
 
 /// Which last turn a message was sent after: the newest round's words and the round's before it.
@@ -176,6 +186,10 @@ public struct PhoneIntentLedger: Sendable {
             return board.tasks.first { $0.id == id }.map { started($0, move) } ?? .void
         case let (.start(id, move), .task(task)):
             return task.id == id ? started(task, move) : nil
+        case let (.finish(id, ending), .board(board)):
+            return board.tasks.first { $0.id == id }.map { finished($0, ending) } ?? .void
+        case let (.finish(id, ending), .task(task)):
+            return task.id == id ? finished(task, ending) : nil
         case let (.interrupt(id), .board(board)):
             return board.tasks.first { $0.id == id }.map(stopped) ?? .void
         case let (.interrupt(id), .task(task)):
@@ -206,6 +220,11 @@ public struct PhoneIntentLedger: Sendable {
         let running = task.status == "active" && ["starting", "running"].contains(task.activity ?? "")
         let offered = task.moves.map { $0[move]?.ok == true }
         return attempting || running || offered == false ? .holds : .lacks
+    }
+
+    private static func finished(_ task: PhoneTask, _ ending: PhoneTaskEnding) -> PhoneIntentEvidence {
+        if task.status == ending.status && task.closedReason == ending.reason { return .holds }
+        return task.status == "done" || task.status == "dropped" ? .void : .lacks
     }
 
     private static func stopped(_ task: PhoneTask) -> PhoneIntentEvidence {
@@ -271,6 +290,9 @@ public enum PhoneIntentFold {
             case let .start(_, move):
                 task.startAttempt = PhoneTask.StartAttempt(phase: "preparing")
                 task.moves = (task.moves ?? [:]).merging([move: PhoneMove(ok: false, text: nil)]) { $1 }
+            case let .finish(_, ending):
+                task.status = ending.status
+                task.closedReason = ending.reason
             case .interrupt:
                 task.activity = "stopping"
             default: break
@@ -295,7 +317,7 @@ extension PhoneIntent {
     /// The task an intent changes, for the board's fold.
     public var taskID: String? {
         switch kind {
-        case let .start(id, _), let .interrupt(id), let .steer(id, _, _): return id
+        case let .start(id, _), let .finish(id, _), let .interrupt(id), let .steer(id, _, _): return id
         default: return nil
         }
     }

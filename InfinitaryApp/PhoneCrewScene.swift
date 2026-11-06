@@ -105,7 +105,7 @@ struct PhoneCrewScene: View {
             case .record(let task):
                 NavigationStack {
                     PhoneTaskRecord(session: session, initial: task)
-                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { record = nil }.accessibilityIdentifier("close-record") } }
+                        .toolbar { ToolbarItem(placement: .cancellationAction) { PhoneRecordLeaveButton(record: $record) } }
                 }.font(PhoneFont.body).tint(PhoneTheme.accent)
             }
         }

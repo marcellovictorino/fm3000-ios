@@ -35,7 +35,7 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
     public let parentId: String?
     public let kind: String
     public let title: String
-    public let status: String
+    public internal(set) var status: String
     public let createdAt: Double
     public let startPolicy: String?
     /// The home’s dated start-wait line, shared with its first mate and desktop views.
@@ -55,6 +55,8 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
     public internal(set) var moves: [String: PhoneMove]?
     public let outcomeSummary: String?
     public let waitingCardId: String?
+    public let answerNoteId: String?
+    public let answerSince: Double?
     public let assignee: String?
     public let modelLabel: String?
     public let brief: String?
@@ -67,7 +69,7 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
     public let blockedBy: [String]
     /// INF-1926: the rest of what the desktop's crew summary reads (src/shared/taskFacts.ts), each optional so an older
     /// Mac's rows still decode: the board row's lifecycle facts, then the record's own reading (`.detail`).
-    public let closedReason: String?
+    public internal(set) var closedReason: String?
     public let flags: Flags?
     public struct Flags: Decodable, Sendable { public let blocked: Bool; public let held: Bool }
     public let children: Children?
@@ -87,16 +89,16 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
     public var canSteer: Bool { status == "active" && startedAt != nil }
     public var group: PhoneTaskGroup? {
         .reading(status: status, work: kind == "work", required: requiredAction != nil,
-                 waiting: waitingCardId != nil,
+                 waiting: waitingCardId != nil || answerNoteId != nil,
                  starting: startAttempt?.phase == "preparing" || startAttempt?.phase == "checking" || (status == "active" && activity == "starting"),
                  onRequest: startPolicy == "on-request", minimized: minimizedCardId != nil)
     }
     public struct StartAttempt: Decodable, Sendable { public let phase: String }
     public struct RequiredAction: Decodable, Sendable { public let state: String?; public let result: String? }
     public var state: String {
-        if waitingCardId != nil { return "Waiting on you" }
         if status == "done" { return "Done" }
         if status == "dropped" { return "Dropped" }
+        if waitingCardId != nil || answerNoteId != nil { return "Waiting on you" }
         if startAttempt?.phase == "preparing" || startAttempt?.phase == "checking" { return "Starting" }
         if !blockedBy.isEmpty { return "Waiting on another task" }
         if status == "open" { return startPolicy == "on-request" ? "Backlog" : "Queued" }
@@ -198,6 +200,28 @@ public struct PhoneBoard: Decodable, Sendable {
         return PhoneBoard(seq: delta.seq,
                           tasks: rows.sorted { $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt < $1.createdAt },
                           projects: delta.projects, links: edges.sorted { key($0) < key($1) })
+    }
+
+    /// INF-2773: a run of deltas read in one catch-up, folded with one sort at the end. It gives the board that
+    /// applying them one at a time gives, keyed by id and link as the Mac's `applyTaskBoardDelta` is: an older delta
+    /// is passed over, and a gap anywhere is nil, which resyncs from a full read.
+    public func applying(run deltas: [PhoneBoardDelta]) -> PhoneBoard? {
+        guard deltas.contains(where: { $0.seq > seq }) else { return self }
+        func key(_ link: Link) -> String { "\(link.fromId) \(link.toId) \(link.type)" }
+        var rows = Dictionary(tasks.map { ($0.id, $0) }, uniquingKeysWith: { _, later in later })
+        var edges = Dictionary((links ?? []).map { (key($0), $0) }, uniquingKeysWith: { _, later in later })
+        var at = seq, projects = self.projects
+        for delta in deltas where delta.seq > at {
+            guard delta.baseSeq == at else { return nil }
+            for id in delta.removed { rows[id] = nil }
+            for task in delta.upserts { rows[task.id] = task }
+            for link in delta.links.removed { edges[key(link)] = nil }
+            for link in delta.links.added { edges[key(link)] = link }
+            at = delta.seq; projects = delta.projects
+        }
+        return PhoneBoard(seq: at,
+                          tasks: rows.values.sorted { $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt < $1.createdAt },
+                          projects: projects, links: edges.values.sorted { key($0) < key($1) })
     }
 
     /// INF-1517: the Mac's `presentTask` rule (src/shared/taskWaiting.ts, docs/task-record.md "Minimized cards in

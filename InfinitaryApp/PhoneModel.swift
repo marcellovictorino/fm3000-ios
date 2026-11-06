@@ -35,9 +35,13 @@ struct AddressJoin: Equatable {
     private var joining: Task<Void, Never>?
     private var foreground = false
     private var backgroundTime = UIBackgroundTaskIdentifier.invalid
-    /// INF-2157: a change of network looks again at once, as a reopen does, rather than waiting on a quiet connection.
+    /// INF-2157: a change of network looks again, as a reopen does, rather than waiting on a quiet connection.
     @ObservationIgnored private let network = NWPathMonitor()
     @ObservationIgnored private var networkSeen: String?
+    /// INF-2668: a path changes several times as Wi-Fi and cellular trade places, so it looks again once the path
+    /// has kept still for `networkSettle`.
+    @ObservationIgnored private var networkSettling: Task<Void, Never>?
+    static let networkSettle: Duration = .seconds(1)
     private let savedURL: URL
     private let trustedURL: URL
     private let loadIdentity: () throws -> PhoneIdentity
@@ -70,8 +74,15 @@ struct AddressJoin: Equatable {
     private func networkChanged(_ seen: String, usable: Bool) {
         // The monitor's first answer is the network the app started on, not a change.
         defer { networkSeen = seen }
-        guard let before = networkSeen, before != seen, usable, foreground else { return }
-        connection?.start()
+        guard let before = networkSeen, before != seen else { return }
+        networkSettling?.cancel(); networkSettling = nil
+        guard usable, foreground else { return }
+        networkSettling = Task { [weak self] in
+            try? await Task.sleep(for: Self.networkSettle)
+            guard !Task.isCancelled, let self, self.foreground else { return }
+            self.networkSettling = nil
+            self.connection?.start()
+        }
     }
 
     @discardableResult func restore() -> Bool {
