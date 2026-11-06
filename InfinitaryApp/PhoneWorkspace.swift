@@ -103,7 +103,8 @@ struct PhoneWorkspace<Stage: View, Tasks: View, Composer: View>: View {
         TabView(selection: Binding(get: { shown }, set: { _ in })) {
             tab(.home) { home }
             // INF-944 item 6: Activity is the last tab.
-            if let tasks { tab(.tasks) { noticed(tasks.background(PhoneTheme.background)) } }
+            // INF-2764: the Tasks list kept while another tab shows reads nothing until it shows again.
+            if let tasks { tab(.tasks) { noticed(tasks.background(PhoneTheme.background)).environment(\.phoneTasksShown, shown == .tasks) } }
             tab(.activity) { noticed(activity.background(PhoneTheme.background).accessibilityIdentifier("activity-list")) }
         }
         .toolbar {
@@ -227,7 +228,7 @@ struct PhoneWorkspace<Stage: View, Tasks: View, Composer: View>: View {
     /// INF-1062, the captain's pick: the computer's name left the bar, so one line under it on every tab says the reach
     /// with its time while the computer is not in reach, and nothing while it is. INF-589 item 11: said once.
     @ViewBuilder private var reachLine: some View {
-        if session.contact != "in-reach" {
+        if session.reach != "in-reach" {
             PhoneReach(session: session, oneLine: true)
                 .padding(.horizontal, PhoneTheme.space4).padding(.bottom, PhoneTheme.space2)
                 .frame(maxWidth: .infinity)

@@ -271,7 +271,6 @@ private struct PhoneCardPane: View {
     @State private var retry = 0
     /// INF-1524: the choice pressed and still on its way, which shows its pending mark.
     @State private var pending: String?
-    @State private var closeAsk: CloseAsk?
     @State private var photos: [PhonePhoto] = []
     @State private var photoSelection: [PhotosPickerItem] = []
     @State private var libraryOpen = false
@@ -288,11 +287,10 @@ private struct PhoneCardPane: View {
     /// Counts the moments the face's scroller follows its focused field's caret: the field taking the focus or growing,
     /// and the keyboard shortening the scroller.
     @State private var replyGrew = 0
+    /// A scroller on the card is moving: dragged, settling from a drag, or following the caret.
+    @State private var scrollMoving = false
 
     enum CardSide { case face, back }
-
-    /// What the close asks first (the Mac's CloseQuestion): about unsent picks or words, about a reply still unanswered, or both.
-    struct CloseAsk { let words: String; let picks: Bool }
 
     init(card: PhoneCard, session: ReadOnlySession, fill: PhoneJSON, reply: Binding<String>,
          onReading: @escaping (PhoneJSON) -> Void, onSeen: @escaping () -> Void, onHide: @escaping () -> Void, onPage: @escaping (Int) -> Void, onSent: @escaping () -> Void, showsNext: Bool, visible: Bool, replyLeaves: Bool,
@@ -451,16 +449,6 @@ private struct PhoneCardPane: View {
         .sheet(isPresented: Binding(get: { host.presentation != nil }, set: { if !$0 { host.presentation = nil } })) {
             if let presentation = host.presentation { CardMediaView(presentation: presentation, session: session) }
         }
-        .alert(PhoneCardWords.closeQuestionTitle, isPresented: Binding(get: { closeAsk != nil }, set: { if !$0 { closeAsk = nil } }),
-               presenting: closeAsk) { ask in
-            if ask.picks {
-                Button(PhoneCardWords.keepAnswering, role: .cancel) {}
-                Button(PhoneCardWords.discardAndClose, role: .destructive) { close() }
-            } else {
-                Button(PhoneCardWords.putAsideInstead) { putAside() }
-                Button(PhoneCardWords.closeAnyway, role: .destructive) { close() }
-            }
-        } message: { ask in Text(ask.words) }
         .photosPicker(isPresented: $libraryOpen, selection: $photoSelection,
                       maxSelectionCount: max(1, PhoneLimits.images - photos.count), matching: .images)
         .task(id: photoSelection) { await loadPhotos() }
@@ -496,9 +484,15 @@ private struct PhoneCardPane: View {
 
     /// A card's scroller closes the keyboard as a person starts to scroll it, never as the scroller follows the caret.
     private func scrolled(_ phase: ScrollPhase) {
+        scrollMoving = phase != .idle
         // INF-2568, the captain: "scrolling a card should dismiss the keyboard if keyboard is up".
         if phase == .interacting && messageContext.keyboardUp { dismissPhoneKeyboard() }
     }
+
+    /// INF-2737: a scroller only starts a drag when its content overflows or it bounces, so while the keyboard is up a
+    /// card or thread that fits whole above it bounces too, and a flick on it starts the scroll that closes the keyboard.
+    /// It bounces on until that scroll settles, after the keyboard has gone; with the keyboard down, one that fits holds still.
+    private var bounce: ScrollBounceBehavior { messageContext.keyboardUp || scrollMoving ? .always : .basedOnSize }
 
     /// The latest line and Card turn the card over, carrying a typing captain's focus to the other side's field; a send
     /// turns it too, but drops the keyboard, as it did before, so the whole card shows above where the keyboard was.
@@ -538,9 +532,10 @@ private struct PhoneCardPane: View {
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
                 }
                 .frame(maxHeight: contentHeight > 0 ? contentHeight : nil)
-                .scrollBounceBehavior(.basedOnSize)
+                .scrollBounceBehavior(bounce)
+                // A body that fits and is pulled down past its top, as it bounces, still has nothing below the choices.
                 .onScrollGeometryChange(for: Bool.self) { geometry in
-                    geometry.contentOffset.y + geometry.containerSize.height < geometry.contentSize.height - 1
+                    max(geometry.contentOffset.y, 0) + geometry.containerSize.height < geometry.contentSize.height - 1
                 } action: { _, below in runsOn = below }
                 .accessibilityIdentifier("card-scroll")
                 .scrollDismissesKeyboard(.interactively)
@@ -609,7 +604,7 @@ private struct PhoneCardPane: View {
             }
             .frame(maxHeight: threadHeight > 0 ? threadHeight : nil)
             .defaultScrollAnchor(.bottom)
-            .scrollBounceBehavior(.basedOnSize)
+            .scrollBounceBehavior(bounce)
             .scrollDismissesKeyboard(.interactively)
             .onScrollPhaseChange { _, phase in scrolled(phase) }
             .accessibilityIdentifier("card-thread")
@@ -705,15 +700,6 @@ private struct PhoneCardPane: View {
                 if let asked = card.asked { PhoneAskedLine(asked: asked, open: $askedOpen) }
             }
             Spacer(minLength: PhoneTheme.space2)
-            if !card.isPast {
-                Button(action: putAside) {
-                    Label(PhoneCardWords.putAside, systemImage: "minus")
-                        .labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
-                }
-                .keyboardShortcut("m", modifiers: [.command, .shift])
-                .accessibilityHint(rest(PhoneCardWords.putAsideRest))
-                .accessibilityIdentifier("put-aside-card").disabled(host.changing || !session.canChange)
-            }
             if UIDevice.current.userInterfaceIdiom == .pad {
                 Button { maximized.toggle() } label: {
                     Label(maximized ? PhoneCardWords.restore : PhoneCardWords.maximize,
@@ -721,12 +707,13 @@ private struct PhoneCardPane: View {
                         .labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                 }.accessibilityIdentifier("maximize-card")
             }
-            Button(action: closeTapped) {
-                Label(card.isPast ? "Hide" : "Close", systemImage: "xmark")
+            Button(action: putAside) {
+                Label(card.isPast ? PhoneCardWords.panelLeave : (card.value["corner"]["label"].text ?? PhoneCardWords.putAside), systemImage: "minus")
                     .labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
             }
-                .accessibilityHint(card.isPast ? "" : rest(PhoneCardWords.closeRest(task?.key)))
-                .accessibilityIdentifier("close-card").disabled(host.changing || (!card.isPast && !session.canChange))
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+                .accessibilityHint(rest(card.isPast ? PhoneCardWords.panelLeaveRest : (card.value["corner"]["restWords"].text ?? PhoneCardWords.putAsideRest)))
+                .accessibilityIdentifier("put-aside-card").disabled(host.changing || (!card.isPast && !session.canChange))
         }
         .contentShape(Rectangle())
         .simultaneousGesture(DragGesture(minimumDistance: 44).onEnded { value in
@@ -774,6 +761,18 @@ private struct PhoneCardPane: View {
             if let notice = host.notice { Text(notice).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("card-notice") }
             if card.value["attachment"] != .null {
                 PhoneBrowserStrip(attachment: card.value["attachment"], session: session) { host.notice = "Do this on \(session.mac.name)." }
+            }
+            if !card.isPast, let taskID = card.value["answerDone"]["taskId"].text {
+                Button(card.value["answerDone"]["label"].text ?? PhoneCardWords.done) {
+                    perform {
+                        do {
+                            try await session.change(.choose(card: card.id, lifecycle: card.lifecycleID, offer: card.offerID),
+                                                     .run, args: [taskID, PhoneTaskEnding.answerDone.rawValue])
+                            host.chosen = true
+                        } catch {}
+                    }
+                }.buttonStyle(PhoneChoiceStyle(.primary)).accessibilityIdentifier("answer-done")
+                    .disabled(host.changing || !session.canChange)
             }
         }
     }
@@ -975,32 +974,21 @@ private struct PhoneCardPane: View {
         }
     }
 
-    private func closeTapped() {
-        if card.isPast { onHide(); return }
-        // The Mac's CloseQuestion: unsent picks or words, and a reply its author has not answered yet.
-        let count = Int((host.preview ? host.reading["changed"] : host.reading["picked"]).numeric ?? 0)
-        let wrote = !replyWords.isEmpty
-        let waiting = card.awaiting == "answer" || messages.last?["who"].text == "captain"
-        let picks = count > 0 || wrote
-        guard picks || waiting else { close(); return }
-        let author = card.author == "firstmate" ? "your first mate" : task?.assignee ?? "the crewmate"
-        let words = (picks ? [PhoneCardWords.closeQuestion(count: count, preview: host.preview, wrote: wrote)] : [])
-            + (waiting ? [PhoneCardWords.unansweredReply(author: author, key: task?.key)] : [])
-        closeAsk = CloseAsk(words: words.joined(separator: " "), picks: picks)
-    }
-    /// INF-2553: the card leaves at the tap and the next one is up; a refusal brings it back to its place.
-    private func close() {
-        perform {
-            let sent = await send(.close(card: card.id, lifecycle: card.lifecycleID, offer: card.offerID), .close,
-                                  [.string(card.id), card.submission()])
-            if sent { host.chosen = true }
-        }
-    }
-    /// Put aside: the Mac's minimize. The card leaves the stack at the tap and comes back when it changes.
+    /// The shared minus only puts away; a note is read, never an answer receipt.
+    /// The session shows it at the tap and restores its place if the computer refuses it.
     private func putAside() {
+        if card.isPast { onHide(); return }
         perform {
-            let sent = await send(.putAside(card: card.id, lifecycle: card.lifecycleID, offer: card.offerID), .minimize,
+            let sent: Bool
+            if card.value["corner"] == .null {
+                sent = await send(.putAside(card: card.id, lifecycle: card.lifecycleID, offer: card.offerID), .minimize,
                                   [.string(card.id), .bool(true)])
+            } else {
+                let kind: PhoneIntent.Kind = card.value["corner"]["operation"] == .string("read")
+                    ? .close(card: card.id, lifecycle: card.lifecycleID, offer: card.offerID)
+                    : .putAside(card: card.id, lifecycle: card.lifecycleID, offer: card.offerID)
+                sent = await send(kind, .close, [.string(card.id), card.submission()])
+            }
             if sent { host.chosen = true }
         }
     }

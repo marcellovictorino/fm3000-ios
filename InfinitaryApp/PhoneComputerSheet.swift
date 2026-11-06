@@ -8,7 +8,7 @@ struct PhoneReach: View {
     var body: some View {
         (oneLine ? AnyLayout(HStackLayout(spacing: PhoneTheme.space2)) : AnyLayout(VStackLayout(spacing: 2))) {
             HStack(spacing: PhoneTheme.space2) {
-                Circle().fill(session.contact == "in-reach" ? PhoneTheme.accent : PhoneTheme.warning)
+                Circle().fill(session.reach == "in-reach" ? PhoneTheme.accent : PhoneTheme.warning)
                     .frame(width: 6, height: 6).accessibilityHidden(true)
                 Text(session.reachWords).accessibilityIdentifier("contact")
             }
@@ -18,9 +18,10 @@ struct PhoneReach: View {
 }
 
 extension ReadOnlySession {
-    /// The reach, in the words the reach line and the computer button share.
+    /// The reach, in the words the reach line and the computer button share. INF-2668: they follow the patient
+    /// `reach`, so a redial the computer answers within the captain's 20 s says nothing.
     var reachWords: String {
-        switch contact {
+        switch reach {
         case "in-reach": "In reach"
         case "reaching": "Reaching your computer…"
         default: "Out of reach"
@@ -29,7 +30,7 @@ extension ReadOnlySession {
 
     /// When the computer was last heard, shown only while it is out of reach; reaching it again needs no time.
     var reachTime: String? {
-        guard contact != "in-reach", contact != "reaching", let heardAt else { return nil }
+        guard reach != "in-reach", reach != "reaching", let heardAt else { return nil }
         return heardAt.formatted(date: .omitted, time: .shortened)
     }
 
@@ -40,10 +41,11 @@ extension ReadOnlySession {
     }
 
     /// INF-589 item 11: the reach line says out of reach, so the one line where changes are made says only that
-    /// they are off, in the Mac's words (`changesOffWords`, src/renderer/src/devices/viewWords.ts). None while first reaching.
+    /// they are off, in the Mac's words (`changesOffWords`, src/renderer/src/devices/viewWords.ts). None while first reaching,
+    /// nor while the words still say In reach during a redial (INF-2668).
     var changesOffLine: String? {
-        switch contact {
-        case "in-reach": changeRefusal
+        switch reach {
+        case "in-reach": contact == "in-reach" ? changeRefusal : nil
         case "reaching": nil
         default: "Changes are off until \(mac.name) is back."
         }
