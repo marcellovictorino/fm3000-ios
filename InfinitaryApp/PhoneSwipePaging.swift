@@ -3,16 +3,15 @@ import SwiftUI
 /// Swiping the card left turns to the next card and right to the previous one, matching the pager's arrows.
 /// The card follows the finger with a slight tilt, springs back on a short drag, and on a full one slides off while the
 /// next card slides in from the other side. With Reduce Motion the card only fades out and the next fades in.
-/// It runs beside other gestures and only moves for a clearly horizontal drag.
+/// It runs beside other gestures and only moves for a clearly horizontal drag. It is the only swipe that turns the page:
+/// the card head's own swipe is removed, as with both one swipe on the head turned two pages.
 private struct PhoneSwipePaging: ViewModifier {
-    let card: String
     let previous: (() -> Void)?
     let next: (() -> Void)?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var dragX: CGFloat = 0
     @State private var fade: Double = 1
     @State private var width: CGFloat = 390
-    @State private var startCard: String?
 
     func body(content: Content) -> some View {
         content
@@ -23,7 +22,6 @@ private struct PhoneSwipePaging: ViewModifier {
             .simultaneousGesture(
                 DragGesture(minimumDistance: 30)
                     .onChanged { drag in
-                        if startCard == nil { startCard = card }
                         guard !reduceMotion else { return }
                         let dx = drag.translation.width, dy = drag.translation.height
                         if abs(dx) > abs(dy) * 1.5 {
@@ -34,12 +32,9 @@ private struct PhoneSwipePaging: ViewModifier {
                         }
                     }
                     .onEnded { drag in
-                        defer { startCard = nil }
                         let dx = drag.translation.width, dy = drag.translation.height
                         let flung = abs(drag.predictedEndTranslation.width) > width / 2
                         let turn = dx < 0 ? next : previous
-                        // The card head's own swipe may already have turned the card; then only the new one comes in.
-                        if startCard != card { return enter(from: dx < 0 ? 1 : -1) }
                         guard let turn, abs(dx) > abs(dy) * 2, abs(dx) > 60 || flung else {
                             return withAnimation(.spring(duration: 0.3, bounce: 0.3)) { dragX = 0 }
                         }
@@ -73,7 +68,7 @@ private struct PhoneSwipePaging: ViewModifier {
 }
 
 extension View {
-    func phoneSwipePaging(card: String, previous: (() -> Void)?, next: (() -> Void)?) -> some View {
-        modifier(PhoneSwipePaging(card: card, previous: previous, next: next))
+    func phoneSwipePaging(previous: (() -> Void)?, next: (() -> Void)?) -> some View {
+        modifier(PhoneSwipePaging(previous: previous, next: next))
     }
 }

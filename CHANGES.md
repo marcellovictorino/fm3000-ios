@@ -49,6 +49,10 @@ Each entry says the PR, what changes for you, why, and whether the original app 
 - **PR #7.** The card follows the finger with a slight tilt, springs back on a short drag, and on a full swipe slides off while the next slides in from the other side. With Reduce Motion it fades instead. Files: `InfinitaryApp/PhoneSwipePaging.swift`.
   - **Changes for you:** see the card move as you push it.
   - **In the original app:** not there. A new feature, not a defect.
+- **PR #12.** Fix: one swipe turns one card. A swipe that started on the card's head turned two pages (card 1 of 3 went to 3), because upstream's own head swipe and the swipe from PR #5/#7 both turned the page. The head's swipe is removed; the whole card's swipe, with its tilt and slide, is the only one. Files: `InfinitaryApp/PhoneCards.swift` (head swipe removed, call site), `InfinitaryApp/PhoneSwipePaging.swift` (its now unused check for the head's swipe removed).
+  - **Changes for you:** swiping left or right moves one card at a time, wherever on the card the swipe starts.
+  - **Why:** you reported the swipe skipping the middle of three cards, without the drag animation.
+  - **In the original app:** not a defect. At 0.6.3-alpha.191 only the head's swipe turns the page, once per swipe. Checked in a simulator harness with upstream's head swipe alone; the double turn needs this fork's whole-card swipe.
 - **PR #8.** While typing a card's reply, a swipe down on the card, a tap on its head or body, or Done above the keyboard closes the keyboard and keeps the draft. Files: edits to `InfinitaryApp/PhoneCards.swift`.
   - **Changes for you:** put the keyboard away mid-reply to read the card again, without losing what you typed.
   - **Why:** with the keyboard up, the card's body had no room to scroll, so nothing closed the keyboard.
