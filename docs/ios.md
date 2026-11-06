@@ -34,7 +34,8 @@ The app turns off iOS's transport security (`NSAllowsArbitraryLoads`), because i
 `PinnedTransport` is the app's only URL session, and card web views load only local content.
 An App Store submission or external TestFlight build must give Apple a written reason for that setting: the app trusts only the Mac's pinned key, over TLS 1.3 with the phone's own key, and no narrower setting can name a person's own Tailscale address.
 `PhoneTransportSecurityTests` joins and reconnects at `127.1`, a loopback form iOS also counts as not local, under the app's own Info.plist.
-Pairing has short request deadlines; the socket uses a separate configuration whose deadlines outlast its heartbeat, not the pairing POST's timeouts.
+Pairing has short request deadlines; the socket uses a separate configuration with no request deadline of its own, since that timer also cut a message still arriving after 60 seconds, so the session's silence watch and dial limit own a connection's deadlines.
+The home's own heartbeat still bounds a slow link: its ping waits behind whatever it is sending, so a catch-up that takes more than about 30 to 60 seconds to arrive is cut by the home, not the phone.
 A join sends the invitation's kind and `system: "ios"`; the Mac returns HTTP 201 and kind `view` regardless of that invitation's computer kind.
 Before spending the invitation, a pinned, non-mutating `GET /connection` must return 426 from a reachable candidate.
 Private IPv4 candidates in `100.64.0.0/10` come first, followed by local names and addresses; an unavailable preflight, including a timeout, may try the next candidate.
@@ -90,22 +91,39 @@ A return consumes numbered replay pushes, or reads fresh snapshots after a reloa
 All four initial snapshots must arrive before the app says **In reach**.
 A card or task-board push supplies the new snapshot directly and supersedes any older initial read still in flight.
 A task-board delta folds onto the board the app holds, as the Mac’s `applyTaskBoardDelta` does (`PhoneBoard.applying`), because a full read of a large board on every task change stalled the crew scene on the main thread (INF-1854).
+A welcome that replays is caught up in one step (INF-2773, the captain's pick "keep what they showed, then change once when the catch-up is read"): while the phone reads the replayed pushes, they update its own copies of the cards, board and threads and its held busy state, presence and work count, and the screens keep what they showed.
+The screens change once, at the last replayed push or when the connection ends first, and live pushes after it show one by one as before.
+A run of replayed board deltas is applied with one sort at that point (`PhoneBoard.applying(run:)`), giving the board that applying them one at a time gives.
+A change the captain made that waits on the computer still sees every replayed snapshot, so it settles as it would one push at a time.
+Cards that left while away are read into Past, and the new-card notice goes to the newest card that arrived while away and is still up, as before.
+`PhoneCatchUpTests` reconnects to the test home after six board updates, a card and a reaction (`away-traffic`) and checks the board and cards change once, the board matches a fresh read, the reaction stays silent and a live one (`emote`) plays.
 Each frame from the computer is parsed, and its board, delta, card, feed and presence payloads decoded, off the main thread (`PhoneFrame.decode`, INF-2566); the session then reads the decoded frames on the main actor in the order they arrived.
 A payload that cannot decode fails only where the session reads it, as decoding in place did.
 Only a delta whose base is not the board held requests a coalesced full board, the published resynchronization path.
 Only a closed list of non-streaming events that can change the feed requests a coalesced feed refresh; assistant and thinking deltas cause no reads.
 The feed owner exports `FEED_EVENT_TYPES`, with its authoring switch checked exhaustively against that list, and the contract generator derives the Swift `FeedChange` enum from it.
 A gap in numbering drops the cursor and reconnects rather than silently losing updates.
-Successful frames and pongs update the last-heard time; bounded handshake, welcome, read, Leave and heartbeat waits cut a stalled connection.
+Successful frames and pongs update the last-heard time.
+A connection is cut for silence, never because an answer is slow (INF-2668): quiet for `ReadOnlySession.patience` (the captain's 20 s, two missed pings) while nothing is awaited, or for `ReadOnlySession.answerWait` while the welcome or a read is out, since a pong waits behind an answer on its way.
+URLSession's WebSocket reports no bytes before a whole message arrives, so silence is measured in frames and pongs; a read the computer leaves unanswered that long while it sends nothing else, and a Leave unanswered for 15 s, cut it too.
+The phone works out its preferred address order once a connection first reaches its address, not on every frame (INF-2773).
 Each round dials every saved and nearby address together (INF-2157): private IPv4 candidates first and the rest a quarter second later (`ReadOnlySession.privateLead`, RFC 8305's attempt delay), so the private network wins when both answer.
 The first attempt whose WebSocket opens (`PinnedTransport.opened`, after the pinned TLS, the phone's key and the upgrade) is kept and greeted; the others are closed before any hello, so each round makes one welcomed connection.
-A round fails once every attempt failed or none opened within `ReadOnlySession.dialLimit`; the watchdog then bounds the welcome and the first reads, and cancels the transport too, so a stalled TLS handshake does not inherit the socket's longer lifetime.
-While a round dials the reach line says "Reaching your computer…"; "Out of reach" is said only once a whole round failed, and later rounds that try again on their own keep it.
-Reopening the app, or a change of network (`PhoneModel`'s path monitor), looks again at once: a kept connection must answer a ping within `ReadOnlySession.reopenAnswer` or it is cut and redialed, and a wait between rounds ends and the next round dials now.
+A round fails once every attempt failed or none opened within `ReadOnlySession.dialLimit`, which cancels the transport too, so a stalled TLS handshake does not inherit the socket's longer lifetime.
+Failed rounds wait 2, 4 and 8 s and so on, each up to a quarter longer at random, never past `ReadOnlySession.longestWait`, so a computer that comes back is found within 15 s.
+A welcome that replays brings every push the phone missed, so once the phone has read everything since its last reload it says In reach at once and sends only the scene's two small reads and any read a cut left unanswered; a reload, or a change whose result was lost, reads everything first.
+`contact` is where the connection is and gates reads and changes; `reach` is what the reach line and the computer button say.
+`reach` follows `contact`, except that after the computer was in reach it keeps saying In reach while the phone redials, until the computer has been quiet for `patience`, so a cell pause passes unnoticed and a dead path is named within half a minute.
+A deliberate stop, such as the close when iOS ends the app's background time, has nothing to be patient about, so the words follow `contact` at once and a reopen reads Reaching until its dial is in reach.
+Then it says "Reaching your computer…" while a round dials and "Out of reach" once a whole round failed; later rounds that try again on their own keep it.
+Reopening the app, or a change of network once the path has kept still for `PhoneModel.networkSettle`, looks again: a kept connection must answer a ping within `ReadOnlySession.reopenAnswer`, or four measured round trips when that is longer, and a wait between rounds ends and the next round dials now.
+A kept connection that does not answer in time but is still receiving is answering, so the check goes on from the last thing it heard; one silent for a whole window is doubted, never cut at once: the phone dials a replacement and cuts the kept connection only once the replacement opened, unless the kept one is heard first.
+A replacement that does not open leaves the kept connection to the watchdog, and the next reopen checks it again.
 `PhoneReopenTests` reopens against the test home through a route that goes silent under a kept connection, and during a wait between rounds.
+`PhoneWeakLinkTests` holds INF-2666's seven checks of a weak link through the test home's relay, which can slow, delay, stall and drop the path or take it away (`relay-shape`, `relay-stall`, `relay-drop`, `relay-offline`, `relay-online`, `relay-readings`).
 The app keeps only its in-memory view while out of reach and shows its last-heard time.
 Out of reach is said once, by the reach line under the top bar with the time the computer was last heard; the message capsule and a card's reply row dim, and `changesOffLine` puts the Mac's own words (`changesOffWords`, `src/renderer/src/devices/viewWords.ts`) under the message box.
-`ReadOnlySession.returns` counts the times the computer came back in reach after a failed attempt, so the app can mark a return without mistaking the ordinary reconnection when it opens for one.
+`ReadOnlySession.returns` counts the times the computer came back in reach after the reach line said Out of reach, so the app marks a return without mistaking a redial the line never showed, or the ordinary reconnection when it opens, for one.
 A trip to the background keeps the connection for the background time iOS gives the app (INF-1528), so a short trip away comes back in reach on the same connection, with what changed meanwhile already read.
 When iOS ends that time, the app cancels the connection generation before it is suspended, and activation starts it again; an inactive scene such as Control Center does not disconnect.
 A late callback from an old connection cannot clear or overwrite a newer connection.
@@ -148,6 +166,7 @@ The keyboard its reply raises never reshapes the frame (INF-1524), so the card s
 A reply inside the scroller of a card that scrolls whole keeps its last line in view as it grows.
 On an iPhone on its side the keyboard leaves about two lines of room, so while it is up the pager steps aside, and while a card's reply types the message box steps aside too, keeping its draft.
 A person starting to scroll a card or its thread closes the keyboard; the scroller following the caret does not.
+While the keyboard is up, a card or thread that fits whole above it bounces under a flick, so that flick closes the keyboard too (INF-2737); with the keyboard down, one that fits does not move.
 When the home is on `CARD_SEEN_UPDATE_SINCE` (major 13) or later, or advertises `card-current-update-seen`, every snapshot supplies the owner's exact released-update seen state, which drives unread counts and the next chevron's dot.
 A sighting acknowledges the exact released update only after the pane draws while visible, active and connected; reading never hides a note or changes another view's selection.
 The session consumes initial state before reporting again on reconnect and never queues offline sightings.
@@ -163,10 +182,14 @@ Native controls own the head, footer choices and reply field; a body cannot draw
 The head draws the Mac's: the kind (Attention in the danger color), Review finding, the task's key in mono, where the task runs, the model chip and the risk, then the title and the revised line; it names no sender.
 The task's key opens its record on Tasks, or in the sidebar beside the stage.
 A merge card's risk, on a merge card, a past merge card or a self-merge note, is a row of seven dots in the levels' colors, and a press opens a sheet naming each dimension, its level's words and the crewmate's why.
-Put aside (a minus before the close, ⇧⌘M from a keyboard) sends `inf:cards:minimize` with `true`; the core brings the card back when it changes.
+The card has one minimize minus after Maximize, with ⇧⌘M from a keyboard; its label and rest words come from the core’s optional `corner` (`src/shared/cardLeave.ts`).
+It asks the shared close dispatcher to put a decision away or read a note, never to refuse consent or end a task.
+With an older core lacking `corner`, the phone uses the older safe minimize request, not its destructive close.
+An answer note carries the host’s Done, and its record carries the same Done after the note was put away.
+The task-record sheet reads its Hide minus and rest words from the record row, and Shift-Command-M hides that sheet without ending the task.
 On an iPad the head also maximizes the card to the stage's whole width.
-The close asks first, in the Mac's words (`closeQuestionWords.ts`), while picks or typed words would be discarded, or while the captain's reply waits on its answer, which offers Put aside instead.
-VoiceOver reads the close's and put aside's rest words as their hints.
+Putting a decision away retains its picks and typed words without a warning question.
+The corner's hint carries those same rest words.
 The words a phone card shows come from the Mac's owners through `PhoneCardWords.generated.swift`, written by `scripts/generate-phone-contract.ts`.
 The footer choices are the Mac's row (`PhoneChoiceStyle` in `PhoneChoiceRow`): rounded rectangles with 16-point words, drawn about 37 points tall inside a 44-point touch area, each keeping its own width at the trailing edge and wrapping onto another line when they do not fit.
 As on the Mac (`footerGroups`), the default is drawn last, filled with the accent; a danger choice has a red outline and the rest a hairline outline.
@@ -279,7 +302,7 @@ The first character a person sees after opening or joining greets once (`Charact
 A turn that starts mid-greeting lets the greeting play on as the ember eases in, then the character works, as on the Mac.
 A character that leaves mid-greeting, such as the empty stage a join shows before its cards arrive, hands the greeting on to the next one shown.
 A live `firstmate_emote` reaches the characters on screen; reply reactions wait for the turn to finish, with the first request winning as on the desktop.
-A reaction replayed while reconnecting is not played, and a character off screen does not keep one for later.
+A reaction replayed while reconnecting is not played, even when a caught-up welcome already says In reach, and a character off screen does not keep one for later.
 The wire and halo boosts come from the design skill's tokens through `scripts/generate-phone-theme.ts`, like its colours.
 The crew scene draws on its own render thread, never the main thread (INF-2566, the captain's approved direction B): `PhoneSceneRenderer` runs a display link on that thread's run loop, paints the first mate, the crew, the warp and the selection and summary marks through Core Graphics (`ScenePen`), and presents each frame on a Metal layer, so a busy main thread no longer drops the scene's frames.
 The painters draw through `ScenePen`, which a SwiftUI Canvas also uses through `withCGContext`, so the character elsewhere in the app draws with the same code; the scene's halo is a three-pass box blur standing in for SwiftUI's Gaussian blur.
@@ -301,7 +324,7 @@ Idle cadence samples accept the character's automatic fidget, including the idle
 The named source and drawing scope, working heat, rotation advancement, requested-reaction presence, callback counts and budgets remain enforced.
 Its accessibility value stays the state the conversation owner supplies; an emote never changes it.
 The join stage uses idle; the empty stage follows the Mac's published busy snapshot and numbered busy events, never typing or a crew count.
-Homes on `SCENE_OBSERVATIONS_SINCE` (`src/shared/ipc.ts`, major 12) or later, and older homes that advertise `native-scene-observations`, answer `inf:conversation:state` and the public `inf:computers:presence` read/push; the latter contains only each work computer's id, name and reach, never addresses or management facts.
+Homes on `SCENE_OBSERVATIONS_SINCE` (`src/shared/contractFeatures.ts`, major 12) or later, and older homes that advertise `native-scene-observations`, answer `inf:conversation:state` and the public `inf:computers:presence` read/push; the latter contains only each work computer's id, name and reach, never addresses or management facts.
 A numbered push supersedes an older pending read; an older home retains event-only busy observation and unknown remote reach without sending unsupported requests.
 Joining shows only the first mate until real board facts arrive, and the accessibility value names unknown conversation activity until the home supplies a reading.
 `PhoneCrewScene` renders home's formation and every other computer's at the desktop's share of it in a continuous native scroller, with touch panning and arrow keys rather than paging or shrinking the entire scene, and no scroll bars.
@@ -395,6 +418,8 @@ A close or a choice takes the card off Home and the next card is up; putting a c
 A reply joins the card's thread marked Sending… where its time will be, and the draft and photos clear.
 A message clears the box and stands as the last turn, marked Sending… until the computer has it.
 Start and Continue read Starting on the record and its row, Interrupt reads Stopping, and a steer shows in the transcript marked Sending… as its draft clears.
+An explicit Done or Dismiss shows its selected ending on the record and row at the tap, and settles only when the home's task reading carries the matching status and reason.
+Putting a decision aside predicts its minimized state, while putting a note away predicts its acknowledgement; neither predicts a task ending.
 A snapshot that holds the change retires its intent with nothing moving.
 A reply or a steer is held once the thread or transcript has more of the captain's messages than it showed at the tap, and a message once the last turn follows the one shown at the tap, since the computer writes the words its own way (trimmed, with a line for each picture).
 A snapshot whose card or task changed under the intent, such as a revised offer or a closed task, voids it quietly.
@@ -513,6 +538,8 @@ The gate refuses any other Xcode before it builds, and `scripts/phone-simulator.
 Moving to a new pair is one pull request that edits the pin, after the virtual Mac image and every Mac that runs the check have the new pair.
 Add `--both` to run the checks and build once, then the iPhone and the iPad side by side; the evidence folder then holds the shared logs and an `iphone` and an `ipad` folder.
 The native journey is tests in `PhoneJourney`, one per part (`scripts/phone-test-plan.ts`): three join parts (`join-read`, `join-activity`, `join-away`), three talk parts (`talk-compose`, `talk-tasks`, `talk-drafts`), two relaunch parts (`relaunch-first`, `relaunch-second`), three cards parts (`cards-merge`, `cards-form`, `cards-media`), `address` (join by its address), `pick` (a card pager pick across a workspace redraw), `cards-revise` (a revision while the thread shows), two keyboard parts (`keyboard-pinned`, `keyboard-scrolling`: the message box and a card's reply with the keyboard up, INF-2568), and `rest`, which runs the character and past choices with the app-hosted tests and any test no other part names.
+Each part's test, with the steps only it takes, is in a file of its own beside `InfinitaryUITests/PhoneJourney.swift`, named for the part (`PhoneJourney+JoinRead.swift` for `join-read`, `PhoneJourney+Rest.swift` for `rest`).
+`PhoneJourney.swift` keeps the class and the steps two or more parts share.
 INF-2125 (the captain's "Shared fixes, then short parts") split the join, talk, relaunch and cards parts into these short ones, so a check of only the parts a change reaches can run the closest alone; every check stays, in the part it belongs to.
 A journey that launches the app fresh takes a part of its own, since the rest part's simulator already holds the character journey's join (INF-2095).
 The gate starts one simulator per device, once, and runs that device's parts on it one after the other, in the order `scripts/phone-test-plan.ts` lists them; each part is its own gate with its own test home and a clean app, and `--simulators` (default 6) sets how many devices run side by side (INF-1438, the captain's "Start each simulated device once per phone check, not once per part").

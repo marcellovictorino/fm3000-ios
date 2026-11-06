@@ -23,8 +23,10 @@ public final class PinnedTransport: NSObject, URLSessionDelegate, URLSessionTask
         config.httpCookieStorage = nil
         config.urlCache = nil
         config.connectionProxyDictionary = [:]
-        // A one-use pairing POST is bounded; a socket lives across many heartbeats.
-        config.timeoutIntervalForRequest = purpose == .pairing ? 10 : 60
+        // A one-use pairing POST is bounded; a socket lives across many heartbeats. INF-2668: on a socket this timer
+        // also cut a message still arriving after 60 s, as a slow link's catch-up does, so the session's own silence
+        // watch (ReadOnlySession) and its dial limit own a connection's deadlines instead.
+        config.timeoutIntervalForRequest = purpose == .pairing ? 10 : 7 * 24 * 60 * 60
         config.timeoutIntervalForResource = purpose == .pairing ? 15 : 7 * 24 * 60 * 60
         config.waitsForConnectivity = false
         session = URLSession(configuration: config, delegate: self, delegateQueue: nil)

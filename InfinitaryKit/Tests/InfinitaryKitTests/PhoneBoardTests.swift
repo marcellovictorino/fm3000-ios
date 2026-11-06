@@ -100,4 +100,34 @@ struct PhoneBoardTests {
         let stale = try #require(held.applying(delta(base: 40, seq: 41, upserts: [], removed: ["t-chart"])))
         #expect(stale.seq == 41 && stale.tasks.map(\.id) == ["t-chart"])
     }
+
+    /// INF-2773: a reopen reads a run of deltas and folds them with one sort; the board is the one applying each in
+    /// turn gives, through an upsert after a removal, a task removed after its upsert, a link added then taken away,
+    /// an older delta passed over, and a later gap that asks for the whole board.
+    @Test func aRunOfDeltasGivesTheBoardThatApplyingEachInTurnGives() throws {
+        func at(_ row: [String: Any], _ createdAt: Double) -> [String: Any] { var row = row; row["createdAt"] = createdAt; return row }
+        let held = try board([
+            task("t-chart", key: "INF-12", title: "Chart the northern entrance", status: "active", activity: "idle"),
+            at(task("t-buoys", key: "INF-13", title: "Count the buoys", status: "open"), 1_793_000_000_200),
+        ])
+        let run = [
+            try delta(base: 40, seq: 41, upserts: [], removed: ["t-chart"]),
+            try delta(base: 41, seq: 42, upserts: [at(task("t-tide", key: "INF-14", title: "Read the tide table", status: "queued"), 1_793_000_000_100)],
+                      removed: ["t-buoys"], added: [["fromId": "t-chart", "toId": "t-tide", "type": "blocks"]]),
+            try delta(base: 42, seq: 43, upserts: [at(task("t-buoys", key: "INF-13", title: "Count the buoys", status: "active", activity: "running"), 1_793_000_000_200)],
+                      removed: [], added: [["fromId": "t-buoys", "toId": "t-tide", "type": "blocks"]]),
+            try delta(base: 43, seq: 44, upserts: [at(task("t-mast", key: "INF-15", title: "Step the mast", status: "queued"), 1_793_000_000_100)],
+                      removed: ["t-tide"], unlinked: [["fromId": "t-chart", "toId": "t-tide", "type": "blocks"]]),
+            try delta(base: 44, seq: 45, upserts: [task("t-chart", key: "INF-12", title: "Chart the northern entrance", status: "done")], removed: []),
+        ]
+        let stepped = try run.reduce(held) { board, next in try #require(board.applying(next)) }
+        let folded = try #require(held.applying(run: run))
+        #expect(folded.seq == stepped.seq)
+        #expect(folded.tasks.map(\.id) == stepped.tasks.map(\.id))
+        #expect(folded.tasks.map(\.status) == stepped.tasks.map(\.status))
+        #expect(folded.links?.map { "\($0.fromId) \($0.toId)" } == stepped.links?.map { "\($0.fromId) \($0.toId)" })
+        #expect(folded.tasks.map(\.id) == ["t-chart", "t-mast", "t-buoys"])
+        #expect(held.applying(run: run + [try delta(base: 47, seq: 48, upserts: [], removed: [])]) == nil)
+        #expect(held.applying(run: [try delta(base: 39, seq: 40, upserts: [], removed: ["t-chart"])])?.tasks.count == 2)
+    }
 }
