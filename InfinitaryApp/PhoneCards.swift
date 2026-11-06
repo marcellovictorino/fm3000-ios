@@ -36,7 +36,7 @@ struct PhoneCards: View {
                     onTask: { messageContext.openTask = $0 }, onDraft: { messageContext.draft = $0 },
                     side: Binding(get: { sides[card.id] ?? PhoneCardSide() }, set: { sides[card.id] = $0 }))
                     .id("\(card.id):\(card.offerID ?? card.body):\(card.isPast)")
-                    .phoneSwipePaging(card: card.id, previous: canPagePrevious ? { page(-1) } : nil, next: canPageNext ? { page(1) } : nil)
+                    .phoneSwipePaging(previous: canPagePrevious ? { page(-1) } : nil, next: canPageNext ? { page(1) } : nil)
             } else {
                 // INF-1060 keeps the empty stage free of placeholder words; INF-1066 adds its native crew.
                 PhoneCrewScene(session: session)
@@ -737,12 +737,8 @@ private struct PhoneCardPane: View {
                 .accessibilityIdentifier("put-aside-card").disabled(host.changing || (!card.isPast && !session.canChange))
         }
         .contentShape(Rectangle())
-        .simultaneousGesture(DragGesture(minimumDistance: 44).onEnded { value in
-            // Paging belongs to native chrome, never a body's slider, canvas or pinch gesture.
-            if !card.isPast && abs(value.translation.width) > abs(value.translation.height) * 1.5 {
-                onPage(value.translation.width < 0 ? 1 : -1)
-            }
-        })
+        // fm3000-ios: the head's own sideways swipe is gone; the whole card's swipe (PhoneSwipePaging) turns the page.
+        // With both, one swipe on the head turned two pages, and the head read its drag in a card already following the finger.
     }
 
     /// The words after a control's name in the Mac's rest line ("Close · stays on INF-1's record"), as its VoiceOver hint.
