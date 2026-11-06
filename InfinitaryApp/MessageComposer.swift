@@ -132,14 +132,8 @@ struct MessageComposer: View {
             }
             // fm3000-ios: each card opens with its box replying to it; the switch is for one card at a time.
             .onChange(of: messageContext.card) { toMate = false }
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    if focused {
-                        Spacer()
-                        Button("Done") { focused = false }.accessibilityIdentifier("message-box-done")
-                    }
-                }
-            }
+            // fm3000-ios: no Done above the keyboard here. On iOS 27 it floats over the send arrow, so a send took two
+            // taps. The bar's own Done, a swipe down or a tap on the card close the keyboard instead.
             // INF-589 item 12: a soft tap once the computer accepts the message.
             .sensoryFeedback(.phone, trigger: sent)
     }
