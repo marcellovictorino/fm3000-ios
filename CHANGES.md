@@ -42,6 +42,12 @@ Each entry says the PR, what changes for you, why, and whether the original app 
 
 ## Cards
 
+- **PR #11.** One message box at Home's foot for both the open card and the first mate. While a card that takes replies is on screen, a label above the box names the card, and the box says "anything to add?" and replies to that card's thread. Pressing the label switches the box to the first mate ("Give your first mate a task") and back. Each target keeps its own draft and photos; the first mate message still carries the open card as its hint (`visibleCardId`). With no card, or one that takes no reply, the box is the first mate's, as before. The card no longer draws its own reply field, on its face or its back; its choice buttons still send the words in the box with the choice. A new card opens with the box on the card. Files: `InfinitaryApp/MessageComposer.swift`, `InfinitaryApp/PhoneCards.swift`, `InfinitaryApp/PhoneWorkspace.swift` (the card's reply drafts and photos, and the card's send, move into `PhoneMessageContext`). The keyboard's Done now sits on the box, and a swipe down or a tap on the card closes whichever keyboard is up.
+  - **Changes for you:** type once, at the foot, where the thumb already is, and choose where the words go with one press on the label.
+  - **Why:** with the card's own field mid-screen and the first mate's box at the foot, I kept typing a card reply in the wrong place and pressing the wrong send arrow. I would rarely message the first mate while reading a card.
+  - **In the original app:** the same layout at 0.6.3-alpha.191: the card's "anything to add?" field sits inside the card, and the box under it always goes to the first mate. For the official app's developer: two inputs on one screen with one thumb zone invite sending to the wrong one; one box with a visible target label removes the ambiguity. A suggestion, not a defect report.
+  - **Not tested on a phone.** Checked in a simulator only: the box in card, first-mate and empty states with the label. The send path to a real card, choice buttons with words, and the keyboard Done were not run, as the journeys need a Mac test home.
+
 - **PR #5.** Swiping a card left or right turns to the next or previous card, as the pager arrows do (the arrows stay). Files: new `InfinitaryApp/PhoneSwipePaging.swift`, one line in `InfinitaryApp/PhoneCards.swift`.
   - **Changes for you:** get through a stack of cards with one hand, without reaching for the small arrows.
   - **Why:** get through a stack of cards quickly with one hand.
