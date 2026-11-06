@@ -13,6 +13,8 @@ struct MessageComposer: View {
     @State private var problem: String?
     @State private var sent = 0
     @FocusState private var focused: Bool
+    /// fm3000-ios: the label's switch; true sends this box's words to the first mate while a card is on screen.
+    @State private var toMate = false
     @Environment(\.verticalSizeClass) private var verticalSize
     @Environment(\.scenePhase) private var phase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -31,8 +33,29 @@ struct MessageComposer: View {
             : AnyLayout(VStackLayout(alignment: .leading, spacing: PhoneTheme.space2))
     }
 
+    /// fm3000-ios: the card on screen that takes a reply from this box, unless the label has switched it to the first mate.
+    private var replier: PhoneMessageContext.Replier? {
+        guard messageContext.cardsVisible, let replier = messageContext.replier,
+              messageContext.card == .current(replier.cardID) else { return nil }
+        return replier
+    }
+    private var cardMode: Bool { replier != nil && !toMate }
+    private var shownText: Binding<String> {
+        guard cardMode, let id = replier?.cardID else { return $text }
+        return Binding(get: { messageContext.replyDrafts[id] ?? "" }, set: { messageContext.replyDrafts[id] = $0 })
+    }
+    private var shownPhotos: Binding<[Photo]> {
+        guard cardMode, let id = replier?.cardID else { return $photos }
+        return Binding(get: { messageContext.replyPhotos[id] ?? [] }, set: { messageContext.replyPhotos[id] = $0.isEmpty ? nil : $0 })
+    }
+
     private var canSend: Bool {
-        session.canChange && !loading && !(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && photos.isEmpty)
+        let empty = shownText.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && shownPhotos.wrappedValue.isEmpty
+        if cardMode, let replier {
+            return session.canChange && !loading && replier.ready && !empty
+                && shownText.wrappedValue.utf16.count <= PhoneLimits.reply
+        }
+        return session.canChange && !loading && !empty
     }
 
     typealias Photo = PhonePhoto
@@ -42,12 +65,13 @@ struct MessageComposer: View {
             // INF-589 item 17: on its side an iPhone gives the card this height; the last turn returns upright.
             if let turn = session.lastTurn, !compact { lastTurn(turn) }
             // AnyLayout moves the same controls; neither rotation nor a tab creates a second draft.
+            if let replier { targetLabel(replier) }
             draftLayout {
-                if !photos.isEmpty {
+                if !shownPhotos.wrappedValue.isEmpty {
                     ScrollView(.horizontal) {
                         HStack {
-                            ForEach(photos) { photo in
-                                Button { photos.removeAll { $0.id == photo.id } } label: {
+                            ForEach(shownPhotos.wrappedValue) { photo in
+                                Button { shownPhotos.wrappedValue.removeAll { $0.id == photo.id } } label: {
                                     Image(uiImage: photo.image).resizable().scaledToFill()
                                         .frame(width: 44, height: 44).clipped()
                                         .overlay(alignment: .topTrailing) { Image(systemName: "xmark.circle.fill").foregroundStyle(PhoneTheme.text, PhoneTheme.surface) }
@@ -59,13 +83,13 @@ struct MessageComposer: View {
                 // INF-1517, the captain's pick from ChatGPT's input: 48 points tall, the photo glyph 16 points in,
                 // the words 52 points in, and send a 32-point circle 8 points from the end, each in a 44-point touch area.
                 HStack(alignment: .bottom, spacing: 0) {
-                    PhotosPicker(selection: $selection, maxSelectionCount: max(1, PhoneLimits.images - photos.count), matching: .images) {
+                    PhotosPicker(selection: $selection, maxSelectionCount: max(1, PhoneLimits.images - shownPhotos.wrappedValue.count), matching: .images) {
                         // The glyph is about 22 points wide, centered in its 44: 5 + 11 puts it 16 in. The inset stays
                         // inside the button, so its frame starts where the box does, on the reading column.
                         Label("Photos", systemImage: "photo").labelStyle(.iconOnly).frame(width: 44, height: 48)
                             .padding(.leading, 5).contentShape(Rectangle())
-                    }.disabled(loading || photos.count >= PhoneLimits.images).accessibilityIdentifier("add-photos")
-                    TextField("Give your first mate a task", text: $text, axis: .vertical)
+                    }.disabled(loading || shownPhotos.wrappedValue.count >= PhoneLimits.images).accessibilityIdentifier("add-photos")
+                    TextField(cardMode ? PhoneCardWords.replyHint : "Give your first mate a task", text: shownText, axis: .vertical)
                         .lineLimit(1...(compact ? 2 : 4)).focused($focused)
                         .padding(.vertical, PhoneTheme.space3).frame(minHeight: 48)
                         .padding(.leading, 3)
@@ -102,11 +126,43 @@ struct MessageComposer: View {
             .onChange(of: messageContext.draft, initial: true) { _, draft in
                 guard let draft else { return }
                 messageContext.draft = nil
-                text = text.isEmpty ? draft : "\(draft) \(text)"
+                let box = shownText
+                box.wrappedValue = box.wrappedValue.isEmpty ? draft : "\(draft) \(box.wrappedValue)"
                 focused = true
+            }
+            // fm3000-ios: each card opens with its box replying to it; the switch is for one card at a time.
+            .onChange(of: messageContext.card) { toMate = false }
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    if focused {
+                        Spacer()
+                        Button("Done") { focused = false }.accessibilityIdentifier("message-box-done")
+                    }
+                }
             }
             // INF-589 item 12: a soft tap once the computer accepts the message.
             .sensoryFeedback(.phone, trigger: sent)
+    }
+
+    /// fm3000-ios, the captain's pick: the label names the card on screen; pressing it switches this one box between
+    /// replying to the card and messaging the first mate, which still carries the card as its hint.
+    private func targetLabel(_ replier: PhoneMessageContext.Replier) -> some View {
+        Button { toMate.toggle() } label: {
+            HStack(spacing: 6) {
+                Image(systemName: toMate ? "paperplane" : "arrow.turn.down.right").imageScale(.small)
+                Text(toMate ? "First mate" : replier.title).lineLimit(1)
+                Spacer(minLength: 4)
+                Text(toMate ? "↺ \(replier.title)" : "→ First mate").lineLimit(1).foregroundStyle(PhoneTheme.secondary)
+                    .frame(maxWidth: 140, alignment: .trailing)
+            }
+            .font(PhoneFont.caption).foregroundStyle(toMate ? PhoneTheme.text : PhoneTheme.accent)
+            .padding(.horizontal, PhoneTheme.space3).frame(minHeight: 32)
+            .background((toMate ? PhoneTheme.text.opacity(0.08) : PhoneTheme.accent.opacity(0.14)), in: Capsule())
+            .contentShape(Capsule())
+        }.buttonStyle(.plain)
+            .accessibilityLabel(toMate ? "Messaging the first mate" : "Replying to \(replier.title)")
+            .accessibilityHint("Switches where this message goes")
+            .accessibilityIdentifier("box-target")
     }
 
     /// The Mac's last turn (src/renderer/src/app/LastTurn.tsx), drawn as INF-1770's Chat layout: the last two rounds,
@@ -197,6 +253,13 @@ struct MessageComposer: View {
     /// pictures back in front of anything typed since, and the session says why.
     private func send() {
         guard !loading, session.canChange else { return }
+        // fm3000-ios: a reply goes through the card's own send, which keeps the card's answers and thread.
+        if cardMode, let replier {
+            guard canSend else { return }
+            focused = false; problem = nil
+            replier.send()
+            return
+        }
         guard text.utf16.count <= PhoneLimits.text else { problem = "This message is too long. Shorten it before sending."; return }
         let words = text, pictures = photos
         var payload: [String: Any] = ["text": words, "images": pictures.map(\.wire)]
@@ -225,11 +288,11 @@ struct MessageComposer: View {
         defer { loading = false; selection = [] }
         for item in selection {
             do {
-                guard photos.count < PhoneLimits.images, let bytes = try await item.loadTransferable(type: Data.self) else {
+                guard shownPhotos.wrappedValue.count < PhoneLimits.images, let bytes = try await item.loadTransferable(type: Data.self) else {
                     throw PhoneError.refused("Could not add this photo. Choose another.")
                 }
                 try Task.checkCancellation()
-                photos.append(try PhonePhoto(bytes: bytes))
+                shownPhotos.wrappedValue.append(try PhonePhoto(bytes: bytes))
             } catch is CancellationError { return }
             catch { problem = error.localizedDescription }
         }

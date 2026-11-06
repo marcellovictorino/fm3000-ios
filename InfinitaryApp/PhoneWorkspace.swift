@@ -18,6 +18,19 @@ import Observation
     /// room for the pager or, while a reply types, the message box beside the field (`PhoneCards`, `PhoneWorkspace.home`).
     var keyboardUp = false
     var replyFocused = false
+    /// fm3000-ios: a card's reply drafts and photos live here, so the message box at Home's foot can write them while
+    /// the card's own pane sends them (`MessageComposer`, `PhoneCardPane`).
+    var replyDrafts: [String: String] = [:]
+    var replyPhotos: [String: [PhonePhoto]] = [:]
+    /// fm3000-ios: the card on screen offering to take a reply from the message box; nil when it takes none.
+    var replier: Replier?
+    struct Replier {
+        let token: String
+        let cardID: String
+        let title: String
+        let ready: Bool
+        let send: () -> Void
+    }
     var fields: [String: String] {
         if let taskID { return ["taskId": taskID] }
         guard cardsVisible else { return [:] }
