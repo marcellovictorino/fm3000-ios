@@ -18,7 +18,7 @@ struct PhoneSceneTouches: UIViewRepresentable {
     }
 }
 
-final class PhoneSceneTouchView: UIView {
+final class PhoneSceneTouchView: UIView, UIGestureRecognizerDelegate {
     struct Target {
         let id: String, task: PhoneTask, computer: String, point: CGPoint, label: String, words: String
     }
@@ -34,7 +34,9 @@ final class PhoneSceneTouchView: UIView {
         self.crew = crew
         super.init(frame: .zero)
         backgroundColor = .clear
-        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped(_:))))
+        let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
+        tap.delegate = self
+        addGestureRecognizer(tap)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
@@ -74,13 +76,16 @@ final class PhoneSceneTouchView: UIView {
     }
     static func square(_ point: CGPoint) -> CGRect { CGRect(x: point.x - 22, y: point.y - 22, width: 44, height: 44) }
 
-    /// Where and when the finger landed. The tap is recognized only as the finger lifts, and the scroller may hold the
-    /// touch back first, while the crew keep moving on the render thread; the crewmate under the finger is the one the
-    /// frame on screen at touch-down drew there, as a button under the finger is chosen at touch-down.
+    /// Where and when the finger landed. The tap is recognized only as the finger lifts, while the crew keep moving on
+    /// the render thread; the crewmate under the finger is the one the frame on screen at touch-down drew there, as a
+    /// button under the finger is chosen at touch-down. The tap recognizer receives each touch as it lands, so it reads
+    /// the landing. The view's own touchesBegan cannot: the scroller holds a touch back from the view, so a quick tap is
+    /// recognized before the view hears it land, while a drag the scroller takes over is heard landing and never taps.
+    /// The next tap then opened the crewmate where that drag had started, not the one under the finger.
     private var landed: (point: CGPoint, at: Double)?
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let touch = touches.first { landed = (touch.location(in: self), touch.timestamp) }
-        super.touchesBegan(touches, with: event)
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        landed = (touch.location(in: self), touch.timestamp)
+        return true
     }
 
     @objc private func tapped(_ recognizer: UITapGestureRecognizer) {

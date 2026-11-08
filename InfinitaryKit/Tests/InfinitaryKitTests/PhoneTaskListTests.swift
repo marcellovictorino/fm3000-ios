@@ -2,64 +2,74 @@ import Foundation
 import Testing
 @testable import InfinitaryKit
 
-/// INF-2764: the phone's Tasks list is built by walking the board once instead of re-sorting every task, and keeps the
-/// order the list always had: live tasks first, then the rest, each newest first.
+/// INF-2928 piece 1, the captain's direction A: the phone's Tasks list reads as the Mac's Tasks panel. These replay the
+/// desktop panel's own reading of one board (`rowsOf`, `earlierRowsOf`, `wordOf`, `trailingOf` and the folding
+/// headers' counts), which scripts/generate-phone-scene.ts records, so the phone's groups, order, depth, words and
+/// trailing words are the Mac's for the same rows.
 struct PhoneTaskListTests {
-    private func task(_ id: String, key: String, title: String, status: String, at createdAt: Double,
-                      activity: String? = nil, goal: String? = nil) -> [String: Any] {
-        var row: [String: Any] = [
-            "id": id, "key": key, "projectId": "proj-harbour", "parentId": NSNull(), "kind": "work", "title": title,
-            "status": status, "createdAt": createdAt, "startPolicy": "when-ready", "blockedBy": [],
-            "waitingCardId": NSNull(),
-        ]
-        if let activity { row["activity"] = activity }
-        if let goal { row["goal"] = goal }
-        return row
+    private struct Fixture: Decodable { let readings: [Reading] }
+    private struct Reading: Decodable {
+        let name: String
+        let query: String
+        let now: Double
+        let board: PhoneBoard
+        let earlier: [PhoneTask]
+        let sections: [Section]
+    }
+    private struct Section: Decodable {
+        let section: String
+        let folds: Bool
+        let count: Int
+        let newWords: String?
+        let failedWords: String?
+        let rows: [Row]
+    }
+    private struct Row: Decodable {
+        let key: String
+        let depth: Int
+        let word: String
+        let trailing: Trailing
+        let wait: String?
+        let mark: String
+        let reason: String
+    }
+    private struct Trailing: Decodable {
+        let name: String; let place: String; let outOfReach: Bool; let connecting: Bool; let reach: String
     }
 
-    private func decode<T: Decodable>(_ value: Any) throws -> T {
-        try JSONDecoder().decode(T.self, from: JSONSerialization.data(withJSONObject: value))
+    private func readings() throws -> [Reading] {
+        let url = try #require(Bundle.module.url(forResource: "PhoneTaskList.generated", withExtension: "json", subdirectory: "Fixtures"))
+        return try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: url)).readings
     }
 
-    private func board(_ tasks: [[String: Any]]) throws -> PhoneBoard {
-        try decode(["seq": 41, "tasks": tasks, "projects": [["id": "proj-harbour", "name": "Harbour"]]])
-    }
-
-    /// The Mac sends the board oldest first (`sortTaskBoard`), as these rows are.
-    private var rows: [[String: Any]] {
-        [
-            task("t-chart", key: "INF-11", title: "Chart the northern entrance", status: "done", at: 1_793_000_000_000),
-            task("t-buoys", key: "INF-12", title: "Count the buoys", status: "open", at: 1_793_000_100_000),
-            task("t-light", key: "INF-13", title: "Relight the harbour lamp", status: "active", at: 1_793_000_200_000,
-                 activity: "running"),
-            task("t-nets", key: "INF-14", title: "Mend the nets", status: "dropped", at: 1_793_000_300_000),
-            task("t-tide", key: "INF-15", title: "Read the tide tables", status: "open", at: 1_793_000_400_000,
-                 goal: "The harbour lamp's hours follow the tide"),
-        ]
-    }
-
-    @Test func liveTasksComeFirstAndEachPartNewestFirst() throws {
-        let list = PhoneTaskList(board: try board(rows), cards: [])
-        #expect(list.rows.map(\.key) == ["INF-15", "INF-13", "INF-12", "INF-14", "INF-11"])
-        #expect(list.members[.working]?.map(\.key) == ["INF-13"])
-        #expect(list.members[.queued]?.map(\.key) == ["INF-15", "INF-12"])
-        // A dropped task belongs to no group, so it lists only under a search.
-        #expect(list.members[.landed]?.map(\.key) == ["INF-11"])
-        #expect(list.project(of: list.rows[0]) == "Harbour")
-    }
-
-    /// A board in any other order lists the same.
-    @Test func aBoardOutOfOrderListsTheSame() throws {
-        let list = PhoneTaskList(board: try board(rows.reversed()), cards: [])
-        #expect(list.rows.map(\.key) == ["INF-15", "INF-13", "INF-12", "INF-14", "INF-11"])
-    }
-
-    /// A search narrows the rows by key, title or goal, and the computer's older matches join them in order.
-    @Test func aSearchNarrowsAndTakesInOlderMatches() throws {
-        let older: PhoneTask = try decode(task("t-wreck", key: "INF-3", title: "Mark the harbour wreck", status: "done",
-                                               at: 1_792_000_000_000))
-        let list = PhoneTaskList(board: try board(rows), cards: [], query: "harbour", earlier: [older])
-        #expect(list.rows.map(\.key) == ["INF-15", "INF-13", "INF-3"])
-        #expect(list.members.isEmpty)
+    @Test func theListReadsAsTheMacsTasksPanel() throws {
+        let all = try readings()
+        #expect(all.count == 3)
+        for reading in all {
+            let list = PhoneTaskList(board: reading.board, cards: [], query: reading.query, earlier: reading.earlier)
+            #expect(list.parts.map(\.section.id) == reading.sections.map(\.section),
+                    "\(reading.name): the groups that show")
+            for (part, expected) in zip(list.parts, reading.sections) {
+                #expect(part.section.folds == expected.folds, "\(reading.name) \(expected.section): whether it folds")
+                #expect(part.count == expected.count, "\(reading.name) \(expected.section): its count")
+                #expect((part.new > 0 ? PhoneTaskRowWords.newCount(part.new) : nil) == expected.newWords)
+                #expect((part.section == .group(.backlog) && part.failed > 0 ? PhoneTaskRowWords.failedCount(part.failed) : nil)
+                        == expected.failedWords)
+                #expect(part.rows.map(\.task.key) == expected.rows.map(\.key), "\(reading.name) \(expected.section): the order")
+                for (row, want) in zip(part.rows, expected.rows) {
+                    #expect(row.depth == want.depth, "\(want.key): its depth")
+                    #expect(PhoneTaskList.word(row.task) == want.word, "\(want.key): its word")
+                    let trailing = list.trailing(of: row.task)
+                    #expect(trailing == PhoneTaskList.Trailing(name: want.trailing.name, place: want.trailing.place,
+                                                               outOfReach: want.trailing.outOfReach,
+                                                               connecting: want.trailing.connecting, reach: want.trailing.reach),
+                            "\(want.key): its trailing words")
+                    #expect(part.waitLine(of: row.task) == want.wait, "\(want.key): its wait line")
+                    let status = PhoneTaskFacts.status(row.task, now: reading.now)
+                    #expect(status.mark == want.mark, "\(want.key): its mark")
+                    #expect(status.reason == want.reason, "\(want.key): its reason")
+                }
+            }
+        }
     }
 }

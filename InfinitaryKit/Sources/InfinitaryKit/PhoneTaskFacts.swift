@@ -84,7 +84,16 @@ public struct PhoneTaskFacts: Sendable {
                                "inactive": "No continuing work", "access": "Paused for access",
                                "dependency": "Blocked by another task", "unobserved": "Background work is unknown"]
 
-    public static func status(_ task: PhoneTask) -> Status {
+    /// The Mac's `formatDurationShort` (src/shared/quotaSignals.ts): whole minutes as 2d 3h, 1h 35m or 4m.
+    static func durationShort(_ ms: Double) -> String {
+        let total = max(0, Int((ms / 60_000).rounded(.toNearestOrAwayFromZero)))
+        let days = total / (60 * 24), hours = (total % (60 * 24)) / 60, minutes = total % 60
+        if days > 0 { return hours > 0 ? "\(days)d \(hours)h" : "\(days)d" }
+        if hours > 0 { return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h" }
+        return "\(minutes)m"
+    }
+
+    public static func status(_ task: PhoneTask, now: Double = Date().timeIntervalSince1970 * 1000) -> Status {
         func reading(_ mark: String, _ reason: String, outOfReach: Bool = false, wait: String? = nil,
                      since: Double? = nil, waitsOn: [String]? = nil) -> Status {
             let word = statusWords[mark] ?? mark
@@ -101,12 +110,21 @@ public struct PhoneTaskFacts: Sendable {
         if task.status == "done" { return reading("done", task.requiredAction?.result ?? (task.closedReason == "answered" ? "Answered" : "")) }
         if task.status == "dropped" { return reading("dropped", task.requiredAction?.result ?? (task.closedReason == "failed" ? "Failed" : "")) }
         if let required = task.requiredAction { return reading("waiting", required.state == "blocked" ? "Waiting for prerequisites" : "") }
+        // A note's answer waits on the captain, with how long (`answerWaitWords`, src/shared/cardLeave.ts).
+        if task.answerNoteId != nil {
+            guard let since = task.answerSince else { return reading("waiting", "Answer ready") }
+            return reading("waiting", "Answer ready · waiting \(durationShort(max(0, now - since)))", since: since)
+        }
         if task.waitingCardId != nil {
             return reading("waiting", task.waitingCardMerges == true ? "Waiting for your merge" : "A decision card is ready")
         }
         if task.startAttempt?.phase == "preparing" || task.startAttempt?.phase == "checking"
             || (task.status == "active" && task.activity == "starting") {
             return reading("starting", "")
+        }
+        // Started work back in the backlog (INF-2062): Backlog, marked started, since it went.
+        if task.status == "active", let since = task.backlogSince {
+            return reading("backlog", "Started · its work waits for your Start", since: since)
         }
         if task.startNotice != nil && (task.status == "open" || task.status == "active") {
             return reading(onRequest ? "backlog" : "queued", "Could not start")

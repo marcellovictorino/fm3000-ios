@@ -27,6 +27,21 @@ struct CardValuesTests {
         #expect(current.actions == legacy["actions"].list)
     }
 
+    /// INF-2714 review: the first mate's own answer names no task, while a card the app writes about a task - a
+    /// required action, a closing note - keeps the task it heads with, as the Mac's `firstmateOwnCard` reads them.
+    @Test func onlyTheFirstMatesOwnAnswerDropsItsTask() throws {
+        func card(_ meta: String) throws -> PhoneCard {
+            try PhoneCard(.object([
+                "id": .string("card-fm-required-action-op1"), "title": .string("Renew the signing certificate"),
+                "author": .string("firstmate"), "meta": .string(meta), "taskId": .string("t-sign"),
+                "body": .string("<p>It expires on Friday.</p>"), "actions": .array([])
+            ]))
+        }
+        #expect(try card("firstmate").isFirstmateOwn)
+        #expect(try !card("Waiting on you").isFirstmateOwn)
+        #expect(try !card("Release the alpha").isFirstmateOwn)
+    }
+
     /// INF-499 #4: a reply admitted on the phone must fit the computer's UTF-16 budget.
     @Test func replyBudgetMatchesThePublishedWire() {
         let emoji = "😀"
@@ -102,6 +117,12 @@ struct CardValuesTests {
         #expect(click.label(now: at).hasPrefix("You chose · "))
         #expect(click.label(now: at).hasSuffix(" · through 2 tasks"))
         #expect(click.words(open: false) == "File the picked improvements · start them later")
+        // INF-2744: a click names the card it was on, as the Mac writes it.
+        let onCard = try line([
+            "at": millis, "text": .string(""), "kind": .string("chose"),
+            "choice": .string("Merge the pull request"), "card": .string("Merge the meter fix")
+        ])
+        #expect(onCard.label(now: at).hasPrefix("You chose on “Merge the meter fix” · "))
         let from = try line([
             "at": millis, "text": .string("Cut tonight's alpha"), "kind": .string("from"), "key": .string("INF-2081")
         ])

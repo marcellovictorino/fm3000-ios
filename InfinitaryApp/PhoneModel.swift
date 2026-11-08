@@ -42,6 +42,13 @@ struct AddressJoin: Equatable {
     /// has kept still for `networkSettle`.
     @ObservationIgnored private var networkSettling: Task<Void, Never>?
     static let networkSettle: Duration = .seconds(1)
+    /// INF-2631: the app's start is noted once a run, on the first time it comes to the front.
+    @ObservationIgnored private var launched = false
+    /// What this phone's usage events say of it: its kind and its own version (docs/sharing.md, "A phone's events").
+    private static var usage: PhoneUsage? {
+        guard let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String else { return nil }
+        return PhoneUsage(device: UIDevice.current.userInterfaceIdiom == .pad ? .ipad : .iphone, version: version)
+    }
     private let savedURL: URL
     private let trustedURL: URL
     private let loadIdentity: () throws -> PhoneIdentity
@@ -158,6 +165,7 @@ struct AddressJoin: Equatable {
                 let mac = try await transport.pair(link, name: name)
                 try save(mac)
                 proposal = nil; removed = false; CharacterCues.greetOnNextSight(); connect(mac)
+                connection?.noteUsage(.ftueJoined)
             } catch { problem = error.localizedDescription }
         }
     }
@@ -269,7 +277,12 @@ struct AddressJoin: Equatable {
 
     func active(_ active: Bool) {
         foreground = active
-        if active { endBackgroundTime(); _ = restore(); nearby.start(); connection?.start() }
+        if active {
+            endBackgroundTime(); _ = restore(); nearby.start(); connection?.start()
+            // INF-2631: the app's start and each time it comes to the front, handed to the computer.
+            if !launched { launched = true; connection?.noteUsage(.launch) }
+            connection?.noteUsage(.opened)
+        }
         else { nearby.stop(); keepThroughBackgroundTime() }
     }
 
@@ -305,6 +318,7 @@ struct AddressJoin: Equatable {
     private func connect(_ mac: JoinedMac) {
         guard let identity else { return }
         let session = ReadOnlySession(mac: mac, phone: identity)
+        session.usage = Self.usage
         session.onMacChanged = { [weak self] mac in
             do { try self?.save(mac) } catch { self?.problem = "Could not keep this computer’s new address." }
         }

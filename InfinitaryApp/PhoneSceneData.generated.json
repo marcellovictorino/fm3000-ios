@@ -1701,6 +1701,26 @@
     "depth": 1,
     "glowSpill": 0.12
   },
+  "cinch": {
+    "tightness": 0.45,
+    "inMs": 900,
+    "outMs": 1100,
+    "rhythmS": 2.4,
+    "release": 0.7,
+    "pump": 0.1,
+    "spinKeep": 0.55,
+    "lid": 0.45,
+    "outerDim": 0.35,
+    "ringFrom": 1.5,
+    "ringTight": 0.95,
+    "ringGrow": 0.7,
+    "throwShare": 0.45,
+    "moteInMs": 110,
+    "moteHoldMs": 625,
+    "moteLifeMs": 750,
+    "moteLifeSpread": 300,
+    "arrivalMs": 400
+  },
   "warp": {
     "durationMs": 6000,
     "warpSpeed": 1,

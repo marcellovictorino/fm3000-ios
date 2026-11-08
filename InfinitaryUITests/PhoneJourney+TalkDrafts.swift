@@ -72,9 +72,14 @@ extension PhoneJourney {
         focusForPhoneTyping(input, in: app); input.typeText("Keep this unsent draft")
         _ = try await home("read-only")
         reach("In reach", timeout: 20)
+        // While the phone redials, its words still say In reach and changes wait for contact, so neither shows the phone has
+        // heard the newer home; the refusal line does, so it is waited for before the send button is read (phone run
+        // 42180903041 read it once, mid-redial, and found no line).
+        let refusal = app.staticTexts["connection-refusal"]
+        XCTAssertTrue(refusal.waitForPresence(timeout: 20), "A home past the phone's floor refuses its changes")
         XCTAssertFalse(app.buttons["send-message"].isEnabled, "A version-mismatched view can read but cannot act")
         // INF-1649: the line names the side to update; a home past the phone's floor means this phone.
-        XCTAssertEqual(app.staticTexts["connection-refusal"].label, "Update Infinitary on this phone to make changes.")
+        XCTAssertEqual(refusal.label, "Update Infinitary on this phone to make changes.")
         verifyPhoneComposerBounds(app: app)
         picture("read-only-draft")
         // INF-1649, the captain's direction A: a newer home whose major kept views answers this phone in full.
