@@ -81,3 +81,39 @@ struct PhoneFrame: Sendable {
     func conversation() throws -> PhoneConversationState { if case .conversation(let value) = payload { return value }; throw PhoneError.invalidReply }
     func lastTurn() throws -> PhoneLastTurn? { if case .lastTurn(let value) = payload { return value }; throw PhoneError.invalidReply }
 }
+
+/// INF-2832 (`frame-parts`): a frame longer than one piece comes as a `parts` message naming its length in UTF-8
+/// bytes, then whole text messages, each a piece of the frame's text, that add up to it, with nothing between them.
+/// The session hears each part as it arrives, so an answer still arriving is never taken for one that is stuck.
+struct PhoneParts {
+    private var owed = 0
+    private var have = 0
+    private var gathered: [String] = []
+
+    /// One message as it arrived: the frame it is or completes, or nil while a frame's parts are still arriving.
+    /// Throws on a `parts` message naming no length or too long a one, and on parts that run past the length named.
+    mutating func read(_ text: String) throws -> String? {
+        guard owed > 0 else {
+            guard let bytes = try Self.header(text) else { return text }
+            owed = bytes
+            return nil
+        }
+        gathered.append(text)
+        have += text.utf8.count
+        guard have >= owed else { return nil }
+        defer { owed = 0; have = 0; gathered = [] }
+        guard have == owed else { throw PhoneError.invalidReply }
+        return gathered.joined()
+    }
+
+    /// The length a `parts` message names, or nil when `text` is no such message; no `parts` message is longer.
+    private static func header(_ text: String) throws -> Int? {
+        guard text.utf8.prefix(65).count <= 64,
+              let object = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any],
+              object["t"] as? String == "parts" else { return nil }
+        guard let bytes = object["bytes"] as? Int, bytes > 0, bytes <= PhoneContract.maxFrameBytes else {
+            throw PhoneError.invalidReply
+        }
+        return bytes
+    }
+}

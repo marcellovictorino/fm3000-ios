@@ -32,10 +32,12 @@ The Mac's identity is that pin, not the self-signed certificate's name or dates.
 `PinnedTransport` uses an ephemeral URLSession, TLS 1.3, the phone's client identity and the exact saved or scanned server pin, with no cookies, credential store, proxy configuration, cache or redirects.
 The app turns off iOS's transport security (`NSAllowsArbitraryLoads`), because iOS counts a Tailscale address (`100.64.0.0/10`) as not local and fails the Mac's self-signed certificate there even after the pin matches (INF-1903); `NSAllowsLocalNetworking` would bring that failure back, and iOS ignores `NSAllowsArbitraryLoads` beside it.
 `PinnedTransport` is the app's only URL session, and card web views load only local content.
+The app's usage events (`PhoneDiagnostics`) go over that same connection to its own Mac, which sends them under the Mac's Diagnostics switch (`docs/sharing.md`, "A phone's events"); the phone reaches no other server and shows nothing about them.
 An App Store submission or external TestFlight build must give Apple a written reason for that setting: the app trusts only the Mac's pinned key, over TLS 1.3 with the phone's own key, and no narrower setting can name a person's own Tailscale address.
 `PhoneTransportSecurityTests` joins and reconnects at `127.1`, a loopback form iOS also counts as not local, under the app's own Info.plist.
 Pairing has short request deadlines; the socket uses a separate configuration with no request deadline of its own, since that timer also cut a message still arriving after 60 seconds, so the session's silence watch and dial limit own a connection's deadlines.
-The home's own heartbeat still bounds a slow link: its ping waits behind whatever it is sending, so a catch-up that takes more than about 30 to 60 seconds to arrive is cut by the home, not the phone.
+The home paces what it sends and pings after every piece (`docs/connection.md`, "Pacing and liveness"), so it keeps a phone on a slow link while a long catch-up arrives, and answers the phone's own pings during it.
+The phone cannot see a message still arriving, so its hello lists `frame-parts` and the home sends it any frame longer than one piece as parts, each a whole message the phone hears as it arrives (`PhoneParts`; `docs/connection.md`, "Pacing and liveness"): an answer that takes minutes to arrive, such as a grown card list read whole at 1 KB/s, keeps its connection.
 A join sends the invitation's kind and `system: "ios"`; the Mac returns HTTP 201 and kind `view` regardless of that invitation's computer kind.
 Before spending the invitation, a pinned, non-mutating `GET /connection` must return 426 from a reachable candidate.
 Private IPv4 candidates in `100.64.0.0/10` come first, followed by local names and addresses; an unavailable preflight, including a timeout, may try the next candidate.
@@ -105,7 +107,7 @@ The feed owner exports `FEED_EVENT_TYPES`, with its authoring switch checked exh
 A gap in numbering drops the cursor and reconnects rather than silently losing updates.
 Successful frames and pongs update the last-heard time.
 A connection is cut for silence, never because an answer is slow (INF-2668): quiet for `ReadOnlySession.patience` (the captain's 20 s, two missed pings) while nothing is awaited, or for `ReadOnlySession.answerWait` while the welcome or a read is out, since a pong waits behind an answer on its way.
-URLSession's WebSocket reports no bytes before a whole message arrives, so silence is measured in frames and pongs; a read the computer leaves unanswered that long while it sends nothing else, and a Leave unanswered for 15 s, cut it too.
+URLSession's WebSocket reports no bytes before a whole message arrives, so silence is measured in frames, parts of a frame and pongs; a read the computer leaves unanswered that long while it sends neither a frame nor a part, though it answers every ping, and a Leave unanswered for 15 s, cut it too.
 The phone works out its preferred address order once a connection first reaches its address, not on every frame (INF-2773).
 Each round dials every saved and nearby address together (INF-2157): private IPv4 candidates first and the rest a quarter second later (`ReadOnlySession.privateLead`, RFC 8305's attempt delay), so the private network wins when both answer.
 The first attempt whose WebSocket opens (`PinnedTransport.opened`, after the pinned TLS, the phone's key and the upgrade) is kept and greeted; the others are closed before any hello, so each round makes one welcomed connection.
@@ -120,7 +122,7 @@ Reopening the app, or a change of network once the path has kept still for `Phon
 A kept connection that does not answer in time but is still receiving is answering, so the check goes on from the last thing it heard; one silent for a whole window is doubted, never cut at once: the phone dials a replacement and cuts the kept connection only once the replacement opened, unless the kept one is heard first.
 A replacement that does not open leaves the kept connection to the watchdog, and the next reopen checks it again.
 `PhoneReopenTests` reopens against the test home through a route that goes silent under a kept connection, and during a wait between rounds.
-`PhoneWeakLinkTests` holds INF-2666's seven checks of a weak link through the test home's relay, which can slow, delay, stall and drop the path or take it away (`relay-shape`, `relay-stall`, `relay-drop`, `relay-offline`, `relay-online`, `relay-readings`).
+`PhoneWeakLinkTests` holds INF-2666's seven checks of a weak link, INF-2669's catch-up of four card lists and the task board pushed with each, sized so none takes over about 20 s and the whole takes 80 to 90 s (`heavy-away`), and INF-2832's reload whose card list of over 80 KB takes about a minute to arrive (`heavy-card`) beside a read the home holds unanswered, still cut 40 s after it was asked (`hold-card-action`), through the test home's relay, which can slow, delay, stall and drop the path or take it away (`relay-shape`, `relay-stall`, `relay-drop`, `relay-offline`, `relay-online`, `relay-readings`).
 The app keeps only its in-memory view while out of reach and shows its last-heard time.
 Out of reach is said once, by the reach line under the top bar with the time the computer was last heard; the message capsule and a card's reply row dim, and `changesOffLine` puts the Mac's own words (`changesOffWords`, `src/renderer/src/devices/viewWords.ts`) under the message box.
 `ReadOnlySession.returns` counts the times the computer came back in reach after the reach line said Out of reach, so the app marks a return without mistaking a redial the line never showed, or the ordinary reconnection when it opens, for one.
@@ -132,6 +134,7 @@ Each reconnect gives the saved and nearby private IPv4 candidates their head sta
 The authenticated welcome may carry `addresses`, which refreshes the saved alternatives without changing the phone identity or home pin, erasing local fallbacks or interrupting the working socket.
 An older home that omits the field leaves the saved alternatives unchanged.
 The computer sheet displays the last authenticated address actually reached, separately from the saved preference; before any successful connection it shows no reached address.
+The session records that address in the same step that turns the connection In reach, so nothing reads In reach beside the previous connection's address while the catch-up's reads are still being sent (`PhoneWeakLinkTests`).
 
 Leave is available in reach and asks for confirmation, sends the connection's Leave frame, waits for removal and forgets the saved Mac.
 Out of reach, **Forget this computer** asks for confirmation and clears the saved Mac and pin locally without claiming the Mac removed the phone.
@@ -159,6 +162,7 @@ The body's web view never scrolls, zooms or adds insets of its own; it takes its
 Until the body reports drawn, its web view is a 48-point placeholder that clips the body, so native code keeps the web view one closed accessibility element that takes no taps until it has laid the view out at the body's height.
 The page itself never hides the body: on iOS 27.0, a frame hidden from accessibility inside the page stays hidden after it is shown (INF-1651).
 Native code reveals the body from the web view's own layout once its bounds hold the drawn height, never from the SwiftUI update that reads it, which runs before that layout; the footer choices enable at the same moment (INF-1574).
+A body built behind another tab loads its page only once its web view reaches a window: WebKit suspends a hidden view's process, and a page that began loading there reported drawn about half a minute after its tab showed again.
 The page tells the body's bridge that its pictures can arrive late (`latePictures` on `initialize`), so the body reports drawn once the fonts its layout asked for are in.
 WebKit's `document.fonts.ready`, which the bridge waits for otherwise, resolves only after the page's load event, and that waits for every picture; a picture waiting for its computer to come back in reach would keep the body's words clipped and out of accessibility (INF-1562).
 On a short stage, such as an iPhone on its side, where the pinned head and choices would take more room than the body keeps, the whole card scrolls in that one scroller instead.
@@ -226,7 +230,7 @@ The phone keeps recently closed cards in memory through `inf:cards:past` and als
 A past card has its last-seen body, saved answers, inert choices with the chosen one at full contrast and an accent edge, the words sent with that choice, its thread and Hide; it has no reply or mutation path.
 Its ending words are generated from `src/shared/pastCard.ts`, so the captain, first mate and crewmate keep their own attribution, alongside withdrawn, taken-down and duplicate endings.
 An evidence actor of `frame` is projected to the card’s typed author for those words; the stored ending stays unchanged.
-The same read accepts older past-card ids; the current Tasks record does not expose its cards.
+The same read accepts older past-card ids and opens a closed card from a task record's Cards tab.
 
 `CardWebHost` gives the shown body a nonpersistent WKWebView containing an opaque `sandbox="allow-scripts"` frame.
 The bundled parent uses the actual shared frame bridge, form readers, schemas, stylesheet and typefaces, generated by `node scripts/generate-phone-cards.ts`; no second form implementation exists in Swift.
@@ -342,6 +346,7 @@ While browsing, a scene-owned responder holds first-responder status and offers 
 Each crewmate and program answers touch across its 44-point square, not only the drawn circle.
 One UIKit view under the scene (`PhoneSceneTouches`) answers touch and accessibility from the frame the render thread last drew, read only when a touch or an accessibility query arrives, rather than a SwiftUI button laid out for each crewmate on every frame.
 A tap opens the crewmate the frame on screen at touch-down drew under the finger, from the last half second of drawn frames, because the crew keep moving on the render thread before the tap is recognized as the finger lifts.
+The touch-down is the one the tap recognizer receives as the finger lands, never the view's own: the scroller holds a touch back from the view, so a quick tap would be recognized before the view heard it land, and a drag the scroller takes over would leave its own landing for the next tap.
 Where two squares overlap, each point belongs to the nearer center (`PhoneTouchCell`), so a tap on a crewmate's own center always reaches it.
 Selection has an accent outline and an accessibility value; Tab brings it into view without relying on SwiftUI's platform-focus reporting.
 Escape, editing, a preview, a task record, leaving Home or backgrounding stops browsing and releases that responder, so the unmodified commands do not take over other controls.
@@ -349,7 +354,7 @@ Each crewmate retains the published tier, work posture, computer and review iden
 A crewmate whose task is in the phone's Waiting on you group wears the desktop's beacon, the ring that breathes round it, from the same generated numbers (`captain`), and holds it whole at mid light on a still frame (`docs/crew-orbits.md`, INF-1543).
 A crewmate's summary opens in the system's standard sheet (INF-1926): it is the desktop's crew summary in its words, order and marks at 14 points, the board row at once and then the task record's own read, polled each second while it is open.
 Like the desktop's, it stays short (INF-2528): the status keeps its short reason, Blocked by names keys only, and the footer is one row, the model with its intelligence badge, then the change with its checks as one state and its time (`#813 running for 11m`); a long model name ends in an ellipsis, and a review takes a second row.
-What it leaves out is on the native task record's Info: Waiting for with when each wait was recorded, the reasoning level with its note, and the checks with their counts and any reason they could not all be read.
+What it leaves out is on the native task record's Info, as the Mac's record shows it: each task it waits on, the reasoning level with its note, and the checks with their counts and any reason they could not all be read.
 `PhoneTaskFacts` in the shared package ports the desktop's facts (`taskFactsOf`, its status, checks and plan), and `PhoneTaskFactsTests` replays the desktop's own readings, recorded by `scripts/generate-phone-scene.ts`.
 The sheet closes the standard way, by a tap beside it, a swipe down or Escape, with no close mark; while it is open the scene stands still where it is, and the crewmate it describes wears the desktop's corner brackets.
 A running part, a blocker, the task a review checks or a part's program shows its own summary in the same sheet, and Open task swaps the sheet for the existing native task record.
@@ -382,27 +387,57 @@ Photos uses the system library picker, converts selected images to orientation-c
 Selected photos appear as removable chips; a send clears the box and its photos at the tap, and a refusal puts them back in front of anything typed since.
 Command-Return sends from either message field; native controls retain hardware-keyboard focus, VoiceOver and Dynamic Type.
 
-The Tasks tab combines a filter of the live board with the Mac’s earlier-task search.
-An unstarted task shows the home’s dated `queueWait` line below its title and record heading, without rewording it or deciding readiness on the phone.
-Its five groups and their labels come from `src/shared/nowPanel.ts`, generated as a finite native lookup so the phone does not own another grouping rule.
-The phone keeps active parent trees together, hides dropped rows and closed ordinary operations from the groups, and keeps them searchable.
-Each group's header is a micro uppercase label with its count, as on the Mac.
-Waiting on you, Working and Queued start expanded; Backlog and Done start collapsed, with counts and keyboard-reachable disclosure buttons.
-Each row is one line: status mark, key, title and then the project, with the newest task first inside each group and dividers inset past the mark.
-A card put aside on the Mac lists its task under Waiting on you by the Mac's `presentTask` rule, which `PhoneBoard.presenting` follows, and the generated lookup takes the minimized fact as its sixth input; a card with no task gets its own row titled by the card.
-A tap on such a row brings its cards back on every Mac and shows them on Home; any other row opens the task's record.
+The Tasks tab is the Mac's Tasks panel in a phone's hands (INF-2928, the captain's direction A): its groups, order, rows, search and tap are the Mac's (`src/panels/now/rows.ts`), ported in `PhoneTaskList`.
+Its five groups come from `src/shared/nowPanel.ts`, generated as a finite native lookup with seven inputs, so the phone does not own another grouping rule.
+The phone keeps a working parent and its live parts together, hides dropped rows and closed ordinary operations from the groups, and keeps them searchable.
+Only the groups with tasks show.
+Waiting on you, Working and Queued always show their rows, under a micro uppercase label with no count; Backlog and Done fold, start folded and show their count, and Backlog adds "· N could not start" and "· N new".
+Rows follow the Mac's order: priority, then oldest first, with Done newest closed first and a part indented under its parent in the same group, up to three levels.
+Each row shows the Mac's status mark (`PhoneTaskMark`), the key, the title and the Mac's one dim word: starting, could not start, checks, waiting, blocked, held or found on another task.
+A title takes up to two lines on an iPhone, which has no pointer to show the rest, and one on an iPad, as on the Mac.
+After the title a row names its project only when more than one project with a repository could be meant, then where the task runs and, when that computer cannot take work, out of reach or connecting.
+Only a Queued row shows the home’s dated `queueWait` line below its title, without rewording it or deciding readiness on the phone.
+The row words come from `src/panels/now/words.ts` through the generated `PhoneTaskRowWords`, and `PhoneTaskListTests` replays the desktop panel's own reading of one board, recorded by `scripts/generate-phone-scene.ts`.
+A card put aside on the Mac lists its task under Waiting on you by the Mac's `presentTask` rule, which `PhoneBoard.presenting` follows; a card with no task gets its own row titled by the card.
+A tap makes the Mac's four checks in order (`openTask`): a row whose task has cards put aside brings them back on every Mac and shows them on Home; a task whose card is ready on the stack shows that card on Home; a required step put off shows its card again through the Mac's `show-card` move; any other row opens the task's record.
+A first mate question is the one exception: its card shows no task key and the phone's cards have no Info tab, so its row opens its record, where Dismiss is.
+A search keeps the groups, opens every one, matches the title or the key as the Mac's does, and adds Earlier with the Mac's older closed matches, newest closed first.
 The search waits above the list until the list is pulled down from its top, as the Mac's waits behind its icon.
 Find a task (Shift-Command-F, the Mac's key) opens it with the caret in the field; Close search, or Escape on an empty field, puts it away.
 VoiceOver cannot pull past the top of a list, so the search is always shown while it runs.
-A record shows the goal, captain’s words, progress, latest report, what it waits for, model, reasoning, checks and timeline; its Crewmate section reads the redacted session and live words from their Mac owners.
-The timeline's events sit on a hairline rail in caption size, each time right-aligned.
+A long press on a row stands in for resting the pointer on the Mac's row (INF-2928 piece 3, the captain's pick): it shows the task's crew summary with the row's moves under it.
+The summary keeps the width the Mac gives it there (`CREW_HOVER.maxWidthPx`), never wider than the list, and shrinks whole when an iPad gives it less room beside the menu.
+The moves are the Mac's task board menu for that row (`boardMenuOf`, `src/panels/now/boardMoves.ts`): Open record, Show the card while a decision waits, Continue on interrupted work, Queue it or Back to backlog and Start now on open work, Back to backlog on started work, then Drop task last.
+Each move names what it does, or stays dim with the Mac's reason it cannot run, and the computer checks it again when it runs.
+As on the Mac's board, Back to backlog runs at once, Queue it runs at once or asks once when the task could start at once, and Start now and Drop task ask once.
+A never-started task's Drop task asks in the record's words, from the effects its record lists when it is pressed; Start now and Continue show the task starting at the tap, as the record's Start does.
+A row the Mac's board has no menu for, Done and Dropped among them, offers Open record alone, so its summary is still a long press away.
+A refused move says why in the change notice, or on the list's own line on an iPhone on its side.
+A swipe toward the leading edge on a Backlog row shows the Mac's row Start (`rowStartOf`) at the trailing edge: Start, or Try again after a start that failed.
+One press starts the task with no ask, as on the Mac, and the row shows Starting at the tap; a Start that cannot run stays dim and the Mac's reason shows under the row.
+A tap on a row held open closes its Start instead of opening the task.
+`PhoneRowMoves` in the shared package ports these rules, their words come from their Mac owners through the generated `PhoneRowMoveWords`, and `PhoneRowMovesTests` replays the Mac board's own readings, recorded by `scripts/generate-phone-scene.ts`.
+The task record follows the Mac's record card (INF-2928 piece 2, the captain's direction A) and opens as a sheet, as before.
+Its top row is the Mac's status pill, with the Tasks list's mark and word, then the pill's reason in its tone and the key; the title sits under it.
+While a start is in flight the record says Starting with no wait line under it, as the Mac's host leaves the start wait out.
+Its tabs are the Mac's: Info, Cards with its count, Activity and Crewmate, each shown only when the Mac shows it; a task with only Info shows none.
+Info follows the Mac's order: what needs attention, a charted filing's Why, how a closed task closed, then Part of, Waits on, Holds up and Parts, each key opening that task's record in the same sheet.
+The goal follows with the captain's words folded under it, then Project, Now and Progress, the row of facts (Model, Reasoning, the pull request with its checks, Review, Delivery and Runs on) and a closed More with the crewmate, the branch and the task's policies.
+Cards lists every card the task showed, newest first: an open card shows on Home, one put aside comes back first, and a closed one shows as a past card.
+Activity takes the old timeline's place: the task's activity oldest first, the last eight with Show earlier for the rest, each row with its age, its words, the task it came from and the events folded under it.
+Info, Cards and Activity end with the Mac's record bar (`recordBarOf`): Drop task, or Dismiss for a first mate question, at the leading edge, and Start, Try again, Starting, Start again, Continue, Show the card or Done at the trailing edge.
+Drop task asks once in the Mac's words before it drops, naming the tasks still waiting on the work and the ones already working, and says why instead when the record changed or a part is still open.
+Show the card asks the Mac to show it again, then takes the captain to Home with that card.
+The Crewmate tab reads the redacted session and live words from their Mac owners and ends with the Mac's status line: Working with how long the turn has run and Stop, Paused while the captain holds its browser, Waiting on you or Idle.
+The message box sits under that line; a closed task shows its session as it ran, with no message box.
+As on the Mac, the tab opens at its end and follows it while the captain reads there, keeping the newest line in sight as the keyboard shortens it, and stays where the captain scrolled otherwise.
+`PhoneRecord` in the shared package ports the record's rules, its words come from their Mac owners through the generated `PhoneRecordWords`, and `PhoneRecordRulesTests` replays the Mac record's own readings, recorded by `scripts/generate-phone-scene.ts`.
 The open record refreshes once a second, as the desktop transcript does, and no hidden record polls.
-Start and Continue come only from the Mac’s `moves`; Steer and Interrupt use the existing captain-owned task channels, never a phone worker.
-Interrupt stops a running turn and keeps its task idle and steerable; Continue is offered only when the Mac marks a task Interrupted, such as after recovery.
-The record's actions sit at its foot in a card's footer row: Start or Continue filled with the accent, and Interrupt outlined beside it.
-The crewmate message box above them is a capsule whose arrow sends the steer.
+Start, Try again, Continue and Start again use the Mac's own moves; Stop and Steer use the existing captain-owned task channels, never a phone worker.
+Stop ends a running turn and keeps its task steerable; Continue is offered only when the Mac marks a task Interrupted, such as after recovery.
+Unlike the Mac's, the record stays open after Start, Start again, Drop task and Stop, since it already shows their result.
 Tool results open on demand through their published read.
-Task cards, browser pages and rich transcript pictures remain outside this piece.
+Browser pages, Move to a computer, Knowledge used, Why this model and rich transcript pictures remain outside this piece.
 
 A mutation requires both **In reach** and the welcome’s `full` access.
 The phone connects as a view, and its hello says its build's view floor (`viewFloor`, generated from the published contract), so it keeps changing things across majors that kept views, in both directions (`docs/contract.md`, "The version rule").
@@ -417,9 +452,10 @@ The session (`ReadOnlySession`) keeps the computer's last snapshots untouched an
 A close or a choice takes the card off Home and the next card is up; putting a card aside moves it to its task row, and bringing cards back puts them on Home with the first one up.
 A reply joins the card's thread marked Sending… where its time will be, and the draft and photos clear.
 A message clears the box and stands as the last turn, marked Sending… until the computer has it.
-Start and Continue read Starting on the record and its row, Interrupt reads Stopping, and a steer shows in the transcript marked Sending… as its draft clears.
+Start and Continue read Starting on the record and its row, Stop reads Stopping, and a steer shows in the transcript marked Sending… as its draft clears.
 An explicit Done or Dismiss shows its selected ending on the record and row at the tap, and settles only when the home's task reading carries the matching status and reason.
-Putting a decision aside predicts its minimized state, while putting a note away predicts its acknowledgement; neither predicts a task ending.
+Putting any card aside predicts its minimized state, and a note's own Got it, in its pinned row under the hairline, predicts its acknowledgement (INF-2794); neither predicts a task ending.
+With an older computer whose note corner still reads, the minus predicts that acknowledgement as before.
 A snapshot that holds the change retires its intent with nothing moving.
 A reply or a steer is held once the thread or transcript has more of the captain's messages than it showed at the tap, and a message once the last turn follows the one shown at the tap, since the computer writes the words its own way (trimmed, with a line for each picture).
 A snapshot whose card or task changed under the intent, such as a revised offer or a closed task, voids it quietly.
@@ -452,7 +488,7 @@ The phone and Mac need a network route to one another and a Mac build that accep
 Open **A phone** in the Mac app's Devices settings, scan or paste its link in the phone app, and confirm that Mac.
 The phone should show Home, Tasks and Activity in its top bar, its cards on Home, and the Mac's name with In reach in the computer's sheet behind the bar's right-hand button.
 Type a message or use keyboard dictation, attach a library photo, and confirm the last turn on the Mac.
-Open a task’s record to start or continue it, and its Crewmate section to steer or interrupt its running turn.
+Open a task’s record to start or continue it, and its Crewmate tab to steer or stop its running turn.
 TestFlight installation, camera scanning and the real Local Network prompt are the captain's checks on a physical phone.
 Someone working on the phone app can still run it on their own iPhone or iPad from `ios/Infinitary/Infinitary.xcodeproj` with the Infinitary scheme and their own development sign-in.
 Release signing runs only in the separately dispatched TestFlight workflow below.
@@ -537,7 +573,8 @@ Add `--ipad` for the iPad Pro 11-inch (M4); the default uses an iPhone 16.
 The gate refuses any other Xcode before it builds, and `scripts/phone-simulator.ts` refuses a Mac without that runtime, or one whose runtime does not support the device, naming the download that fixes it; it never takes a newer or older runtime in its place.
 Moving to a new pair is one pull request that edits the pin, after the virtual Mac image and every Mac that runs the check have the new pair.
 Add `--both` to run the checks and build once, then the iPhone and the iPad side by side; the evidence folder then holds the shared logs and an `iphone` and an `ipad` folder.
-The native journey is tests in `PhoneJourney`, one per part (`scripts/phone-test-plan.ts`): three join parts (`join-read`, `join-activity`, `join-away`), three talk parts (`talk-compose`, `talk-tasks`, `talk-drafts`), two relaunch parts (`relaunch-first`, `relaunch-second`), three cards parts (`cards-merge`, `cards-form`, `cards-media`), `address` (join by its address), `pick` (a card pager pick across a workspace redraw), `cards-revise` (a revision while the thread shows), two keyboard parts (`keyboard-pinned`, `keyboard-scrolling`: the message box and a card's reply with the keyboard up, INF-2568), and `rest`, which runs the character and past choices with the app-hosted tests and any test no other part names.
+The native journey is tests in `PhoneJourney`, one per part (`scripts/phone-test-plan.ts`): three join parts (`join-read`, `join-activity`, `join-away`), three talk parts (`talk-compose`, `talk-tasks`, `talk-drafts`), two relaunch parts (`relaunch-first`, `relaunch-second`), three cards parts (`cards-merge`, `cards-form`, `cards-media`), `address` (join by its address), `pick` (a card pager pick across a workspace redraw), `cards-revise` (a revision while the thread shows), two keyboard parts (`keyboard-pinned`, `keyboard-scrolling`: the message box and a card's reply with the keyboard up, INF-2568), `weak-link` (the app-hosted `PhoneWeakLinkTests` class alone), and `rest`, which runs the character and past choices with the other app-hosted tests and any test no other part names.
+The weak link checks wait out real slow links, outages and silences, about five minutes a device, so they take a part of their own rather than doubling the rest part, and a change to the other app-hosted tests does not repeat them (INF-2989).
 Each part's test, with the steps only it takes, is in a file of its own beside `InfinitaryUITests/PhoneJourney.swift`, named for the part (`PhoneJourney+JoinRead.swift` for `join-read`, `PhoneJourney+Rest.swift` for `rest`).
 `PhoneJourney.swift` keeps the class and the steps two or more parts share.
 INF-2125 (the captain's "Shared fixes, then short parts") split the join, talk, relaunch and cards parts into these short ones, so a check of only the parts a change reaches can run the closest alone; every check stays, in the part it belongs to.
@@ -549,6 +586,13 @@ A run that is killed, by a task stop or a restart, never reaches its own cleanup
 It deletes each simulator named `Infinitary isolated test`, shut down or booted, and each `infinitary-native-` scratch folder in its temporary folder that came into being before the earliest phone check process still running began.
 A gate makes both only after its process starts, so a running check's simulator and folder are never touched, nor a person's own simulator or another prefix's folder; the reading needs no record or age, so leftovers of runs before the sweep go the same way.
 It reads the process list itself, never through the command log the evidence keeps, and a removal that fails is reported while the gate goes on.
+Before its first simulator starts, each gate removes the pinned runtime's folder under `/Library/Developer/CoreSimulator/Caches/dyld/<Mac build>/` when that folder holds no cache (`removeEmptyPhoneSharedCache` in `scripts/phone-simulator.ts`, INF-2445).
+On the phone check's virtual Mac, which runs macOS 26.6, an obsolete cache build left that folder holding only its warning that the runtime ships its own cache.
+CoreSimulator still names such a folder as the simulator's cache folder: the simulator's processes fall back to the runtime's own cache, but its log never stores that cache's words.
+The kept log then writes `<compose failure [shared UUID]>` for every message whose words live in the shared cache, SpringBoard's appearance line, the text-size lines and UIKit's lines among them, so no recovery from the kept log can read them.
+Without the folder the simulator uses the runtime's own cache and stores its words within a minute of starting.
+`xcrun simctl runtime dyld_shared_cache remove` takes the folder away without administrator rights; a folder that holds a cache stays, and a Mac with no such folder runs nothing.
+A removal that fails, or leaves the folder, is printed while the gate goes on, and the observers then have only their live logs and the unreadable-record rule below.
 A part's results are in its own folder, inside the device's folder with `--both`, and `--part` runs only the named parts.
 A `--both` run of every part writes each part's minutes on each device to `part-times.json` in the evidence folder, a record no workflow reads since INF-2539 removed the pull request's part budget.
 The build is `xcodebuild build-for-testing` for any simulator, and each part runs `test-without-building` from a copy of the built test plan that names its own test home and selects its tests.
@@ -558,8 +602,8 @@ It is `INFINITARY_PHONE_PACKAGE_CACHE` when set, otherwise inside the gate's scr
 `phone.yml` sets it outside that folder and restores it from the newest save of `main`, matched on both package lockfiles; only a run of `main` with no exact match saves it, since a pull request reads its base branch's saves and never another pull request's.
 Any part failing fails the gate.
 Local runs stop at their first failed part by default, so a failed repeat ends after cleanup and returns its load-line place rather than running the remaining parts (INF-2014).
-With this default or `--stop-early`, which `phone.yml` sets through `INFINITARY_PHONE_STOP_EARLY=1` for a complete branch selection, the first failed part ends the part still running on the other device, as an interrupted part does, and starts no other; every started simulator is still deleted, and the gate names the failed, stopped and unstarted parts and writes no `part-times.json`.
-Set `INFINITARY_PHONE_STOP_EARLY=0` for deliberate full-discovery local runs; CI defaults to full discovery, and a workflow run on request sets `0` explicitly to run every part to its end.
+With this default or `--stop-early`, which `phone.yml` sets through `INFINITARY_PHONE_STOP_EARLY=1` for a complete branch selection and for any request with edited-part passes (INF-2811), the first failed part ends the part still running on the other device, as an interrupted part does, and starts no other; every started simulator is still deleted, and the gate names the failed, stopped and unstarted parts and writes no `part-times.json`.
+Set `INFINITARY_PHONE_STOP_EARLY=0` for deliberate full-discovery local runs; CI defaults to full discovery, and any other workflow run on request sets `0` explicitly to run every part to its end.
 Every explicit native observation goes through `InfinitaryUITests/PhoneWaits.swift`: element presence and absence, predicate reads and the disposable home's control requests.
 `PhoneJourney.appearances` observes screenshot pixels before attaching each light/dark pair and before returning from its light restoration (INF-1537).
 These fixtures have broad near-white or near-black surfaces: every screen quadrant's mean sRGB brightness must be on the requested side of the black/white midpoint, so an idle app or a dark card alone cannot stand in for a drawn dark screen.
@@ -726,7 +770,7 @@ The picker logs `performAllAnimations for animator: <_UIContextMenuAnimator` as 
 The existing broad simulator log also feeds its `onLine` readings into that same preview validator, because it can retain a Photos response the narrow stream dropped (INF-2305).
 Its compact header uses the runner's local time zone and is normalized to an explicit timestamp before validation.
 When neither live source has supplied that witness, the same observer reads the owned simulator's kept log once inside its original wait, as the touch observer does.
-On the phone check's virtual Mac that kept log cannot spell out messages whose words live in the simulator's shared cache, UIKit's among them, and writes `<compose failure [shared UUID]>` in their place, with the process, subsystem, category and time intact (INF-2444).
+A kept log that cannot spell out messages whose words live in the simulator's shared cache, UIKit's among them, writes `<compose failure [shared UUID]>` in their place, with the process, subsystem, category and time intact (INF-2444); the gate removes the empty cache folder that caused this on the phone check's virtual Mac (INF-2445), and the rule below stays for any Mac where that removal fails.
 So the observer also selects the picker's records in UIKit's context-menu category (`com.apple.UIKit`, `UICMILifecycle`), and counts the first such unreadable record after the press as that line: the category logs only while a context menu animates, and none is open as the press begins.
 A readable record of that category counts only when it is the line itself.
 All sources require the same Photos process, context-menu line or its unreadable record, and timestamp after the press began; a stopped observer, failed read or missing witness authorizes no touch.
@@ -765,6 +809,7 @@ The app's read of the new size applies the change, even when it is logged in the
 A read of the old size after the save proves the app missed it, and only that proof sets the size once more; two proven misses fail the part.
 A missing line or a stopped observer is unknown and sets nothing more.
 A live log stream can drop a line the simulator's kept log holds, so before a witness answers unknown the runner reads the kept log since the change for it (INF-1799).
+All three lines come from the simulator's shared libraries, so that read spells them out only when the simulator stored its shared cache's words, which the gate's removal of an empty cache folder ensures (INF-2445).
 Every witness of one display request stops waiting at the journey's request cap less two minutes, one for that read and one for the request's way there and back (`phoneDisplayDeadline`), so the journey always hears the unknown before its own request ends.
 An appearance SpringBoard misses leaves no line, and the simulator writes nothing when asked for the appearance it already has, so the runner sets each appearance once and prints one it could not confirm.
 A text size the part already asked for changes nothing for the app to read, so the runner sets it again and answers unchanged without a witness (INF-2052).
@@ -809,7 +854,7 @@ The runner waits for simulator boot completion before launching tests and uses o
 
 For interactive local development, `node scripts/phone-test-home.ts <output-json-outside-the-project>` keeps the same disposable real-core home open until interrupted.
 The output names its control address and scratch root, and is private to that run.
-`phone.yml` runs this same gate with `--both` for changes touching `ios/` or the phone-card or phone-contract generator and the contract shape guard.
+`phone.yml` runs this same gate once per device, each in its own job, for changes touching `ios/` or the phone-card or phone-contract generator and the contract shape guard.
 A pull request no longer starts it (INF-2139): a crewmate whose change selects it requests it on its branch with `affected: "true"`.
 INF-2539 removed its pull request selection; the phone release (`ios-release.yml`) runs every part, and main runs no phone check (INF-2492).
 The gate's own setup also selects it: `phone.yml`, `scripts/test-phone.ts`, `tests/helpers/phoneHome.ts`, `tests/helpers/phoneKeyboard.ts`, its activity writer `scripts/phone-activity.ts`, its leftover sweep `scripts/phone-leftovers.ts`, its check runner `scripts/phone-checks.ts` and its test plan helper `scripts/phone-test-plan.ts`.
@@ -864,7 +909,8 @@ The fleet must serve that label only from the two vBoxx virtual places, never th
 The one native job, `native-phone`, requires that mapping with no per-run override, fixed-clone switch or generic-Mac fallback.
 An absent, empty or malformed mapping supplies no runnable destination instead of redirecting to the mini.
 The other nine queue mappings and the generic Mac labels remain unchanged for non-phone jobs.
-Each guest runs `scripts/test-phone.ts --both --simulators 1` directly for a request, completing one device's lane and deleting its simulator before starting the other (INF-2101); each of the unsigned TestFlight call's two device calls runs one device with `--simulators 1`.
+Each guest runs `scripts/test-phone.ts --simulators 1` directly for one device, the iPad (`--ipad`) or the iPhone (INF-2101).
+A request runs each device in its own job (INF-2970's fix 1), and the unsigned TestFlight call runs each in its own call (INF-2582).
 The ordinary request and the unsigned TestFlight call use the same gate and failure behavior.
 The rented places serve only this phone queue, not journeys, signing, publishing, installer checks or borrows.
 `tests/phone-pool-isolation.test.ts` evaluates the workflows with configured queues and both release modes, allowing only the native phone job there and refusing secret reads.

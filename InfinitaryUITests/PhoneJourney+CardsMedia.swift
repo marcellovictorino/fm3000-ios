@@ -199,11 +199,16 @@ extension PhoneJourney {
             XCTAssertTrue(cardHeading(second).waitForAbsence(timeout: 10), app.debugDescription)
             showCard(note)
         }
-        // A close the computer still holds has already taken the card off Home.
-        _ = try await home("hold-card-action", body: #"{"channel":"inf:cards:close"}"#)
-        tapOnPhone(app.buttons["put-aside-card"])
+        // INF-2794: the note's own Got it sits in the pinned row under the hairline and reads it; a press the
+        // computer still holds has already taken the card off Home.
+        let gotIt = app.buttons["note-done"]
+        XCTAssertTrue(gotIt.waitForPresence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(gotIt.label, "Got it")
+        picture("note-got-it")
+        _ = try await home("hold-card-action", body: #"{"channel":"inf:cards:note-done"}"#)
+        tapOnPhone(gotIt)
         _ = try await home("card-action-held")
-        XCTAssertTrue(cardHeading(note).waitForAbsence(timeout: 10), "A close shows at the tap, before the computer answers")
+        XCTAssertTrue(cardHeading(note).waitForAbsence(timeout: 10), "Got it shows at the tap, before the computer answers")
         _ = try await home("release-card-action")
         let closed = try await home("card-state", method: "GET")
         XCTAssertNotNil(closed["note"] as? [String: Any])
@@ -266,7 +271,8 @@ extension PhoneJourney {
         tab("Tasks")
         let restore = app.buttons.matching(identifier: "minimized-card").matching(NSPredicate(format: "label == %@", heroTitle)).firstMatch
         XCTAssertTrue(restore.waitForPresence(timeout: 10), app.debugDescription)
-        XCTAssertLessThan(app.buttons["group-waiting"].frame.minY, restore.frame.minY, "It is listed under Waiting on you")
+        // INF-2928 piece 1: Waiting on you always shows its rows, so its header is a label, not a button, as on the Mac.
+        XCTAssertLessThan(app.staticTexts["group-waiting"].frame.minY, restore.frame.minY, "It is listed under Waiting on you")
         picture("tasks-minimized")
         if UIDevice.current.userInterfaceIdiom == .phone {
             // INF-2553: on an iPhone on its side, a bring-back the computer refuses puts the card aside again and says

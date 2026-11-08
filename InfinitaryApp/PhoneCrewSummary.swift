@@ -4,49 +4,32 @@ import SwiftUI
 /// INF-1926, the captain's pick: a crewmate's summary in the system's standard sheet. It is the desktop's crew summary
 /// (src/renderer/src/character/crew/CrewSummary.tsx and design/core/TaskFacts.tsx) in its words, order, marks and
 /// measures, at the chosen 14 points: the board row at once, then the task record's own read, live.
+/// INF-2928 piece 3: a long press on a Tasks row shows the same summary over the row's moves, as the Mac's Tasks panel
+/// shows it when the pointer rests on a row; there the menu under it holds Open record, so it draws no Open task.
 struct PhoneCrewSummary: View {
     let session: ReadOnlySession
     /// The board row; the record's read replaces it once it answers, as on the desktop.
     let task: PhoneTask
-    let roster: PhoneSceneRoster
+    /// The board's tasks, which name its blockers, the task it reviews, its program and a program's parts.
+    let tasks: [PhoneTask]
     /// Shows another task's summary in this sheet: a running part, a blocker, the task it reviews or its program.
-    let show: (PhoneTask) -> Void
-    let open: (PhoneTask) -> Void
-    let close: () -> Void
+    var show: (PhoneTask) -> Void = { _ in }
+    var open: (PhoneTask) -> Void = { _ in }
+    var close: () -> Void = {}
+    /// Drawn as a long press's preview: its whole height, with no Open task.
+    var preview = false
     @State private var read: (id: String, detail: PhoneTask?)?
 
+    /// The widest the Mac draws the summary when the pointer rests on a row (`CREW_HOVER.maxWidthPx` in
+    /// src/renderer/src/character/crew/hoverMeasures.ts), which a long press's preview keeps.
+    static let hoverWidth: CGFloat = 360
     private static let labelWidth: CGFloat = 66
     private static let labelGap: CGFloat = 10
     private static let rowGap: CGFloat = 6
 
     var body: some View {
-        let answered = read?.id == task.id ? read : nil
-        let shown = answered?.detail ?? task
-        let facts = PhoneTaskFacts(shown, modelName: { model in shown.modelLabel ?? Self.modelTail(model) },
-                                   unreadable: answered != nil && answered?.detail == nil)
-        ScrollView {
-            TimelineView(.periodic(from: .now, by: 60)) { timeline in
-                let now = timeline.date.timeIntervalSince1970 * 1000
-                VStack(alignment: .leading, spacing: 0) {
-                    head(facts)
-                    if let review = task.reviewOf { reviewing(review) }
-                    if let parent = task.parentId { partOf(parent) }
-                    if !task.blockedBy.isEmpty { blockedBy() }
-                    if task.program == true { parts() }
-                    rows(facts, now: now)
-                    if facts.model != nil || facts.delivery != nil { strip(facts, now: now) }
-                    PhoneChoiceRow {
-                        Button("Open task") { open(shown) }.buttonStyle(PhoneChoiceStyle(.secondary))
-                            .accessibilityIdentifier("open-crew-task")
-                    }.padding(.top, PhoneTheme.space4)
-                    // The standard sheet has no close mark; Escape closes it from a keyboard.
-                    Button("Close", action: close).keyboardShortcut(.cancelAction).hidden().frame(width: 0, height: 0)
-                }
-                .font(PhoneFont.summary).foregroundStyle(PhoneTheme.secondary)
-                .accessibilityElement(children: .contain).accessibilityIdentifier("crew-preview")
-                .frame(maxWidth: PhoneColumn.width, alignment: .leading).frame(maxWidth: .infinity)
-            }
-            .padding(.horizontal, 20).padding(.top, PhoneTheme.space5).padding(.bottom, PhoneTheme.space4)
+        Group {
+            if preview { summary.fixedSize(horizontal: false, vertical: true) } else { ScrollView { summary } }
         }
         .task(id: "\(session.contact)|\(task.id)") {
             guard session.contact == "in-reach" else { return }
@@ -63,6 +46,37 @@ struct PhoneCrewSummary: View {
                 do { try await Task.sleep(for: .seconds(1)) } catch { return }
             }
         }
+    }
+
+    private var summary: some View {
+        let answered = read?.id == task.id ? read : nil
+        let shown = answered?.detail ?? task
+        let facts = PhoneTaskFacts(shown, modelName: { model in shown.modelLabel ?? Self.modelTail(model) },
+                                   unreadable: answered != nil && answered?.detail == nil)
+        return TimelineView(.periodic(from: .now, by: 60)) { timeline in
+            let now = timeline.date.timeIntervalSince1970 * 1000
+            VStack(alignment: .leading, spacing: 0) {
+                head(facts)
+                if let review = task.reviewOf { reviewing(review) }
+                if let parent = task.parentId { partOf(parent) }
+                if !task.blockedBy.isEmpty { blockedBy() }
+                if task.program == true { parts() }
+                rows(facts, now: now)
+                if facts.model != nil || facts.delivery != nil { strip(facts, now: now) }
+                if !preview {
+                    PhoneChoiceRow {
+                        Button("Open task") { open(shown) }.buttonStyle(PhoneChoiceStyle(.secondary))
+                            .accessibilityIdentifier("open-crew-task")
+                    }.padding(.top, PhoneTheme.space4)
+                    // The standard sheet has no close mark; Escape closes it from a keyboard.
+                    Button("Close", action: close).keyboardShortcut(.cancelAction).hidden().frame(width: 0, height: 0)
+                }
+            }
+            .font(PhoneFont.summary).foregroundStyle(PhoneTheme.secondary)
+            .accessibilityElement(children: .contain).accessibilityIdentifier("crew-preview")
+            .frame(maxWidth: PhoneColumn.width, alignment: .leading).frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 20).padding(.top, PhoneTheme.space5).padding(.bottom, PhoneTheme.space4)
     }
 
     /// The host's own fallback when the catalog names no model: the id after its provider.
@@ -105,14 +119,14 @@ struct PhoneCrewSummary: View {
     }
 
     private func reviewing(_ builderID: String) -> some View {
-        let builder = roster.allTasks.first { $0.id == builderID }
+        let builder = tasks.first { $0.id == builderID }
         return keyRow("Reviewing", id: "crew-summary-reviewing") {
             if let builder { keyButton(builder.key, task: builder) } else { Text("another task").font(PhoneFont.micro) }
         }
     }
 
     @ViewBuilder private func partOf(_ parentID: String) -> some View {
-        if let program = roster.allTasks.first(where: { $0.id == parentID && $0.program == true }) {
+        if let program = tasks.first(where: { $0.id == parentID && $0.program == true }) {
             keyRow("Part of", id: "crew-summary-part-of") { keyButton(program.key, task: program) }
         }
     }
@@ -120,13 +134,13 @@ struct PhoneCrewSummary: View {
     /// Each blocker by its key only (INF-2528); when each wait was recorded is the task record's.
     private func blockedBy() -> some View {
         keyRow("Blocked by", id: "crew-summary-blocked") {
-            ForEach(task.blockedBy, id: \.self) { key in keyButton(key, task: roster.allTasks.first { $0.key == key }) }
+            ForEach(task.blockedBy, id: \.self) { key in keyButton(key, task: tasks.first { $0.key == key }) }
         }
     }
 
     /// A program's parts (INF-1037): the counts, one bar with each state's share, and each running part's key.
     @ViewBuilder private func parts() -> some View {
-        let parts = roster.allTasks.filter { $0.parentId == task.id && $0.kind == "work" && $0.reviewOf == nil && $0.status != "dropped" }
+        let parts = tasks.filter { $0.parentId == task.id && $0.kind == "work" && $0.reviewOf == nil && $0.status != "dropped" }
             .sorted { $0.createdAt == $1.createdAt ? $0.key < $1.key : $0.createdAt < $1.createdAt }
         let finished = parts.filter { $0.status == "done" }.count
         let running = parts.filter { $0.status == "active" }
@@ -282,14 +296,14 @@ struct PhoneCrewSummary: View {
 }
 
 /// An uppercase micro label in the desktop's tracking.
-private struct PhoneFactLabel: View {
+struct PhoneFactLabel: View {
     let text: String
     var body: some View {
         Text(text).textCase(.uppercase).font(PhoneFont.label).tracking(1).foregroundStyle(PhoneTheme.muted)
     }
 }
 
-private struct PhoneFactAge: View {
+struct PhoneFactAge: View {
     let words: String
     var body: some View { Text(words).font(PhoneFont.micro).foregroundStyle(PhoneTheme.muted).fixedSize() }
 }
@@ -343,7 +357,7 @@ struct PhoneTaskMark: View {
 }
 
 /// FactDot: a fact cell's state at 10 points - a disc with a tick, cross or bang, or a ring.
-private struct PhoneFactDot: View {
+struct PhoneFactDot: View {
     let state: String
 
     var body: some View {
@@ -376,7 +390,7 @@ private struct PhoneFactDot: View {
 }
 
 /// SlotBadge: the intelligence level as four rising bars and its word, in the level's own color.
-private struct PhoneSlotBadge: View {
+struct PhoneSlotBadge: View {
     let slot: String
 
     var body: some View {
@@ -435,7 +449,7 @@ private struct PhonePlanDots: View {
 }
 
 /// PlanMark as a dot: filled when done, lit when current, hollow when next, a dash when skipped.
-private struct PhonePlanMark: View {
+struct PhonePlanMark: View {
     let state: String
 
     var body: some View {

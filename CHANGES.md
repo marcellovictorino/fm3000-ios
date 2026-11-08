@@ -33,7 +33,7 @@ Each entry says the PR, what changes for you, why, and whether the original app 
 
 ## Tasks
 
-- **PR #4.** A Board/List switch (opens on Board, remembers the last view) and project pills that filter both views. The board is read only, with the desktop's columns, and works in landscape. Files: new `InfinitaryApp/PhoneTaskBoard.swift`, edits to `InfinitaryApp/PhoneTasks.swift`.
+- **PR #4.** A Board/List switch (opens on Board, remembers the last view) and project pills that filter both views. The board is read only, with the desktop's columns, and works in landscape. Files: new `InfinitaryApp/PhoneTaskBoard.swift`, edits to `InfinitaryApp/PhoneTasks.swift` and `InfinitaryKit/Sources/InfinitaryKit/PhoneTaskList.swift` (a `filtered(keep:aside:)` method that narrows the list to one project).
   - **Changes for you:** see where every task stands at a glance, as on the desktop, and narrow either view to one project.
   - **Why:** see where every task stands at a glance, as on the desktop, and narrow it to one project.
   - **In the original app:** the phone Tasks screen is a list grouped by state, with the project name on each row and no board and no project filter.
@@ -85,3 +85,4 @@ These came before the rebuild in PR #3 and are not in this tree. The rebuild rep
 
 - **0.6.2-alpha.115.** Imported by hand in `d858c43`. Recorded as a merge in `880f01c` (tree kept as it was), so the upstream branch is an ancestor of this branch.
 - **0.6.3-alpha.191.** Merged in `c78aceb`; one conflict, in `InfinitaryApp/PhoneTasks.swift`, resolved as the Tasks entries above describe.
+- **0.6.4-alpha.337.** Imported with `scripts/sync-upstream.sh`, linked with `git merge -s ours` on the 0.6.3-alpha.191 import, then merged; one conflict, in `InfinitaryApp/PhoneTasks.swift`. Upstream's rewritten Tasks list (groups, row moves, task record) is taken whole, and the Board/List switch, project pills and board are re-attached around it. Pairing with a Mac on contract 14 is not tested.

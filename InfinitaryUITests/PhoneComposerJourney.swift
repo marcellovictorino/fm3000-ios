@@ -26,7 +26,7 @@ import XCTest
     for name in ["Tasks", "Activity", "Home"] {
         tab(name)
         let surface = name == "Activity" ? app.scrollViews["activity-list"]
-            : name == "Tasks" ? app.buttons["group-waiting"] : app.scrollViews["card-scroll"]
+            : name == "Tasks" ? phoneTasksColumn(app) : app.scrollViews["card-scroll"]
         XCTAssertTrue(surface.waitForPresence(timeout: 10), "The requested tab actually opens")
         XCTAssertTrue(waitForPhonePress(surface))
         if name != "Activity" { verifyPhoneReadingColumn(surface, column: column) }
@@ -53,8 +53,8 @@ import XCTest
             "The landscape composer belongs to the stage beside the sidebar")
         verifyPhoneReadingColumn(app.scrollViews["card-scroll"], app: app)
         tapOnPhone(phoneSidebarRail("Tasks", in: sidebar))
-        // The search waits above the list until it is pulled down (INF-589 item 9), so the first group stands for Tasks.
-        let tasks = sidebar.buttons["group-waiting"]
+        // The search waits above the list until it is pulled down (INF-589 item 9), so the list's column stands for Tasks.
+        let tasks = phoneTasksColumn(sidebar)
         XCTAssertTrue(tasks.waitForPresence(timeout: 10), "The Tasks rail shows Tasks in the landscape sidebar")
         XCTAssertTrue(waitForPhonePress(tasks))
     }
@@ -367,6 +367,11 @@ struct PhonePhotoObservation {
 /// The iPad's landscape sidebar, a container holding its Activity and Tasks pair.
 @MainActor func phoneSidebar(_ app: XCUIApplication) -> XCUIElement {
     app.descendants(matching: .any).matching(identifier: "phone-sidebar").firstMatch
+}
+
+/// INF-2928 piece 1: the Tasks list's reading column, which stands for Tasks whichever groups have rows: only those show.
+@MainActor func phoneTasksColumn(_ root: XCUIElement) -> XCUIElement {
+    root.descendants(matching: .any).matching(identifier: "tasks-column").firstMatch
 }
 
 /// INF-209: read the sidebar's own Activity or Tasks segment, never the identically named tab.

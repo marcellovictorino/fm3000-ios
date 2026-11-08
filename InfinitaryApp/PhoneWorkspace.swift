@@ -12,6 +12,8 @@ import Observation
     var restoring: String?
     /// INF-1524: a task key pressed on a card, for Tasks to open its record.
     var openTask: String?
+    /// INF-2935: a closed card a task record's Cards row read again, for Home to show as a past card.
+    var pastCard: String?
     /// INF-1524: a card's draft button, for the message box to take its words, unsent.
     var draft: String?
     /// INF-2568: the software keyboard is up, and a card's reply field holds its focus; a phone on its side then has no
@@ -158,6 +160,11 @@ struct PhoneWorkspace<Stage: View, Tasks: View, Composer: View>: View {
             messageContext.keyboardUp = false
         }
         .onChange(of: messageContext.restoring) { _, id in if id != nil { selection = .home } }
+        .onChange(of: messageContext.pastCard) { _, id in
+            guard let id else { return }
+            messageContext.pastCard = nil
+            selection = .home; session.showCardID = id
+        }
         // INF-1524: a card's task key opens its record on Tasks, or in the sidebar beside the stage.
         .onChange(of: messageContext.openTask) { _, key in
             guard key != nil, tasks != nil else { return }

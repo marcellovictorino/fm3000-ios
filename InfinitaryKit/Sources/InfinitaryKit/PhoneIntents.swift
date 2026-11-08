@@ -288,7 +288,9 @@ public enum PhoneIntentFold {
         for intent in intents where intent.taskID == task.id {
             switch intent.kind {
             case let .start(_, move):
-                task.startAttempt = PhoneTask.StartAttempt(phase: "preparing")
+                task.startAttempt = PhoneTask.StartAttempt(phase: "preparing", since: intent.at.timeIntervalSince1970 * 1000)
+                // The host leaves the start wait out while an attempt stands (INF-2935: no wait line while Starting).
+                task.queueWait = nil
                 task.moves = (task.moves ?? [:]).merging([move: PhoneMove(ok: false, text: nil)]) { $1 }
             case let .finish(_, ending):
                 task.status = ending.status

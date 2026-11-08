@@ -137,19 +137,31 @@ import XCTest
         try await launchPhoneApp(app)
         defer { app.terminate(); XCUIDevice.shared.orientation = .portrait }
         let paste = app.buttons["paste-link"]
-        // INF-2101: rest's preceding journey may have joined this disposable app. Launching preserves that join;
-        // establish our own welcome fixture through its ordinary Leave action, without changing test order or data owners.
+        // INF-2101: rest's preceding journey may have joined this disposable app. Launching preserves that join, so this
+        // test establishes its own welcome fixture, without changing test order or data owners.
+        // INF-2756: it never presses anything over the joined screen, since that screen shows whatever the journey left
+        // on the shared home. In run 42091135465 the journey stopped before its scene cleanup and its crew kept orbiting;
+        // on the iPad the computer's sheet and its Leave alert are glass over that scene, so the Leave confirmation drew
+        // differently on every read for 88 seconds and never held still to be tapped. The home removes this phone
+        // instead, which ends the join whatever the screen shows, and Join again is pressed on the scene-free Removed
+        // screen.
         let computer = app.buttons["computer-details"]
         XCTAssertEqual(waitForPhonePredicate(NSPredicate { _, _ in paste.exists || computer.exists },
                                             object: app, timeout: 10), .completed, app.debugDescription)
         if computer.exists {
-            tapOnPhone(computer)
-            let leave = app.buttons["leave"]
-            XCTAssertTrue(leave.waitForPresence(timeout: 10), app.debugDescription)
-            tapOnPhone(leave)
-            let confirm = app.buttons["confirm-leave"].firstMatch
-            XCTAssertTrue(confirm.waitForPresence(timeout: 10), app.debugDescription)
-            tapOnPhone(confirm)
+            let control = try XCTUnwrap(ProcessInfo.processInfo.environment["PHONE_TEST_HOME"])
+            // The scene fixture pairs a second computer whose task the home will not remove while it is out of reach,
+            // so the fixture's own cleanup goes first; a journey that finished has already run it, and it is idempotent.
+            for command in ["scene-cleanup", "remove"] {
+                var request = URLRequest(url: try XCTUnwrap(URL(string: control + "/" + command)), timeoutInterval: 60)
+                request.httpMethod = "POST"
+                let (data, response) = try await phoneTestSession.data(for: request)
+                XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200, String(data: data, encoding: .utf8) ?? "")
+            }
+            // PhoneJourney.testAwayLeaveAndRemoved's own budget for the Removed screen after the home removes the phone.
+            let again = app.buttons["join-again"]
+            XCTAssertTrue(again.waitForPresence(timeout: 20), app.debugDescription)
+            tapOnPhone(again)
         }
         XCTAssertTrue(paste.waitForPresence(timeout: 10), app.debugDescription)
 

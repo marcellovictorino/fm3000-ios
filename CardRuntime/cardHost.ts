@@ -1,4 +1,4 @@
-import { type Card, cardAnswersSchema, cardQuestionsSchema, isPreviewBody, splitSettleFacts, takesFactStrip } from "../../../src/shared/cards";
+import { type Card, cardAnswersSchema, cardQuestionsSchema, isPreviewBody, splitSettleFacts, takesTaskFacts } from "../../../src/shared/cards";
 import { demoSources, viewablePictures } from "../../../src/shared/cardPictures";
 import { ACTION_VALUE_MAX_BYTES, frameMessageSchema, frameRequestSchema, type FrameAnswers } from "../../../src/shared/plugins/bridge";
 import { FRAME_SANDBOX, frameCsp } from "../../../src/shared/plugins/containment";
@@ -116,7 +116,7 @@ window.phoneCard = {
   async mount(value) {
     input = value;
     // The Mac's split: a settle card's fact strip stands beside its choices, and the body shows the rest.
-    const split = value.card && takesFactStrip(value.card) ? splitSettleFacts(value.body) : undefined;
+    const split = value.card && takesTaskFacts(value.card) ? splitSettleFacts(value.body) : undefined;
     const marks = (value.marks ?? []).map((mark) => (split && mark > split.at ? mark - split.facts.length : mark));
     linked = value.keys?.length ? taskKeysIn(value.body).filter((key) => value.keys!.includes(key)) : [];
     void native({ type: "mounted", facts: split?.facts ?? null, preview: isPreviewBody(value.body) }).catch(() => {});

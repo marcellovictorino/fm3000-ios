@@ -8,6 +8,8 @@ import SwiftUI
 struct PhoneCharacter: View {
     enum State: String, CaseIterable { case idle, listening, working }
     var state: State = .idle
+    /// The first mate shortening its conversation: the cinch over working (CharacterCinch).
+    var fold = CharacterFold()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var phase
     @SwiftUI.State private var visible = false
@@ -17,7 +19,7 @@ struct PhoneCharacter: View {
     var body: some View {
         Group {
             if reduceMotion { drawing(at: 0) }
-            else { CharacterDrawing(clock: clock, motion: motion, state: state) }
+            else { CharacterDrawing(clock: clock, motion: motion, state: state, fold: fold) }
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement(children: .ignore)
@@ -39,7 +41,7 @@ struct PhoneCharacter: View {
 
     /// The still pose Reduce Motion shows, which the native snapshot test also photographs.
     func drawing(at time: Double) -> some View {
-        let pose = CharacterPose.still(state, at: time)
+        let pose = CharacterPose.still(state, folding: fold.folding, at: time)
         return Canvas { context, size in CharacterPainter.draw(pose, in: &context, size: size) }
     }
 }
@@ -49,9 +51,10 @@ private struct CharacterDrawing: View {
     let clock: CharacterDisplayClock
     let motion: CharacterMotion
     let state: PhoneCharacter.State
+    let fold: CharacterFold
     @SwiftUI.State private var cache = CharacterPainter.Cache()
     var body: some View {
-        let pose = motion.advance(to: clock.now, state: state)
+        let pose = motion.advance(to: clock.now, state: state, fold: fold)
         Canvas { context, size in CharacterPainter.draw(pose, in: &context, size: size, cache: cache) }
     }
 }
@@ -123,16 +126,27 @@ struct CharacterPose: Sendable {
     var milliseconds = 0.0
     var eyeX = 0.0, eyeY = 0.0
     var lid = 0.0, wink = 0.0, happy = 0.0
+    /// The cinch's frame while one plays, and how far the working state lets it show (attention and emotes ease it out).
+    var cinch: CharacterCinch.Frame?
+    var cinchGate = 0.0
+    var still = false
+    /// The cinch's tightness as drawn.
+    var cinchK: Double { (cinch?.k ?? 0) * cinchGate }
 
     /// Reduce Motion's still: the state's targets settled, eyes open and on the state's own look.
-    static func still(_ state: PhoneCharacter.State, at time: Double) -> Self {
+    /// A shortening shows its tight pose, with no ring throw, glint or motes.
+    static func still(_ state: PhoneCharacter.State, folding: Bool = false, at time: Double) -> Self {
         let mode: CharacterMachine.Mode = state == .listening ? .listening : state == .working ? .working : .idle
         var pose = Self(mode: mode, cur: .of(mode), heat: state == .working ? 1 : 0, milliseconds: time * 1000)
-        pose.a += pose.cur.sa * time
-        pose.b += pose.cur.sb * time
+        pose.still = true
+        pose.cinch = CharacterCinch.still(folding)
+        pose.cinchGate = mode == .working ? 1 : 0
+        let body = CharacterCinch.body(pose.cinchK)
+        pose.a += pose.cur.sa * body.spin * time
+        pose.b += pose.cur.sb * body.spin * time
         pose.hs = 0.5 * time * pose.cur.flat
-        if mode == .working { (pose.eyeX, pose.eyeY) = (0.12, 0.4) }
-        pose.lid = pose.cur.lidBase
+        if mode == .working { (pose.eyeX, pose.eyeY) = body.look }
+        pose.lid = max(pose.cur.lidBase, body.lid)
         return pose
     }
 }
@@ -217,6 +231,7 @@ final class CharacterMotion: @unchecked Sendable {
     private var pose = CharacterPose()
     private var vel = 0.5
     private var blinker = Blinker(), gaze = Gaze()
+    private var cinch: CharacterCinch.Clock?
     private var requests: [(CharacterMachine.Emote, CharacterMachine.Fidget?)] = []
     func request(_ emote: CharacterMachine.Emote, variant: CharacterMachine.Fidget? = nil) { lock.withLock { requests.append((emote, variant)) } }
     private var flickerAt = -Double.infinity, flickerBoost = 0.0
@@ -230,14 +245,18 @@ final class CharacterMotion: @unchecked Sendable {
     func discardReactions() { lock.withLock { requests.removeAll(keepingCapacity: true); flickerBoost = 0 } }
     var greeting: Bool { lock.withLock { machine?.mode == .greet } }
 
-    func advance(to time: Double, state: PhoneCharacter.State) -> CharacterPose {
-        lock.withLock { advanceLocked(to: time, state: state) }
+    func advance(to time: Double, state: PhoneCharacter.State, fold: CharacterFold = .init()) -> CharacterPose {
+        lock.withLock { advanceLocked(to: time, state: state, fold: fold) }
     }
-    private func advanceLocked(to time: Double, state: PhoneCharacter.State) -> CharacterPose {
+    private func advanceLocked(to time: Double, state: PhoneCharacter.State, fold: CharacterFold) -> CharacterPose {
         if machine == nil {
             machine = CharacterMachine(now: time)
             if CharacterCues.takeGreeting() { machine?.request(.greet, now: time) }
         }
+        // The cinch keeps its own clock beside the machine, which never hears it: a starting count from before the
+        // character was drawn plays nothing.
+        if cinch == nil { cinch = CharacterCinch.Clock(starts: fold.starts) }
+        cinch?.update(time, fold)
         guard var machine else { return pose }
         // Inputs first, then the request: a nod asked for as a turn starts is held for that turn's end.
         machine.setInputs(listening: state == .listening, busy: state == .working, now: time)
@@ -253,18 +272,22 @@ final class CharacterMotion: @unchecked Sendable {
         pose.flicker = flickerBoost * CharacterFlicker.envelope(time - flickerAt)
         pose.cur = pose.cur.eased(toward: .of(mode), by: min(dt * 4, 1))
         pose.heat += ((state == .working ? 1 : 0) - pose.heat) * min(dt * 3, 1)
+        pose.still = false
+        pose.cinch = cinch?.frame(time)
+        pose.cinchGate += ((mode == .working ? 1 : 0) - pose.cinchGate) * min(dt * 3, 1)
+        let body = CharacterCinch.body(pose.cinchK)
         vel += (0.5 - vel) * min(dt * 1.5, 1)
         // A warp (CharacterWarp) adds its own spin, squint and held look.
         let warp = CharacterWarp.pose(of: pose)
-        pose.a += (pose.cur.sa + (warp?.sa ?? 0)) * dt
-        pose.b += (pose.cur.sb + (warp?.sb ?? 0)) * dt
+        pose.a += (pose.cur.sa * body.spin + (warp?.sa ?? 0)) * dt
+        pose.b += (pose.cur.sb * body.spin + (warp?.sb ?? 0)) * dt
         pose.hs += dt * vel * pose.cur.flat
         pose.milliseconds += dt * 1000
         let reply = CharacterReply.frame(mode, et)
         var look: (x: Double, y: Double)? = reply.gaze.map { ($0.x, $0.y) }
         switch mode {
         case .listening: look = (0, 0)
-        case .working: look = (0.12, 0.4)
+        case .working: look = body.look
         case .ponder: look = (-0.8, -0.9)
         case .confused: look = (CharacterSky.twinkle(pose.milliseconds / 1000 * 6) * 0.8, CharacterSky.twinkle(pose.milliseconds / 1000 * 5 + 9) * 0.5)
         case .fidget:
@@ -283,6 +306,9 @@ final class CharacterMotion: @unchecked Sendable {
         }
         (pose.eyeX, pose.eyeY) = gaze.update(dt, look: look)
         pose.lid = max(pose.cur.lidBase, max(reply.lid, blinker.update(dt, suppressed: mode == .listening || mode == .celebrate || reply.suppressBlink)))
+        // The cinch narrows the eyes, and its end gives one slow blink.
+        pose.lid = max(pose.lid, body.lid)
+        if let frame = pose.cinch, frame.phase == .out { pose.lid = max(pose.lid, pulse(frame.u, 0.1, 0.65) * pose.cinchGate) }
         if machine.variant == .roll { pose.lid = max(pose.lid, band(et, 0.3, 0.15, 0.6, 0.22)) }
         if machine.variant == .yawn { pose.lid = max(pose.lid, pulse(et, 0.12, 0.62) * 0.95) }
         if machine.variant == .blackhole { pose.lid = max(pose.lid, CharacterSky.envelope(pose) * 0.3) }
@@ -389,7 +415,12 @@ enum CharacterPainter {
         let bright = acc.mix(hot, heat), dimUse = dim.mix(RGB(hot.r * 0.55, hot.g * 0.5, hot.b * 0.45), heat)
         let breathe = 1 + cur.breath * sin(now / 650)
         let warp = CharacterWarp.pose(of: p)
-        let R = s * 0.27 * breathe * cur.scale * (warp?.scale ?? 1)
+        let R0 = s * 0.27 * breathe * cur.scale * (warp?.scale ?? 1)
+        // The cinch draws the body tight, and it springs back past its size.
+        let cinchK = p.cinchK, cinchKz = clamp01(cinchK), cinchLift = (p.cinch?.lift ?? 0) * p.cinchGate
+        let cinchBody = CharacterCinch.body(cinchK)
+        let cinchFlight = p.cinch.map { p.still ? (motes: [], arrival: 0) : CharacterCinch.motes($0) } ?? (motes: [], arrival: 0)
+        let R = R0 * cinchBody.scale
 
         // Every body transform feeds the same projected points for the combined glow and crisp pass.
         let reply = CharacterReply.frame(p.mode, et)
@@ -418,6 +449,7 @@ enum CharacterPainter {
 
         // The ambient glow, breathing while listening.
         let glowA = haloBoost * cur.glow * (warp?.glow ?? 1) * (0.1 + heat * 0.16 + cur.breath * 0.6 * (0.5 + 0.5 * sin(now / 650))) + replyGlow * 0.18
+            + cinchKz * 0.08 * (0.4 + 0.6 * cinchFlight.arrival) + cinchLift * 0.3
         context.fill(Path(CGRect(x: 0, y: 0, width: s, height: s)), with: .radialGradient(
             PenGradient(colors: [bright.color(glowA), bright.color(0)]), center: CGPoint(x: c, y: c), startRadius: 0, endRadius: s / 2))
 
@@ -480,6 +512,9 @@ enum CharacterPainter {
                 alpha += (min(1, 0.85 * boost) - alpha) * f
             }
             alpha *= 1 - min(cache.sky[p0].progress, cache.sky[q0].progress) * 0.97
+            // The cinch dims the outer cell and lifts every wire at its end.
+            if P.w > 0 && Q.w > 0 { alpha *= cinchBody.outer }
+            alpha *= 1 + 0.5 * cinchLift
             if alpha < 0.02 { continue }
             let m = max(clamp01(0.5 + (P.w + Q.w) * 0.35), f * 0.9)
             cache.prims.edgeSkip[i] = false
@@ -494,10 +529,15 @@ enum CharacterPainter {
             let m = max(clamp01(0.5 + P.w * 0.6), f)
             cache.prims.dotMix[i] = m
             cache.prims.dotR[i] = (2.1 + 0.7 * m) * pulseK * (s / 280) * cache.sky[i].scale
-            cache.prims.dotAlpha[i] = min(1, max(0.65, min(1, 0.6 + (P.depth - 0.9) * 0.5)) * boost) * fade
+            cache.prims.dotAlpha[i] = min(1, max(0.65, min(1, 0.6 + (P.depth - 0.9) * 0.5)) * boost) * fade * (1 + 0.4 * cinchLift)
             cache.prims.dotCore[i] = max(heat > 0.02 && m > 0.4 && fade > 0.5 ? heat * fade : 0, cache.sky[i].white)
         }
 
+        // The cinch's centre and ring, under the wires.
+        if let frame = p.cinch {
+            CharacterCinch.drawUnder(frame, k: cinchK, gate: p.cinchGate, arrival: cinchFlight.arrival, still: p.still, c: c, r0: R0, size: s,
+                                     dim: dimUse, bright: bright, boost: boost, in: &context)
+        }
         // The halo: every hot primitive in one tint, accumulated, blurred once and laid under the wires.
         let halo = min(1.6, neon * haloBoost)
         if halo > 0.02 {
@@ -522,6 +562,12 @@ enum CharacterPainter {
         }
 
         CharacterSky.draw(p, over: true, context: &context, c: c, r: R, color: bright.color(1), background: bg.color(1))
+        // The cinch's motes streaming in to the centre, under the eyes.
+        if let frame = p.cinch, !cinchFlight.motes.isEmpty {
+            let corners = cache.points.filter { $0.w > 0 }.map { CGPoint(x: $0.x, y: $0.y) }
+            CharacterCinch.drawOver(frame, motes: cinchFlight.motes, k: cinchK, gate: p.cinchGate, c: c, r0: R0, size: s,
+                                    corners: corners.isEmpty ? cache.points.map { CGPoint(x: $0.x, y: $0.y) } : corners, bright: bright, in: &context)
+        }
 
         // The eyes: two soft lights in the inner cell, with white-hot cores, on the wires' colour family.
         let eyeBase = acc.mix(hot, heat), eyeCol = eyeBase.mix(RGB(255, 246, 230), 0.45)

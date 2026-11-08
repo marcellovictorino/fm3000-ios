@@ -12,6 +12,8 @@ final class PhoneSceneRenderer: NSObject, @unchecked Sendable {
     struct Input {
         var roster: PhoneSceneRoster
         var state: PhoneCharacter.State
+        /// The first mate shortening its conversation (CharacterCinch).
+        var fold = CharacterFold()
         /// A settled drawing: Reduce Motion, hidden, behind a record or in the background.
         var still: Bool
         /// The clock advances; a stopped clock leaves the scene standing where it is, as under an open summary.
@@ -204,7 +206,8 @@ final class PhoneSceneRenderer: NSObject, @unchecked Sendable {
         let started = ProcessInfo.processInfo.systemUptime
         #endif
         let roster = input.roster, still = input.still, now = still ? 0 : self.now
-        let pose = still ? CharacterPose.still(input.state, at: 0) : character.advance(to: now, state: input.state)
+        let pose = still ? CharacterPose.still(input.state, folding: input.fold.folding, at: 0)
+            : character.advance(to: now, state: input.state, fold: input.fold)
         // A warp takes the home crew along (CharacterWarp), as the first mate's 280-point drawing plays it.
         let frame = crew.frame(roster: roster, now: now, settled: still, warp: CharacterWarp.frame(pose, coreR: 280 * 0.27))
         let palette = input.palette
@@ -273,6 +276,7 @@ struct PhoneSceneSurface: UIViewRepresentable {
     let renderer: PhoneSceneRenderer
     let roster: PhoneSceneRoster
     let state: PhoneCharacter.State
+    var fold = CharacterFold()
     let still: Bool
     let running: Bool
     var offset: CGSize = .zero
@@ -292,7 +296,7 @@ struct PhoneSceneSurface: UIViewRepresentable {
         #else
         let source = ""
         #endif
-        renderer.update(.init(roster: roster, state: state, still: still, running: running, offset: offset,
+        renderer.update(.init(roster: roster, state: state, fold: fold, still: still, running: running, offset: offset,
                               palette: CharacterPainter.Palette(context.environment), selection: selection, bracketed: bracketed, source: source))
     }
 

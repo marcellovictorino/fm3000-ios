@@ -105,6 +105,67 @@ import XCTest
         }
     }
 
+    /// INF-3011, the captain's pick: the cinch plays for the whole shortening, as the Mac's does, its numbers the Mac's.
+    func testNativeCinchMatchesDesktopReadings() throws {
+        struct Reading: Decodable {
+            struct Frame: Decodable { let phase: String; let k, vis, lift, holdS, u: Double }
+            struct Mote: Decodable { let slot: Int; let u: Double }
+            let endedAt: Double?; let t: Double; let frame: Frame?; let motes: [Mote]; let arrival: Double
+        }
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "PhoneCinchTraces.generated", withExtension: "json"))
+        let readings = try JSONDecoder().decode([Reading].self, from: Data(contentsOf: url))
+        for reading in readings {
+            let ended: String = reading.endedAt.map { "\($0)" } ?? "never"
+            let label = "ended \(ended) at \(reading.t)"
+            let frame = CharacterCinch.frame(reading.t, endedAt: reading.endedAt)
+            guard let expected = reading.frame else { XCTAssertNil(frame, label); continue }
+            let native = try XCTUnwrap(frame, label)
+            XCTAssertEqual(native.phase.rawValue, expected.phase, label)
+            let pairs: [(Double, Double)] = [(native.k, expected.k), (native.vis, expected.vis), (native.lift, expected.lift),
+                                             (native.holdS, expected.holdS), (native.u, expected.u)]
+            for (mine, theirs) in pairs { XCTAssertEqual(mine, theirs, accuracy: 0.000001, label) }
+            let flight = CharacterCinch.motes(native)
+            let nativeSlots: [Int] = flight.motes.map { $0.slot }, desktopSlots: [Int] = reading.motes.map { $0.slot }
+            XCTAssertEqual(nativeSlots, desktopSlots, label)
+            for (mine, theirs) in zip(flight.motes, reading.motes) { XCTAssertEqual(mine.u, theirs.u, accuracy: 0.000001, label) }
+            XCTAssertEqual(flight.arrival, reading.arrival, accuracy: 0.000001, label)
+        }
+    }
+
+    /// Inputs replay what the phone hears: firstmate_state busy, folding rising and falling inside the turn, then busy ending.
+    func testShorteningDrawsTheWorkingBodyTightWithoutChangingItsState() {
+        CharacterCues.greetingPending = false
+        let motion = CharacterMotion()
+        var fold = CharacterFold()
+        var time = 0.0
+        func run(to end: Double, _ state: PhoneCharacter.State) -> CharacterPose {
+            var pose = motion.advance(to: time, state: state, fold: fold)
+            while time < end { time += 1 / 60; pose = motion.advance(to: time, state: state, fold: fold) }
+            return pose
+        }
+        XCTAssertNil(run(to: 1, .working).cinch, "A turn with no shortening plays no cinch")
+        fold = CharacterFold(folding: true, starts: 1)
+        let tight = run(to: 3, .working)
+        XCTAssertEqual(tight.mode, .working, "The cinch is a look over working, never a state")
+        XCTAssertEqual(tight.cinch?.phase, .hold)
+        XCTAssertGreaterThan(tight.cinchK, 0.85, "Drawn tight while the shortening runs")
+        fold.folding = false
+        XCTAssertEqual(run(to: 3.3, .working).cinch?.phase, .out, "The ring loosens once the shortening ends")
+        XCTAssertNil(run(to: 4.5, .working).cinch, "Then the body is back at rest")
+        // One heard starting and ending at once still plays: the start, then the end.
+        fold = CharacterFold(folding: false, starts: 2)
+        XCTAssertEqual(run(to: 4.8, .working).cinch?.phase, .in)
+        XCTAssertEqual(run(to: 5.7, .working).cinch?.phase, .out)
+        XCTAssertNil(run(to: 6.7, .working).cinch)
+    }
+
+    func testReduceMotionHoldsTheTightPoseWhileTheShorteningRuns() {
+        let still = CharacterPose.still(.working, folding: true, at: 0)
+        XCTAssertEqual(still.cinchK, 1)
+        XCTAssertEqual(CharacterCinch.body(still.cinchK).scale, CharacterCatalog.shared.cinch["tightness"]!, accuracy: 0.000001)
+        XCTAssertNil(CharacterPose.still(.working, at: 0).cinch)
+    }
+
     func testFidgetsUseDesktopDurationsAndDoNotRepeatTheLastPick() {
         for variant in CharacterMachine.Fidget.allCases {
             var machine = CharacterMachine(now: 0, random: { 0 })
