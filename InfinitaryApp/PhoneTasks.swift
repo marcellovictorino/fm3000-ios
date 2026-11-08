@@ -27,7 +27,15 @@ struct PhoneTasks: View {
     @State private var earlier: [PhoneTask] = []
     @State private var problem: String?
     @State private var selected: PhoneTask?
-    @State private var expanded: Set<PhoneTaskGroup> = [.waiting, .working, .queued]
+    /// The folding groups, Backlog and Done, the captain opened; the Mac's other groups always show their rows.
+    @State private var expanded: Set<PhoneTaskList.Section> = []
+    /// INF-2928 piece 3: a move from a row's long press that asks once before it runs, as the Mac's board asks.
+    @State private var asking: RowAsk?
+    /// The Backlog row a swipe holds open on its Start, and how far a swipe under way has moved a row.
+    @State private var swiped: String?
+    @State private var swiping: (id: String, x: CGFloat)?
+    /// The list's width, which a long press's summary takes up to the Mac's own width for it.
+    @State private var columnWidth: CGFloat = 0
 
     /// INF-2764: whether this list is on screen. The tab controller keeps a tab that is away, so a hidden list keeps
     /// its last reading and reads nothing from the session: a board update while another tab shows rebuilds nothing.
@@ -48,6 +56,10 @@ struct PhoneTasks: View {
     // INF-589 item 9: search waits above the list until it is pulled down, as the Mac's sits behind its icon.
     // VoiceOver cannot pull past the top of a list, so it always finds the field.
     private var searchShown: Bool { searchOpen || !query.isEmpty || voiceOver }
+    private var searching: Bool { !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    /// INF-2928, the captain's pick: a title may take two lines on an iPhone, which has no pointer to show the rest, and
+    /// one on an iPad, as on the Mac.
+    private var titleLines: Int { UIDevice.current.userInterfaceIdiom == .pad ? 1 : 2 }
 
     /// INF-2553: on an iPhone on its side, a card brought back and put aside again by its refusal says why on this
     /// list's line, as a refused bring-back did before.
@@ -56,35 +68,41 @@ struct PhoneTasks: View {
         return session.cards.first { $0.minimized && session.takenBack[$0.id] != nil }.flatMap { session.takenBack[$0.id] }
     }
 
+    /// INF-2928 piece 3: on an iPhone on its side, which shows no change pill, why a move from a row was refused or
+    /// taken back is said on this list's line.
+    private var sideNotice: String? {
+        guard phoneOnItsSide(verticalSize), let notice = session.changeNotice, notice.place == nil else { return nil }
+        return notice.words
+    }
+
     var body: some View {
         let reading = reading()
         let list = reading.list
         return ScrollView {
             VStack(alignment: .leading, spacing: PhoneTheme.space3) {
                 if searchShown { search }
-                if let problem = problem ?? reading.asideLine { Text(problem).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("tasks-problem") }
+                if let problem = problem ?? reading.asideLine ?? sideNotice { Text(problem).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("tasks-problem") }
                 LazyVStack(alignment: .leading, spacing: PhoneTheme.space2) {
-                    if list.rows.isEmpty && list.aside.isEmpty { Text(query.isEmpty ? "No tasks yet." : "No matching tasks.").foregroundStyle(PhoneTheme.secondary) }
-                    if query.isEmpty {
-                        ForEach(PhoneTaskGroup.allCases, id: \.rawValue) { group in
-                            let members = list.members[group] ?? []
-                            // A card put aside with no task is a row of its own under Waiting on you.
-                            let aside = group == .waiting ? list.aside : []
-                            VStack(spacing: 0) {
-                                groupHeader(group, count: members.count + aside.count)
-                                if expanded.contains(group) {
-                                    ForEach(members) { task in taskRow(task, project: list.project(of: task), last: aside.isEmpty && task.id == members.last?.id) }
-                                    ForEach(aside) { card in asideRow(card, last: card.id == aside.last?.id) }
+                    if list.isEmpty { Text(query.isEmpty ? "No tasks yet." : "No matching tasks.").foregroundStyle(PhoneTheme.secondary) }
+                    // INF-2928 piece 1: only the groups with rows show, as on the Mac, and a search opens every one.
+                    ForEach(list.parts) { part in
+                        let open = !part.section.folds || searching || expanded.contains(part.section)
+                        VStack(spacing: 0) {
+                            groupHeader(part, open: open)
+                            if open {
+                                ForEach(part.rows) { row in
+                                    taskRow(row, in: part, list: list, last: part.aside.isEmpty && row.id == part.rows.last?.id)
                                 }
+                                // A card put aside with no task is a row of its own under Waiting on you.
+                                ForEach(part.aside) { card in asideRow(card, last: card.id == part.aside.last?.id) }
                             }
                         }
-                    } else {
-                        VStack(spacing: 0) {
-                            ForEach(list.rows) { task in taskRow(task, project: list.project(of: task), last: task.id == list.rows.last?.id) }
-                        }
                     }
-                }
-            }.padding(PhoneTheme.space4).frame(maxWidth: PhoneColumn.width).frame(maxWidth: .infinity)
+                }.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { columnWidth = $0 }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+                // The reading column the list sits in, for the journeys to find Tasks by when no group has rows.
+                .accessibilityElement(children: .contain).accessibilityIdentifier("tasks-column")
+                .padding(PhoneTheme.space4).frame(maxWidth: PhoneColumn.width).frame(maxWidth: .infinity)
         }
         .scrollBounceBehavior(.always, axes: .vertical)
         .onScrollGeometryChange(for: Bool.self) { geometry in
@@ -113,9 +131,15 @@ struct PhoneTasks: View {
             messageContext.openTask = nil
             messageContext.taskID = task.id; selected = task
         }
+        // The Mac's ask on the tile: its sentence, Cancel, which writes nothing, and the move's own button.
+        .alert(asking?.sentence ?? "", isPresented: Binding(get: { asking != nil }, set: { if !$0 { asking = nil } }),
+               presenting: asking) { ask in
+            Button(PhoneRecordWords.dropCancel, role: .cancel) {}
+            Button(ask.confirm, role: ask.op == "drop-task" || ask.op == "stop-task" ? .destructive : nil) { confirm(ask) }
+        }
         .sheet(item: $selected, onDismiss: { messageContext.taskID = nil }) { task in
             NavigationStack {
-                PhoneTaskRecord(session: session, initial: task)
+                PhoneTaskRecord(session: session, initial: task, leave: { selected = nil })
                     .toolbar { ToolbarItem(placement: .cancellationAction) { PhoneRecordLeaveButton(record: $selected) } }
             }.font(PhoneFont.body).tint(PhoneTheme.accent)
         }
@@ -157,62 +181,268 @@ struct PhoneTasks: View {
         withAnimation(.snappy) { searchOpen = false }
     }
 
-    // The Mac's micro label: uppercase, tracked, tertiary, with the count in mono.
-    private func groupHeader(_ group: PhoneTaskGroup, count: Int) -> some View {
-        Button {
-            if !expanded.insert(group).inserted { expanded.remove(group) }
-        } label: {
-            HStack(spacing: PhoneTheme.space2) {
-                Text(group.title).font(Self.label).textCase(.uppercase).tracking(Self.labelTracking)
-                Text("\(count)").font(PhoneFont.micro)
-                Spacer()
-                Image(systemName: expanded.contains(group) ? "chevron.down" : "chevron.right")
-                    .font(PhoneFont.micro).foregroundStyle(PhoneTheme.secondary).accessibilityHidden(true)
-            }.foregroundStyle(PhoneTheme.muted).frame(minHeight: 44)
-                .contentShape(Rectangle())
-        }.buttonStyle(.plain).accessibilityIdentifier("group-\(group.rawValue)")
-            .accessibilityLabel("\(group.title), \(count)")
-            .accessibilityValue(expanded.contains(group) ? "Expanded" : "Collapsed")
-    }
-
-    // The title row stays as on the Mac; an unstarted task adds the home’s full dated wait below it.
-    private func taskRow(_ task: PhoneTask, project: String?, last: Bool) -> some View {
-        Button { open(task) } label: {
-            HStack(alignment: .firstTextBaseline, spacing: PhoneTheme.space3) {
-                Image(systemName: task.status == "open" && task.waitingCardId == nil && task.minimizedCardId == nil ? "circle" : "circle.fill")
-                    .font(.system(size: PhoneTheme.space2)).foregroundStyle(task.waitingCardId != nil || task.minimizedCardId != nil ? PhoneTheme.accent : task.activity == "running" ? PhoneTheme.warning : PhoneTheme.secondary)
-                    .frame(width: Self.markWidth).accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: PhoneTheme.space2) {
-                    HStack(alignment: .firstTextBaseline, spacing: PhoneTheme.space2) {
-                        Text(task.key).font(PhoneFont.mono).foregroundStyle(PhoneTheme.muted).fixedSize()
-                        Text(task.title).font(PhoneFont.body).foregroundStyle(PhoneTheme.text).lineLimit(1)
-                        Spacer(minLength: PhoneTheme.space2)
-                        if let project { Text(project).font(PhoneFont.mono).foregroundStyle(PhoneTheme.muted).lineLimit(1) }
-                    }
-                    if let since = task.answerSince {
-                        HStack { Text("Answer waiting"); Text(Date(timeIntervalSince1970: since / 1000), style: .relative) }
-                            .font(PhoneFont.caption).foregroundStyle(PhoneTheme.secondary)
-                    }
-                    if let wait = task.queueWait {
-                        Text(wait.line).font(PhoneFont.mono).foregroundStyle(PhoneTheme.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }.padding(.vertical, PhoneTheme.space3).frame(minHeight: 44)
-                .contentShape(Rectangle())
-        }.buttonStyle(.plain).accessibilityIdentifier("task-\(task.id)")
-            .accessibilityLabel([task.key, task.title, project, task.state].compactMap(\.self).joined(separator: ", "))
-        .overlay(alignment: .bottom) {
-            // Inset to the words, never under the mark, and none after a group's last row.
-            if !last { Rectangle().fill(PhoneTheme.line).frame(height: 1).padding(.leading, Self.markWidth + PhoneTheme.space3) }
+    // The Mac's micro label: uppercase, tracked, tertiary. Only a folding group is a button, and only it shows its count,
+    // with Backlog's new filings and failed starts after it (the Mac's `Group`).
+    @ViewBuilder private func groupHeader(_ part: PhoneTaskList.Part, open: Bool) -> some View {
+        let title = Text(part.section.title).font(Self.label).textCase(.uppercase).tracking(Self.labelTracking)
+        if part.section.folds {
+            Button {
+                if !expanded.insert(part.section).inserted { expanded.remove(part.section) }
+            } label: {
+                HStack(spacing: PhoneTheme.space2) {
+                    title
+                    Text("\(part.count)\(part.section == .group(.backlog) && part.failed > 0 ? PhoneTaskRowWords.failedCount(part.failed) : "")\(part.new > 0 ? PhoneTaskRowWords.newCount(part.new) : "")")
+                        .font(PhoneFont.micro).lineLimit(1)
+                    Spacer()
+                    Image(systemName: open ? "chevron.down" : "chevron.right")
+                        .font(PhoneFont.micro).foregroundStyle(PhoneTheme.secondary).accessibilityHidden(true)
+                }.foregroundStyle(PhoneTheme.muted).frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityIdentifier("group-\(part.id)")
+                .accessibilityLabel("\(part.section.title), \(part.count)")
+                .accessibilityValue(open ? "Expanded" : "Collapsed")
+        } else {
+            title.foregroundStyle(PhoneTheme.muted).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .accessibilityAddTraits(.isHeader).accessibilityIdentifier("group-\(part.id)")
         }
     }
 
-    /// INF-1517, the captain's pick: a row whose task has cards put aside brings them back and shows them on Home,
-    /// on the phone and every Mac, as a Mac Tasks row does (`openTask`); any other row opens the task's record.
+    /// The Mac's row: its status mark, the key and title with the one dim word after them, then the project's name where
+    /// more than one project could be meant, where the task runs and why that computer cannot take work now. A part sits
+    /// indented under its parent, and a Queued row adds the home's dated wait line below.
+    private func taskRow(_ row: PhoneTaskList.Row, in part: PhoneTaskList.Part, list: PhoneTaskList, last: Bool) -> some View {
+        let task = row.task
+        let status = PhoneTaskFacts.status(task)
+        let word = PhoneTaskList.word(task)
+        let trailing = list.trailing(of: task)
+        let wait = part.waitLine(of: task)
+        var title = Text("\(task.key) ").font(PhoneFont.mono).foregroundStyle(PhoneTheme.muted)
+            + Text(task.title).font(PhoneFont.body)
+            .foregroundStyle(part.section == .group(.waiting) ? PhoneTheme.text : PhoneTheme.secondary)
+        if !word.isEmpty {
+            title = title + Text(" · \(word)").font(PhoneFont.body)
+                .foregroundStyle(word == PhoneTaskRowWords.couldNotStart ? PhoneTheme.warning : PhoneTheme.muted)
+        }
+        let ends = [trailing.name, trailing.place].filter { !$0.isEmpty }.joined(separator: " · ")
+        var end = Text(ends)
+        if trailing.outOfReach {
+            end = end + Text("\(ends.isEmpty ? "" : " · ")\(trailing.reach)")
+                .foregroundStyle(trailing.connecting ? PhoneTheme.muted : PhoneTheme.warning)
+        }
+        // INF-2928 piece 3: a Backlog row's Start, which a swipe shows, says why under the row when it cannot start.
+        let start = part.section == .group(.backlog) ? PhoneRowMoves.rowStart(task) : nil
+        let held = swiped == task.id ? start?.reason : nil
+        let lane: PhoneRowMoves.Lane? = part.section == .earlier ? .earlier : PhoneRowMoves.lane(task)
+        let line = Button {
+            // A row held open on its Start closes first, as a swiped row does.
+            if swiped != nil { withAnimation(.snappy) { swiped = nil }; return }
+            open(task)
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: PhoneTheme.space3) {
+                PhoneTaskMark(status: status).alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
+                    .frame(width: Self.markWidth)
+                VStack(alignment: .leading, spacing: PhoneTheme.space2) {
+                    HStack(alignment: .firstTextBaseline, spacing: PhoneTheme.space2) {
+                        title.lineLimit(titleLines).layoutPriority(1)
+                        Spacer(minLength: PhoneTheme.space2)
+                        if !ends.isEmpty || trailing.outOfReach {
+                            end.font(PhoneFont.mono).foregroundStyle(PhoneTheme.muted).lineLimit(1)
+                        }
+                    }
+                    if let wait {
+                        Text(wait).font(PhoneFont.mono).foregroundStyle(PhoneTheme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }.padding(.leading, CGFloat(row.depth) * Self.markWidth)
+                .padding(.vertical, PhoneTheme.space3).frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }.buttonStyle(.plain).accessibilityIdentifier("task-\(task.id)")
+            .accessibilityLabel([task.key, task.title, word.isEmpty ? nil : word, ends.isEmpty ? nil : ends,
+                                 trailing.outOfReach ? trailing.reach : nil, status.label].compactMap(\.self).joined(separator: ", "))
+            // A long press stands in for resting the pointer on the Mac's row: the crew summary, with the row's moves
+            // under it.
+            .contextMenu { moves(task, lane: lane) } preview: {
+                PhoneRowPreview(width: min(max(columnWidth, 280), PhoneCrewSummary.hoverWidth)) {
+                    PhoneCrewSummary(session: session, task: task, tasks: list.board?.tasks ?? [], preview: true)
+                }.font(PhoneFont.body).tint(PhoneTheme.accent)
+            }
+        let inset = Self.markWidth + PhoneTheme.space3 + CGFloat(row.depth) * Self.markWidth
+        return VStack(alignment: .leading, spacing: 0) {
+            swipeable(line, task: task, start: start)
+            if let held {
+                Text(held).font(PhoneFont.callout).foregroundStyle(PhoneTheme.secondary)
+                    .fixedSize(horizontal: false, vertical: true).padding(.leading, inset).padding(.bottom, PhoneTheme.space3)
+                    .accessibilityIdentifier("row-start-reason")
+            }
+        }
+        .overlay(alignment: .bottom) {
+            // Inset to the words, never under the mark, and none after a group's last row.
+            if !last {
+                Rectangle().fill(PhoneTheme.line).frame(height: 1).padding(.leading, inset)
+            }
+        }
+    }
+
+    /// INF-2928 piece 1: a tap makes the Mac's four checks in order (`openTask`). A row whose task has cards put aside
+    /// brings them back and shows them on Home, on the phone and every Mac (INF-1517); a ready card on the stack shows on
+    /// Home, except a first mate question's, whose row opens its record; a required step the captain put off shows its
+    /// card again; any other row opens the task's record.
     private func open(_ task: PhoneTask) {
         let aside = PhoneBoard.minimized(of: task, in: session.cards)
-        if aside.isEmpty { messageContext.taskID = task.id; selected = task } else { restore(aside) }
+        if !aside.isEmpty { restore(aside); return }
+        if let card = task.waitingCardId, let shown = session.stack.first(where: { $0.id == card }) {
+            // The captain's pick: a first mate question's card shows no task key and the phone's cards have no Info
+            // tab, so its row opens the record, where Dismiss is, until the phone matches the Mac.
+            if task.kind == "decision" && shown.isFirstmateOwn { openRecord(task); return }
+            messageContext.restoring = card; return
+        }
+        if task.status == "open", let state = task.requiredAction?.state, state == "ready" || state == "deferred",
+           session.canChange {
+            showCard(task); return
+        }
+        openRecord(task)
+    }
+
+    private func openRecord(_ task: PhoneTask) { messageContext.taskID = task.id; selected = task }
+
+    /// INF-2928 piece 3: the long press's moves, the Mac's task board menu for this row (`boardMenuOf`): each entry names
+    /// what it does, or the Mac's reason it cannot run, dim. A row the board has no menu for, Done and Dropped among
+    /// them, still opens its record here.
+    @ViewBuilder private func moves(_ task: PhoneTask, lane: PhoneRowMoves.Lane?) -> some View {
+        let items = lane.map { PhoneRowMoves.menu(task, lane: $0) } ?? []
+        if items.isEmpty {
+            Button(PhoneRowMoves.openLabel) { openRecord(task) }
+        }
+        ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+            switch item {
+            case .separator: Divider()
+            case .entry(let entry):
+                Button(role: entry.danger ? .destructive : nil) { act(entry, task: task, lane: lane) } label: {
+                    Text(entry.label)
+                    if let detail = entry.detail { Text(detail) }
+                }
+                .disabled(entry.disabled || (!session.canChange && entry.id != .open && entry.id != .card))
+            }
+        }
+    }
+
+    /// One entry, as the Mac's board runs it: Open record, Show the card by the row's own four checks, Continue at once,
+    /// and every other entry as the move to its lane or to Drop task.
+    private func act(_ entry: PhoneRowMoves.Entry, task: PhoneTask, lane: PhoneRowMoves.Lane?) {
+        switch entry.id {
+        case .open: openRecord(task)
+        case .card: open(task)
+        case .continue: start(task, move: "continue-task")
+        default:
+            guard let lane, let target = entry.target else { return }
+            perform(task, from: lane, to: target)
+        }
+    }
+
+    /// The Mac's move (`boardMoveOf`): a refusal says why and writes nothing, an at-once move runs, and a move that asks
+    /// asks once; a never-started Drop task asks in its record's words, from the effects the record lists now.
+    private func perform(_ task: PhoneTask, from lane: PhoneRowMoves.Lane, to target: PhoneRowMoves.Target) {
+        switch PhoneRowMoves.move(task, from: lane, to: target) {
+        case .none(let why), .refused(let why): say(why)
+        case .now(let op, _, _): run(task, args: [task.id, op])
+        case .card(let card, _): messageContext.restoring = card
+        case .ask(let op, let sentence, let confirm):
+            guard op == "drop-task" else {
+                asking = RowAsk(task: task, op: op, sentence: sentence, confirm: confirm, review: nil); return
+            }
+            Task {
+                let effects = try? await session.readDetail(task.id).dropEffects
+                switch PhoneRowMoves.dropAsk(task.key, effects: effects) {
+                case .refused(let why): say(why)
+                case .ask(let sentence, let review):
+                    asking = RowAsk(task: task, op: op, sentence: sentence, confirm: confirm, review: review)
+                }
+            }
+        }
+    }
+
+    /// The ask's own button: Start through the start the record draws at the tap, any other move as the Mac sends it,
+    /// with the review Drop task asked about.
+    private func confirm(_ ask: RowAsk) {
+        if ask.op == "start-task" { start(ask.task, move: ask.op); return }
+        var args: [Any] = [ask.task.id, ask.op]
+        if let review = ask.review { args.append(review) }
+        run(ask.task, args: args)
+    }
+
+    /// A move the phone draws no intent for: the list moves the row once the computer's board does, and a refusal says why.
+    private func run(_ task: PhoneTask, args: [Any]) {
+        guard session.canChange else { return }
+        Task {
+            do {
+                let answer: PhoneAnswer = try await session.request(.run, args: args)
+                if !answer.ok { say(answer.text ?? "Your computer could not make this change.") }
+            } catch { say(error.localizedDescription) }
+        }
+    }
+
+    /// Start and Continue show the task starting at the tap; the session takes a refused one back and says why.
+    private func start(_ task: PhoneTask, move: String) {
+        guard session.canChange else { return }
+        Task { try? await session.change(.start(task: task.id, move: move), .run, args: [task.id, move]) }
+    }
+
+    private func say(_ why: String) { session.changeNotice = PhoneChangeNotice(words: why) }
+
+    /// A Backlog row's Start sits under its trailing edge: a swipe toward the leading edge shows it, as the Mac shows it on
+    /// the row, and holds the row open on it; a tap on the row closes it. One press starts the task with no ask, as on
+    /// the Mac.
+    @ViewBuilder private func swipeable(_ line: some View, task: PhoneTask, start: PhoneRowMoves.Start?) -> some View {
+        if let start {
+            let held: CGFloat = swiped == task.id ? -Self.startWidth : 0
+            let x = swiping.flatMap { $0.id == task.id ? $0.x : nil } ?? held
+            line.offset(x: x)
+                .background(alignment: .trailing) {
+                    if x < 0 {
+                        Button {
+                            withAnimation(.snappy) { swiped = nil }
+                            self.start(task, move: "start-task")
+                        } label: {
+                            Text(start.label).font(PhoneFont.body).lineLimit(1).fixedSize()
+                                .foregroundStyle(start.reason == nil ? PhoneTheme.onAccent : PhoneTheme.muted)
+                                .frame(width: -x).frame(maxHeight: .infinity)
+                                .background(start.reason == nil ? PhoneTheme.accent : PhoneTheme.surface)
+                                .clipped()
+                        }.buttonStyle(.plain).disabled(start.reason != nil || !session.canChange)
+                            .accessibilityIdentifier("row-start-\(task.id)")
+                    }
+                }
+                .clipped()
+                .gesture(PhoneRowSwipe { dx in
+                    if swiped != nil && swiped != task.id { swiped = nil }
+                    swiping = (task.id, min(0, max(held + dx, -Self.startWidth - PhoneTheme.space5)))
+                } ended: { dx, speed in
+                    let x = held + dx
+                    let open = speed < -300 || (x < -Self.startWidth / 2 && speed <= 300)
+                    withAnimation(.snappy) {
+                        swiping = nil
+                        swiped = open ? task.id : nil
+                    }
+                })
+        } else {
+            line
+        }
+    }
+
+    /// The record's Show the card, through the one move the Mac runs it by: once the computer shows the card again, Home
+    /// shows it as soon as the stack holds it; a refusal or a lost answer opens the record instead, as on the Mac.
+    private func showCard(_ task: PhoneTask) {
+        problem = nil
+        Task {
+            do {
+                let answer: PhoneAnswer = try await session.request(.run, args: [task.id, "show-card"])
+                if answer.ok, let card = try await session.readDetail(task.id).waitingCardId {
+                    messageContext.restoring = card; return
+                }
+            } catch {}
+            openRecord(task)
+        }
     }
 
     /// INF-2553: the cards are back on Home at the tap, the first one up; one request per card, sent together, each
@@ -245,282 +475,71 @@ struct PhoneTasks: View {
     }
 
     private static let markWidth: CGFloat = 12
+    /// How wide a Backlog row's Start shows once a swipe holds it open: room for Try again.
+    private static let startWidth: CGFloat = 104
     private static let label = Font.custom("SpaceGrotesk-Light", size: 11, relativeTo: .caption2).weight(.medium)
     private static let labelTracking: CGFloat = 1
+
+    /// A move from a row's long press that asks once: the Mac's sentence, its button, and Drop task's review.
+    struct RowAsk: Identifiable {
+        let id = UUID()
+        let task: PhoneTask
+        let op: String
+        let sentence: String
+        let confirm: String
+        let review: [String: [String]]?
+    }
 }
 
-struct PhoneTaskRecord: View {
-    let session: ReadOnlySession
-    let initial: PhoneTask
-    @State private var detail: PhoneTask?
-    @State private var crew: PhoneCrew?
-    @State private var live: PhoneCrewLive?
-    @State private var showingCrew = false
-    @State private var draft = ""
-    @State private var busy = false
-    @State private var pressed: String?
-    @State private var problem: String?
-    @State private var readProblem: String?
-    @State private var sent = 0
-    @ScaledMetric(relativeTo: .caption) private var markLift: CGFloat = 4
-    /// INF-2553: the record as the home last read it, with the captain's pending start, interrupt or steer drawn over it.
-    private var task: PhoneTask { session.shown(detail ?? initial) }
-    private var transcript: PhoneCrew? { crew.map(session.shown) }
-    private var steerable: Bool { showingCrew && task.canSteer }
-    private var canStart: Bool { task.moves?["start-task"]?.ok == true }
-    private var canDone: Bool { task.moves?["answer-done"]?.ok == true }
-    private var canDismiss: Bool { task.moves?["dismiss-question"]?.ok == true }
-    private var canContinue: Bool { task.moves?["continue-task"]?.ok == true }
-    private var canInterrupt: Bool { steerable && live?.since != nil && task.activity != "stopping" }
-    private var hasActions: Bool {
-        (task.status == "open" || task.status == "active") && (steerable || canStart || canContinue || canDone || canDismiss)
-    }
+/// A long press's summary at its own width. The system asks the preview for that size, but an iPad may give it less
+/// room beside the menu; the summary then shrinks whole instead of losing its edges.
+private struct PhoneRowPreview<Content: View>: View {
+    let width: CGFloat
+    @ViewBuilder let content: Content
+    @State private var natural: CGSize = .zero
+    @State private var given: CGSize = .zero
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                // INF-1351: the lazy stack is the scroll view's own content. Nested in a plain stack, its placement and
-                // prefetch never settled after a steer, and the main thread stayed busy until the app was stopped.
-                LazyVStack(alignment: .leading, spacing: PhoneTheme.space4) {
-                    // The record's title is the task's own; its key stays in mono on the line below for whoever looks for it.
-                    Text(task.title).font(PhoneFont.title).accessibilityAddTraits(.isHeader).accessibilityIdentifier("task-record-title")
-                    Text("\(task.key) · \(task.state) · \(session.mac.name)").font(PhoneFont.mono)
-                    if let wait = task.queueWait {
-                        Text(wait.line).font(PhoneFont.mono).foregroundStyle(PhoneTheme.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if let place = task.place { Text(place.where).foregroundStyle(PhoneTheme.secondary) }
-                    // INF-589 item 11: the reach line says out of reach; this one says only that changes are off.
-                    if let words = session.changesOffLine { Text(words).font(PhoneFont.callout).foregroundStyle(PhoneTheme.secondary) }
-                    if let readProblem { Text(readProblem).foregroundStyle(PhoneTheme.warning) }
-                    if task.startedAt != nil {
-                        Picker("Record", selection: $showingCrew) {
-                            Text("Info").tag(false)
-                            Text("Crewmate").tag(true)
-                        }.pickerStyle(.segmented).accessibilityIdentifier("record-tabs")
-                    }
-                    if showingCrew { crewContent } else { infoContent }
-                }.padding().frame(maxWidth: 750).frame(maxWidth: .infinity)
-            }
-            if hasActions || problem != nil || session.changeNotice != nil { foot }
-        }.background(PhoneTheme.background).navigationBarTitleDisplayMode(.inline)
-            // INF-589 item 12: a soft tap once the computer accepts a start, continue, interrupt or steer.
-            .sensoryFeedback(.phone, trigger: sent)
-            .task(id: "\(session.contact)|\(showingCrew)") {
-                guard session.contact == "in-reach" else { return }
-                // Only the open record polls; the board follows pushes. Transcript writes may follow their event.
-                while !Task.isCancelled {
-                    await refresh()
-                    do { try await Task.sleep(for: .seconds(1)) } catch { return }
-                }
-            }
-    }
-
-    private var infoContent: some View {
-        VStack(alignment: .leading, spacing: PhoneTheme.space4) {
-            if let goal = task.goal { section("Goal", goal) }
-            if let words = task.intent?.userWords, !words.isEmpty { section("Your words", words) }
-            if let plan = task.plan {
-                Text("Progress").font(PhoneFont.headline)
-                ForEach(Array(plan.items.enumerated()), id: \.offset) { _, item in
-                    Label(item.label, systemImage: item.state == "done" ? "checkmark.circle" : item.state == "current" ? "circle.inset.filled" : "circle")
-                }
-            }
-            if let outcome = task.outcome { section("Latest report", outcome) }
-            if let problem = task.problem { section("What happened", problem) }
-            // INF-2528: the details the crew summary leaves out live here - when each wait was recorded, the reasoning
-            // level with its note, and the check counts with any reason they could not all be read.
-            if !task.blockedBy.isEmpty {
-                section("Waiting for", task.blockedBy.map { key in
-                    task.blockedSince?[key].map { "\(key) recorded \(Self.time(Date(timeIntervalSince1970: $0 / 1000), now: .now))" } ?? key
-                }.joined(separator: ", "), id: "task-record-waiting")
-            }
-            let facts = PhoneTaskFacts(task, modelName: { model in task.modelLabel ?? PhoneCrewSummary.modelTail(model) })
-            if let model = task.modelLabel { section("Crewmate", "\(task.assignee ?? "Crewmate") · \(model)") }
-            if let reasoning = facts.reasoning {
-                section("Reasoning", [reasoning, facts.reason].compactMap { $0 }.joined(separator: ". "), id: "task-record-reasoning")
-            }
-            if let checks = facts.delivery?.checks {
-                let change = facts.delivery?.change.map { $0.label ?? $0.noun }
-                section("Checks", [change, checks.spanWords(now: Date.now.timeIntervalSince1970 * 1000)].compactMap { $0 }
-                    .joined(separator: " · "), id: "task-record-checks")
-            }
-            Text("Timeline").font(PhoneFont.headline)
-            timeline
-        }
-    }
-
-    // INF-589 item 14: each event on a hairline rail, its words at caption size and its time at the right.
-    private var timeline: some View {
-        TimelineView(.periodic(from: .now, by: 60)) { clock in
-            VStack(alignment: .leading, spacing: PhoneTheme.space3) {
-                ForEach(task.events ?? []) { event in
-                    let at = Date(timeIntervalSince1970: event.at / 1000)
-                    HStack(alignment: .firstTextBaseline, spacing: PhoneTheme.space3) {
-                        Circle().fill(PhoneTheme.muted).frame(width: Self.mark, height: Self.mark)
-                            .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + markLift }
-                            .accessibilityHidden(true)
-                        Text(event.text).font(PhoneFont.caption).foregroundStyle(PhoneTheme.secondary)
-                            .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                        Text(Self.time(at, now: clock.date)).font(PhoneFont.micro).foregroundStyle(PhoneTheme.muted)
-                            .fixedSize().accessibilityLabel(at.formatted(date: .abbreviated, time: .shortened))
-                    }.accessibilityElement(children: .combine).accessibilityIdentifier("task-event-\(event.kind)")
-                }
-            }
-            .background(alignment: .leading) {
-                Rectangle().fill(PhoneTheme.line).frame(width: 1).padding(.leading, (Self.mark - 1) / 2)
-                    .padding(.vertical, PhoneTheme.space2).accessibilityHidden(true)
-            }
-        }
-    }
-
-    private static let mark: CGFloat = 5
-
-    /// Today's events show only their time; an earlier day adds its date, never the year of every line.
-    static func time(_ at: Date, now: Date) -> String {
-        Calendar.current.isDate(at, inSameDayAs: now)
-            ? at.formatted(date: .omitted, time: .shortened)
-            : at.formatted(.dateTime.month(.abbreviated).day().hour().minute())
-    }
-
-    /// The transcript's rows sit straight in the record's lazy stack, so only the lines on screen are laid out.
-    @ViewBuilder private var crewContent: some View {
-        if let crew = transcript {
-            if crew.earlier > 0 { Text("\(crew.earlier) earlier entries are not shown.").font(PhoneFont.caption) }
-            if crew.lines.isEmpty { Text("Nothing from the crewmate yet.").foregroundStyle(PhoneTheme.secondary) }
-            ForEach(crew.lines) { line in
-                VStack(alignment: .leading, spacing: PhoneTheme.space2) {
-                    if line.kind == "sent" { Text(line.from == "captain" ? "You" : line.from == "firstmate" ? "Your first mate" : "Infinitary").font(PhoneFont.caption) }
-                    if line.sending { Text("Sending…").font(PhoneFont.micro).foregroundStyle(PhoneTheme.muted).accessibilityIdentifier("crew-sending") }
-                    if let name = line.name { Text("\(name) · \(line.target ?? "")").font(PhoneFont.mono) }
-                    if line.kind == "brief" || line.kind == "report" {
-                        DisclosureGroup(line.summary ?? (line.kind == "brief" ? "The brief" : "Report")) { Text(line.words).textSelection(.enabled) }
-                    } else { Text(line.words).textSelection(.enabled) }
-                    if let result = line.result { CrewResult(session: session, taskID: task.id, result: result) }
-                // A container keeps its rows' own names; an identifier on a bare stack is handed to every row inside it.
-                }.accessibilityElement(children: .contain).accessibilityIdentifier("crew-line-\(line.kind)")
-            }
-        }
-        if let text = live?.text, !text.isEmpty { Text(text).accessibilityIdentifier("crew-live") }
-    }
-
-    // INF-589 item 10: the record's foot reads as a card's footer, on the panel color under a hairline.
-    private var foot: some View {
-        VStack(alignment: .leading, spacing: PhoneTheme.space3) {
-            if let problem { Text(problem).font(PhoneFont.callout).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("task-problem") }
-            // INF-2553: why a start, interrupt or steer shown at the tap was taken back, said where the captain is.
-            if let notice = session.changeNotice {
-                Text(notice.words).font(PhoneFont.callout).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("task-change-notice")
-            }
-            if hasActions { actions }
-        }.padding(PhoneTheme.space4).frame(maxWidth: 750).frame(maxWidth: .infinity)
+        let scale = natural.width > 0 && natural.height > 0 && given.width > 0
+            ? min(1, given.width / natural.width, given.height / natural.height) : 1
+        content.frame(width: width).background(PhoneTheme.panel)
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { natural = $0 }
+            .scaleEffect(scale)
+            // Never larger than the summary, and as small as the room the system gives it.
+            .frame(minWidth: 0, minHeight: 0)
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { given = $0 }
             .background(PhoneTheme.panel)
-            .overlay(alignment: .top) { Rectangle().fill(PhoneTheme.line).frame(height: 1) }
-    }
-
-    @ViewBuilder private var actions: some View {
-        VStack(spacing: PhoneTheme.space3) {
-            if steerable { steerBox }
-            if canInterrupt || canStart || canContinue || canDone || canDismiss {
-                // The card's row (INF-944 item 5): the default lit and last at the trailing edge, Interrupt outlined beside it.
-                PhoneChoiceRow {
-                    if canDismiss { choice("Dismiss", id: "dismiss-question", primary: false) { change(.finish(task: task.id, ending: .dismissQuestion), .run, args: [task.id, PhoneTaskEnding.dismissQuestion.rawValue], from: "dismiss-question") } }
-                    if canDone { choice(PhoneCardWords.done, id: "record-answer-done", primary: true) { change(.finish(task: task.id, ending: .answerDone), .run, args: [task.id, PhoneTaskEnding.answerDone.rawValue], from: "record-answer-done") }.accessibilityHint(PhoneCardWords.doneRest(task.key)) }
-                    if canInterrupt { choice("Interrupt", id: "interrupt-task", primary: false) { change(.interrupt(task: task.id), .interrupt, args: [task.id], from: "interrupt-task") } }
-                    if canStart { choice("Start", id: "start-task", primary: true) { change(.start(task: task.id, move: "start-task"), .run, args: [task.id, "start-task"], from: "start-task") } }
-                    if canContinue { choice("Continue", id: "continue-task", primary: true) { change(.start(task: task.id, move: "continue-task"), .run, args: [task.id, "continue-task"], from: "continue-task") } }
-                }
-            }
-        }.disabled(busy || !session.canChange)
-    }
-
-    // The composer's capsule, with Steer as its send arrow, dimmed until there are words to send.
-    private var steerBox: some View {
-        HStack(alignment: .center, spacing: PhoneTheme.space2) {
-            // INF-2553: the steer shows in the transcript at the tap, so the box stays open for the next one.
-            TextField("Message to the crewmate", text: $draft, axis: .vertical).lineLimit(1...4)
-                .accessibilityIdentifier("steer-box")
-            Button {
-                change(.steer(task: task.id, text: draft, before: PhoneIntentLedger.captainSteers(transcript)), .steer,
-                       args: [task.id, draft], clearDraft: true, from: "steer-task")
-            } label: {
-                Group {
-                    Label("Steer", systemImage: "arrow.up.circle.fill").labelStyle(.iconOnly)
-                }.frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
-            }.disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .keyboardShortcut(.return, modifiers: .command).accessibilityIdentifier("steer-task")
-        }.font(PhoneFont.callout)
-            .padding(.leading, PhoneTheme.space4).padding(.trailing, PhoneTheme.space2)
-            .background(PhoneTheme.surface, in: Capsule())
-            .overlay { Capsule().strokeBorder(PhoneTheme.line) }
-    }
-
-    private func choice(_ title: String, id: String, primary: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title).opacity(busy && pressed == id ? 0 : 1)
-                .overlay { if busy && pressed == id { ProgressView() } }
-        }.buttonStyle(PhoneChoiceStyle(primary: primary)).accessibilityIdentifier(id)
-    }
-
-    private func section(_ title: String, _ text: String, id: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: PhoneTheme.space2) {
-            Text(title).font(PhoneFont.headline)
-            if let id { Text(text).textSelection(.enabled).accessibilityIdentifier(id) } else { Text(text).textSelection(.enabled) }
-        }
-    }
-
-    private func refresh() async {
-        do {
-            let next = try await session.readDetail(initial.id)
-            guard !Task.isCancelled else { return }
-            detail = next; readProblem = nil
-            if showingCrew && next.startedAt != nil {
-                let transcript = try await session.readCrew(initial.id)
-                let running: PhoneCrewLive = try await session.request(.live, args: [initial.id])
-                guard !Task.isCancelled else { return }
-                crew = transcript; live = running
-            }
-        } catch { if !Task.isCancelled { readProblem = error.localizedDescription } }
-    }
-
-    /// INF-2553: the record shows the change at the tap and a steer's draft clears; the session takes a refused change
-    /// back, says why in the foot and puts the draft back.
-    private func change(_ kind: PhoneIntent.Kind, _ channel: PhoneRequest, args: [Any], clearDraft: Bool = false, from control: String) {
-        guard !busy, session.canChange else { return }
-        if clearDraft && draft.utf16.count > PhoneLimits.steer { problem = "This message is too long. Shorten it before sending."; return }
-        let words = draft
-        busy = true; pressed = control; problem = nil
-        if clearDraft { draft = "" }
-        let box = $draft
-        var restore: (@MainActor () -> Void)?
-        if clearDraft { restore = { @MainActor in if box.wrappedValue.isEmpty { box.wrappedValue = words } } }
-        Task {
-            defer { busy = false }
-            do {
-                try await session.change(kind, channel, args: args, restore: restore)
-                sent += 1
-                await refresh()
-            } catch {}
-        }
     }
 }
 
-private struct CrewResult: View {
-    let session: ReadOnlySession
-    let taskID: String
-    let result: PhoneCrew.Line.Result
-    @State private var open = false
-    @State private var text: String?
-    var body: some View {
-        DisclosureGroup("\(result.lines) lines · \(result.preview)", isExpanded: $open) {
-            Text(text ?? "Reading…").textSelection(.enabled).font(PhoneFont.mono)
-        }.task(id: open) {
-            guard open else { return }
-            do {
-                let read: PhoneResultText? = try await session.request(.result, args: [taskID, result.ref])
-                guard !Task.isCancelled else { return }
-                text = read.map { $0.text + ($0.cut > 0 ? "\n\($0.cut) more characters are not shown." : "") } ?? "No result to read."
-            } catch { text = error.localizedDescription }
+/// A sideways swipe on a row, which leaves an upward or downward one to the list's scrolling: how far it has moved, then
+/// where it ended and how fast.
+private struct PhoneRowSwipe: UIGestureRecognizerRepresentable {
+    let moved: (CGFloat) -> Void
+    let ended: (CGFloat, CGFloat) -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        return pan
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        let dx = recognizer.translation(in: nil).x
+        switch recognizer.state {
+        case .changed: moved(dx)
+        case .ended, .cancelled: ended(dx, recognizer.velocity(in: nil).x)
+        default: break
+        }
+    }
+
+    @MainActor final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = recognizer as? UIPanGestureRecognizer else { return false }
+            let speed = pan.velocity(in: nil)
+            return abs(speed.x) > abs(speed.y)
         }
     }
 }

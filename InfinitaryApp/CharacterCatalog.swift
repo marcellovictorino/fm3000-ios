@@ -22,6 +22,8 @@ struct CharacterCatalog: Decodable, Sendable {
     let galaxy: [String: Double]
     let algol: [String: Double]
     let flicker: [String: Double]
+    /// The cinch while the first mate shortens its conversation (INF-3011): the captain's settings and the look's constants.
+    let cinch: [String: Double]
     /// The waiting-on-you beacon (INF-1543): ring share, breath light, swell, halo, wire strength and breath period.
     let captain: [String: Double]
     /// The background-wait ring (INF-676, INF-1777): banked strength, ring share, arc sweep and rate, and its dashes.

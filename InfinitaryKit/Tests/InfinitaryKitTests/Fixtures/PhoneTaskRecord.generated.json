@@ -1,0 +1,3668 @@
+{
+  "now": 1793988000000,
+  "cases": [
+    {
+      "name": "working with its cards and activity",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [
+          {
+            "id": "card-3001-b",
+            "kind": "decision",
+            "title": "Which channel first?",
+            "state": "open",
+            "at": 1793987700000
+          },
+          {
+            "id": "card-3001-a",
+            "kind": "note",
+            "title": "The chart so far",
+            "state": "closed",
+            "ending": "You pressed Got it",
+            "at": 1793977200000
+          }
+        ],
+        "events": [],
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793983200000,
+            "kind": "dispatched",
+            "text": "The crewmate started."
+          }
+        ],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "working",
+        "word": "Working",
+        "reason": ""
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "cards",
+          "label": "Cards",
+          "count": 2
+        },
+        {
+          "kind": "activity",
+          "label": "Activity"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "working",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "working between turns, its live words still coming",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "inactive"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": []
+      },
+      "live": {
+        "text": "",
+        "since": 1793987880000
+      },
+      "bar": {
+        "end": "stop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "idle",
+        "word": "Idle",
+        "reason": "No continuing work"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "working",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "backlog, never started",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "on-request",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "dropEffects": {
+          "parts": [],
+          "waiting": [
+            {
+              "key": "INF-3002",
+              "title": "Wait for INF-3002"
+            }
+          ],
+          "underway": [
+            {
+              "key": "INF-3003",
+              "title": "Work on INF-3003"
+            },
+            {
+              "key": "INF-3004",
+              "title": "Work on INF-3004"
+            }
+          ]
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": "drop-task",
+        "next": "start",
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "backlog",
+        "word": "Backlog",
+        "reason": "Starts when you press Start"
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It won't start, and there is no unfinished work to keep. Its record stays. INF-3002 is still waiting on this work. Dropping this task will not start it. 2 tasks are already working (INF-3003, INF-3004) and will not be stopped."
+      }
+    },
+    {
+      "name": "queued behind other work, held by a gate",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "queueWait": {
+          "line": "Waiting for a free crewmate · since 9:40 AM",
+          "since": 1793986800000
+        },
+        "hold": {
+          "title": "Held until the allowance resets",
+          "text": "It starts once your plan's allowance resets."
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": "drop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "queued",
+        "word": "Queued",
+        "reason": "Waiting for a free crewmate · since 9:40 AM"
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": {
+        "title": "Waiting for a free crewmate · since 9:40 AM",
+        "guidance": "It starts once your plan's allowance resets.",
+        "urgent": false,
+        "danger": false
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": "This task changed. Review it again before dropping it.",
+        "question": null
+      }
+    },
+    {
+      "name": "queued, waiting on two tasks",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "on-request",
+        "flags": {
+          "blocked": true,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [
+          "INF-3010",
+          "INF-3011"
+        ],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "dropEffects": {
+          "parts": [],
+          "waiting": [
+            {
+              "key": "INF-3002",
+              "title": "Wait for INF-3002"
+            },
+            {
+              "key": "INF-3005",
+              "title": "Wait for INF-3005"
+            }
+          ],
+          "underway": [
+            {
+              "key": "INF-3003",
+              "title": "Work on INF-3003"
+            }
+          ]
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": "drop-task",
+        "next": "start",
+        "blocked": true
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "backlog",
+        "word": "Backlog",
+        "reason": "Blocked by another task"
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": {
+        "title": "Waiting on INF-3010, INF-3011",
+        "guidance": "This task is blocked by other work.",
+        "urgent": true,
+        "danger": false
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It won't start, and there is no unfinished work to keep. Its record stays. 2 tasks are still waiting on this work (INF-3002, INF-3005). Dropping this task will not start them. INF-3003 is already working and will not be stopped."
+      }
+    },
+    {
+      "name": "starting",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "startAttempt": {
+          "phase": "preparing",
+          "since": 1793987995000
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": null,
+        "next": "starting",
+        "blocked": true
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "starting",
+        "word": "Starting",
+        "reason": ""
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": null
+    },
+    {
+      "name": "still starting",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "startAttempt": {
+          "phase": "preparing",
+          "since": 1793987980000
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": null,
+        "next": "starting",
+        "blocked": true
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "starting",
+        "word": "Starting",
+        "reason": "Still starting. You can keep working."
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": null
+    },
+    {
+      "name": "checking whether it started",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "startAttempt": {
+          "phase": "checking",
+          "since": 1793987960000
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": null,
+        "next": "starting",
+        "blocked": true
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "starting",
+        "word": "Starting",
+        "reason": "Checking whether it started"
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": null
+    },
+    {
+      "name": "could not start",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "on-request",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "startNotice": {
+          "reason": "No crewmate could start."
+        },
+        "dropEffects": {
+          "parts": [],
+          "waiting": [],
+          "underway": []
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": "drop-task",
+        "next": "try-again",
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "backlog",
+        "word": "Backlog",
+        "reason": "Could not start. No crewmate could start."
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It won't start, and there is no unfinished work to keep. Its record stays."
+      }
+    },
+    {
+      "name": "what it waited on was dropped",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": true,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": {
+        "end": "drop-task",
+        "next": "start",
+        "blocked": true
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "queued",
+        "word": "Queued",
+        "reason": "Blocked by another task"
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": {
+        "title": "A task it waits on was dropped",
+        "guidance": "Ask your first mate about its dependencies before starting.",
+        "urgent": false,
+        "danger": false
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": "This task changed. Review it again before dropping it.",
+        "question": null
+      }
+    },
+    {
+      "name": "a parent whose part started",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 3,
+          "closed": 1
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "dropEffects": {
+          "parts": [
+            {
+              "key": "INF-3012",
+              "title": "Sound the channel",
+              "started": true
+            },
+            {
+              "key": "INF-3013",
+              "title": "Mark the reef",
+              "started": false
+            }
+          ],
+          "waiting": [],
+          "underway": []
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": "drop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "queued",
+        "word": "Queued",
+        "reason": "Its 3 parts do the work"
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": {
+        "title": "Its 3 parts do the work",
+        "guidance": "1 closed, 2 still open.",
+        "urgent": false,
+        "danger": false
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": "Cannot drop INF-3001: INF-3012 \"Sound the channel\" has started. Handle that work separately first.",
+        "question": null
+      }
+    },
+    {
+      "name": "a parent with two open parts",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 2,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "dropEffects": {
+          "parts": [
+            {
+              "key": "INF-3012",
+              "title": "Sound the channel",
+              "started": false
+            },
+            {
+              "key": "INF-3013",
+              "title": "Mark the reef",
+              "started": false
+            }
+          ],
+          "waiting": [],
+          "underway": []
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": "drop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "queued",
+        "word": "Queued",
+        "reason": "Its 2 parts do the work"
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": {
+        "title": "Its 2 parts do the work",
+        "guidance": "0 closed, 2 still open.",
+        "urgent": false,
+        "danger": false
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": "Cannot drop INF-3001 while 2 parts are still open: INF-3012 \"Sound the channel\", INF-3013 \"Mark the reef\". Handle them separately first.",
+        "question": null
+      }
+    },
+    {
+      "name": "interrupted",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "interrupted",
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793983200000,
+            "kind": "dispatched",
+            "text": "The crewmate started."
+          }
+        ],
+        "plan": null,
+        "closing": null,
+        "problem": "The model stopped answering.",
+        "asks": []
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": "continue",
+        "blocked": false
+      },
+      "pillTone": "danger",
+      "status": {
+        "mark": "interrupted",
+        "word": "Interrupted",
+        "reason": "Work was interrupted"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "activity",
+          "label": "Activity"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "idle",
+      "attention": {
+        "title": "Work was interrupted",
+        "guidance": "The model stopped answering.",
+        "urgent": true,
+        "danger": true
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "interrupted with no problem said",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "interrupted",
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": "continue",
+        "blocked": false
+      },
+      "pillTone": "danger",
+      "status": {
+        "mark": "interrupted",
+        "word": "Interrupted",
+        "reason": "Work was interrupted"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "idle",
+      "attention": {
+        "title": "Work was interrupted",
+        "guidance": "Ask your first mate how to continue.",
+        "urgent": true,
+        "danger": true
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "waiting on its decision",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "captain"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": "card-3001-b",
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [
+          {
+            "id": "card-3001-b",
+            "kind": "decision",
+            "title": "Which channel first?",
+            "state": "open",
+            "at": 1793987700000
+          },
+          {
+            "id": "card-3001-a",
+            "kind": "note",
+            "title": "The chart so far",
+            "state": "closed",
+            "ending": "You pressed Got it",
+            "at": 1793977200000
+          }
+        ],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": "show-card",
+        "blocked": false
+      },
+      "pillTone": "accent",
+      "status": {
+        "mark": "waiting",
+        "word": "Waiting on you",
+        "reason": "A decision card is ready"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "cards",
+          "label": "Cards",
+          "count": 2
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "waiting",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "the first mate's question",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "decision",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": "card-q",
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": {
+        "end": "dismiss-question",
+        "next": "show-card",
+        "blocked": false
+      },
+      "pillTone": "accent",
+      "status": {
+        "mark": "waiting",
+        "word": "Waiting on you",
+        "reason": "A decision card is ready"
+      },
+      "tabs": [],
+      "crew": "waiting",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": null
+    },
+    {
+      "name": "an answer ready for Done",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "inactive"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "answerNoteId": "note-3001",
+        "answerSince": 1793982300000
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": "answer-done",
+        "blocked": false
+      },
+      "pillTone": "accent",
+      "status": {
+        "mark": "waiting",
+        "word": "Waiting on you",
+        "reason": "Answer ready · waiting 1h 35m"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "idle",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "a required step ready",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "requiredAction": {
+          "cardId": "card-r",
+          "state": "ready"
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": "drop-task",
+        "next": "show-card",
+        "blocked": false
+      },
+      "pillTone": "accent",
+      "status": {
+        "mark": "waiting",
+        "word": "Waiting on you",
+        "reason": ""
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": "This task changed. Review it again before dropping it.",
+        "question": null
+      }
+    },
+    {
+      "name": "paused by its report",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "captain"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": "It needs the old harbour chart.",
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "captainWait": true
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "idle",
+        "word": "Idle",
+        "reason": "Work is paused"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "waiting",
+      "attention": {
+        "title": "Work is paused",
+        "guidance": "It needs the old harbour chart.",
+        "urgent": false,
+        "danger": false
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "paused with no report",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "captain"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": true,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "idle",
+        "word": "Idle",
+        "reason": "Work is paused"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "waiting",
+      "attention": {
+        "title": "Work is paused",
+        "guidance": "No reason has been reported yet.",
+        "urgent": false,
+        "danger": false
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "held by a gate after starting",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "inactive"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "hold": {
+          "title": "Held for the tide",
+          "text": "It goes on at high tide."
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "idle",
+        "word": "Idle",
+        "reason": "No continuing work"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "idle",
+      "attention": {
+        "title": "Held for the tide",
+        "guidance": "It goes on at high tide.",
+        "urgent": false,
+        "danger": false
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "standing waits with no times",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "timed-wait"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "waits": [
+          {
+            "id": "w-1",
+            "kind": "job",
+            "label": "Sounding job"
+          },
+          {
+            "id": "w-2",
+            "kind": "start",
+            "label": "Start at the tide"
+          }
+        ]
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "idle",
+        "word": "Idle",
+        "reason": ""
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "idle",
+      "attention": {
+        "title": "Sounding job · time unknown; Start at the tide · time unknown",
+        "guidance": "The recorded start time does not promise that work has resumed.",
+        "urgent": false,
+        "danger": false
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "a lone job wait",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "active",
+          "reason": "job"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "waits": [
+          {
+            "id": "w-3",
+            "kind": "job",
+            "label": "Sounding job"
+          }
+        ]
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "working",
+        "word": "Working",
+        "reason": "Sounding job · time unknown"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "idle",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "a decision wait beside its card",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "captain"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": "card-3001-b",
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "waits": [
+          {
+            "id": "w-4",
+            "kind": "decision",
+            "label": "Your answer"
+          }
+        ]
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": "show-card",
+        "blocked": false
+      },
+      "pillTone": "accent",
+      "status": {
+        "mark": "waiting",
+        "word": "Waiting on you",
+        "reason": "A decision card is ready · time unknown"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "waiting",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "a checks wait",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "active",
+          "reason": "checks"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "waits": [
+          {
+            "id": "w-5",
+            "kind": "checks",
+            "label": "Checks on #812"
+          }
+        ]
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "working",
+        "word": "Working",
+        "reason": ""
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "idle",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "back in the backlog, waiting on a task",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "dependency"
+        },
+        "closedReason": null,
+        "startPolicy": "on-request",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [
+          "INF-3010"
+        ],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "backlogSince": 1793987100000
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": "start",
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "backlog",
+        "word": "Backlog",
+        "reason": "Started · its work waits for your Start"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "idle",
+      "attention": {
+        "title": "Waiting on INF-3010",
+        "guidance": "This task is blocked by other work.",
+        "urgent": true,
+        "danger": false
+      },
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "its browser in your hands",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "idle",
+        "workPosture": {
+          "state": "idle",
+          "reason": "inactive"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "browser": {
+          "state": "open",
+          "site": "localhost:5173",
+          "url": "http://localhost:5173/",
+          "title": "Chart",
+          "control": "captain"
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "idle",
+        "word": "Idle",
+        "reason": "No continuing work"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "paused",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "merged as a pull request",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "done",
+        "activity": null,
+        "closedReason": "landed",
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": {
+          "mode": "direct-pr",
+          "prNumber": 812,
+          "prUrl": "https://github.com/harbour/harbour/pull/812",
+          "ci": "green"
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": 1793986140000,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [
+          {
+            "id": "card-3001-b",
+            "kind": "decision",
+            "title": "Which channel first?",
+            "state": "open",
+            "at": 1793987700000
+          },
+          {
+            "id": "card-3001-a",
+            "kind": "note",
+            "title": "The chart so far",
+            "state": "closed",
+            "ending": "You pressed Got it",
+            "at": 1793977200000
+          }
+        ],
+        "events": [],
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793983200000,
+            "kind": "dispatched",
+            "text": "The crewmate started."
+          }
+        ],
+        "plan": null,
+        "closing": {
+          "at": 1793986200000,
+          "note": null
+        },
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": null,
+      "pillTone": "neutral",
+      "status": {
+        "mark": "done",
+        "word": "Done",
+        "reason": ""
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "cards",
+          "label": "Cards",
+          "count": 2
+        },
+        {
+          "kind": "activity",
+          "label": "Activity"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "closed",
+      "attention": null,
+      "closed": "Merged 30m ago as pull request #812. The checks passed.",
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": null
+    },
+    {
+      "name": "merged as a branch",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "done",
+        "activity": null,
+        "closedReason": "merged",
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": {
+          "mode": "local-only",
+          "changeLabel": "fm/task-3001",
+          "ci": "no-pr"
+        },
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": 1793977200000,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": null,
+      "pillTone": "neutral",
+      "status": {
+        "mark": "done",
+        "word": "Done",
+        "reason": ""
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "closed",
+      "attention": null,
+      "closed": "Merged 3h ago as branch fm/task-3001.",
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": null
+    },
+    {
+      "name": "carried on by another task",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "done",
+        "activity": null,
+        "closedReason": "superseded",
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": {
+          "at": 1793894400000,
+          "note": "INF-3020 carries the rest"
+        },
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": null,
+      "pillTone": "neutral",
+      "status": {
+        "mark": "done",
+        "word": "Done",
+        "reason": ""
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "closed",
+      "attention": null,
+      "closed": "INF-3020 carries the rest, closed 1d ago.",
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": null
+    },
+    {
+      "name": "dropped with a reason",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "dropped",
+        "activity": null,
+        "closedReason": "cancelled",
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": {
+          "at": 1793980800000,
+          "note": "No longer wanted"
+        },
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": {
+        "end": null,
+        "next": "start-again",
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "dropped",
+        "word": "Dropped",
+        "reason": ""
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "closed",
+      "attention": null,
+      "closed": "Dropped 2h ago: No longer wanted",
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": null
+    },
+    {
+      "name": "dropped and replaced",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "dropped",
+        "activity": null,
+        "closedReason": "cancelled",
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": 1793987940000,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [],
+        "replacedBy": "INF-3030"
+      },
+      "live": null,
+      "bar": null,
+      "pillTone": "neutral",
+      "status": {
+        "mark": "dropped",
+        "word": "Dropped",
+        "reason": ""
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "closed",
+      "attention": null,
+      "closed": "Dropped 1m ago.",
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": null
+    },
+    {
+      "name": "failed",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "dropped",
+        "activity": null,
+        "closedReason": "failed",
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": 1793987700000,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": "The checks never passed.",
+        "asks": []
+      },
+      "live": null,
+      "bar": {
+        "end": null,
+        "next": "start-again",
+        "blocked": false
+      },
+      "pillTone": "danger",
+      "status": {
+        "mark": "dropped",
+        "word": "Dropped",
+        "reason": "Failed"
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "closed",
+      "attention": {
+        "title": "Task failed",
+        "guidance": "The checks never passed.",
+        "urgent": true,
+        "danger": true
+      },
+      "closed": "Failed 5m ago.",
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": null
+    },
+    {
+      "name": "done with no reason",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "done",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": 1793987400000,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": null,
+      "pillTone": "neutral",
+      "status": {
+        "mark": "done",
+        "word": "Done",
+        "reason": ""
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "closed",
+      "attention": null,
+      "closed": "Done 10m ago.",
+      "fold": "Your 1 message",
+      "asks": [],
+      "drop": null
+    },
+    {
+      "name": "a filing not yet started",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "open",
+        "activity": null,
+        "closedReason": null,
+        "startPolicy": "on-request",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": null,
+        "closedAt": null,
+        "intent": {
+          "goal": "Chart the outer harbour before the storm.",
+          "userWords": "chart the outer harbour before the storm"
+        },
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [
+          {
+            "id": "a-1",
+            "at": 1793982000000,
+            "text": "chart the outer harbour before the storm",
+            "images": 0,
+            "attachedVia": null,
+            "turnState": "closed"
+          },
+          {
+            "id": "a-2",
+            "at": 1793986200000,
+            "text": "and the reef too",
+            "images": 0,
+            "attachedVia": null,
+            "turnState": "closed"
+          }
+        ],
+        "filing": {
+          "why": "The reef moved in the last storm.",
+          "originKey": "INF-2990",
+          "verdict": null
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": "drop-task",
+        "next": "start",
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "backlog",
+        "word": "Backlog",
+        "reason": "Starts when you press Start"
+      },
+      "tabs": [],
+      "crew": "idle",
+      "attention": null,
+      "closed": null,
+      "fold": "Your 2 messages",
+      "asks": [
+        "a-2"
+      ],
+      "drop": {
+        "refusal": "This task changed. Review it again before dropping it.",
+        "question": null
+      }
+    },
+    {
+      "name": "a filing under way, built without a plan",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "work",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": null,
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": "A one-line fix.",
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": [
+          {
+            "id": "a-3",
+            "at": 1793985000000,
+            "text": "go ahead",
+            "images": 0,
+            "attachedVia": null,
+            "turnState": "closed"
+          }
+        ],
+        "filing": {
+          "why": "",
+          "originKey": "INF-2990",
+          "verdict": "Worth doing now"
+        }
+      },
+      "live": null,
+      "bar": {
+        "end": "stop-task",
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "working",
+        "word": "Working",
+        "reason": ""
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "working",
+      "attention": null,
+      "closed": null,
+      "fold": "Why it was filed, why there was no plan and your 1 message",
+      "asks": [
+        "a-3"
+      ],
+      "drop": {
+        "refusal": null,
+        "question": "Drop INF-3001? It ends the task and keeps a copy of its unfinished work."
+      }
+    },
+    {
+      "name": "a first mate's own operation",
+      "row": {
+        "id": "t-3001",
+        "key": "INF-3001",
+        "projectId": "p-har",
+        "parentId": null,
+        "kind": "operation",
+        "title": "Chart the outer harbour",
+        "goal": "Chart the outer harbour before the storm.",
+        "priority": 2,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "turn"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": null,
+        "tier": null,
+        "repo": {
+          "name": "harbour",
+          "branch": "fm/task-3001"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793982600000,
+        "updatedAt": 1793987940000,
+        "startedAt": 1793983200000,
+        "closedAt": null,
+        "intent": null,
+        "rigor": "standard",
+        "deliverable": "change",
+        "basis": null,
+        "skippedPlanBecause": null,
+        "brief": "",
+        "outcome": null,
+        "modelLabel": null,
+        "cards": [],
+        "events": [],
+        "activityLog": [],
+        "plan": null,
+        "closing": null,
+        "problem": null,
+        "asks": []
+      },
+      "live": null,
+      "bar": {
+        "end": null,
+        "next": null,
+        "blocked": false
+      },
+      "pillTone": "neutral",
+      "status": {
+        "mark": "working",
+        "word": "Working",
+        "reason": ""
+      },
+      "tabs": [
+        {
+          "kind": "info",
+          "label": "Info"
+        },
+        {
+          "kind": "crewmate",
+          "label": "Crewmate"
+        }
+      ],
+      "crew": "working",
+      "attention": null,
+      "closed": null,
+      "fold": null,
+      "asks": [],
+      "drop": null
+    }
+  ]
+}

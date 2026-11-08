@@ -19,7 +19,9 @@ extension PhoneJourney {
         _ = try await home("review-finding")
         showCard("Review the phone connection finding")
         XCTAssertTrue(app.staticTexts["Review finding"].waitForPresence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Check the phone connection"].exists)
+        // INF-2714: the first mate's card is its own, so its head carries no task's key or title.
+        XCTAssertFalse(app.buttons["card-task-key"].exists)
+        XCTAssertFalse(app.staticTexts["Check the phone connection"].exists)
         XCTAssertTrue(app.webViews.staticTexts["The review needs your choice on the Mac."].waitForPresence(timeout: 10))
         // INF-64 piece 4's approved native choices replace the foundation's read-only absence check.
         let keepFinding = app.buttons["card-action-keep"]
@@ -101,7 +103,7 @@ extension PhoneJourney {
             let tasksRail = phoneSidebarRail("Tasks", in: sidebar), activityRail = phoneSidebarRail("Activity", in: sidebar)
             XCTAssertLessThan(tasksRail.frame.midX, activityRail.frame.midX, "Tasks comes before Activity")
             XCTAssertTrue(tasksRail.isSelected)
-            let waiting = sidebar.buttons["group-waiting"]
+            let waiting = phoneTasksColumn(sidebar)
             XCTAssertTrue(waiting.waitForPresence(timeout: 10), "The sidebar opens on Tasks")
             XCTAssertTrue(waitForPhonePress(waiting))
             XCTAssertLessThanOrEqual(tasksRail.frame.maxY, waiting.frame.minY, "The pair sits at the sidebar's top")

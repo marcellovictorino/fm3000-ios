@@ -56,4 +56,35 @@ struct PhoneFrameTests {
         #expect(throws: PhoneError.self) { try frame.computers() }
         await #expect(throws: (any Error).self) { try await PhoneFrame.decode("not json", reads: [:]) }
     }
+
+    /// INF-2832 (`frame-parts`): the computer sends a long frame as a `parts` message and pieces of its text, cut
+    /// between characters; the phone reads the frame once the last piece has arrived, and a short frame as it came.
+    @Test func aFrameInPartsIsReadOnceWhole() throws {
+        let frame = try boardPush()
+        let bytes = Array(frame.utf8)
+        var cuts = [0]
+        while cuts.last! < bytes.count {
+            var end = min(cuts.last! + 4_096, bytes.count)
+            while end < bytes.count, bytes[end] & 0xC0 == 0x80 { end -= 1 }
+            cuts.append(end)
+        }
+        let pieces = zip(cuts, cuts.dropFirst()).map { String(decoding: bytes[$0..<$1], as: UTF8.self) }
+        #expect(pieces.count > 2)
+        var parts = PhoneParts()
+        #expect(try parts.read(try text(["t": "parts", "bytes": bytes.count])) == nil)
+        for piece in pieces.dropLast() { #expect(try parts.read(piece) == nil) }
+        #expect(try parts.read(pieces.last!) == frame)
+        let short = try text(["t": "push", "seq": 8, "channel": "parts", "payload": "é😀"])
+        #expect(try parts.read(short) == short)
+    }
+
+    /// Parts that run past the length the computer named, or a length past the largest frame, are a broken reply.
+    @Test func partsPastTheirLengthAreRefused() throws {
+        var parts = PhoneParts()
+        _ = try parts.read(try text(["t": "parts", "bytes": 4]))
+        #expect(throws: PhoneError.self) { try parts.read("{} {}") }
+        #expect(try parts.read("{}") == "{}")
+        #expect(throws: PhoneError.self) { try parts.read(try text(["t": "parts", "bytes": PhoneContract.maxFrameBytes + 1])) }
+        #expect(throws: PhoneError.self) { try parts.read(#"{"t":"parts"}"#) }
+    }
 }

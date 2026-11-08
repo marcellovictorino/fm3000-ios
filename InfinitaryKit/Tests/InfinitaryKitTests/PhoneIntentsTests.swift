@@ -251,6 +251,22 @@ struct PhoneIntentsTests {
         #expect(ledger.isEmpty)
     }
 
+    /// INF-2935: the host leaves a task's start wait out while a start stands, so the record says Starting with no wait
+    /// line under it; the phone's own Start draws the same.
+    @Test func aStartLeavesTheWaitLineOutAsTheHostDoes() throws {
+        let row: [String: Any] = [
+            "id": "t-buoys", "key": "INF-13", "projectId": "proj-harbour", "parentId": NSNull(), "kind": "work",
+            "title": "Count the buoys", "status": "open", "createdAt": 1_793_000_000_000, "startPolicy": "when-ready",
+            "blockedBy": [], "waitingCardId": NSNull(), "moves": ["start-task": ["ok": true]],
+            "queueWait": ["line": "Waiting for a free crewmate", "since": 1_793_000_060_000],
+        ]
+        let queued = try JSONDecoder().decode(PhoneTask.self, from: JSONSerialization.data(withJSONObject: row))
+        #expect(queued.queueWait?.line == "Waiting for a free crewmate")
+        let shown = PhoneIntentFold.task(queued, ledger([.start(task: "t-buoys", move: "start-task")]).intents)
+        #expect(shown.startAttempt?.phase == "preparing" && shown.queueWait == nil)
+        #expect(PhoneRecord.status(shown, now: 1_793_000_120_000).reason == "")
+    }
+
     @Test func aTaskClosedUnderAStartFreesIt() throws {
         var ledger = ledger([.start(task: "t-buoys", move: "start-task")])
         _ = ledger.saw(.task(try task(status: "dropped", activity: nil)), welcome: 1)

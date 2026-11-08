@@ -39,7 +39,9 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
     public let createdAt: Double
     public let startPolicy: String?
     /// The home’s dated start-wait line, shared with its first mate and desktop views.
-    public let queueWait: QueueWait?
+    /// Absent while a start attempt stands, as the host leaves it out then (`taskProtocol.ts`); the start intent's fold
+    /// clears it the same way.
+    public internal(set) var queueWait: QueueWait?
     public struct QueueWait: Decodable, Sendable { public let line: String; public let since: Double? }
     public internal(set) var startAttempt: StartAttempt?
     public let requiredAction: RequiredAction?
@@ -49,7 +51,13 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
     public let reviewOf: String?
     public let program: Bool?
     public let workPosture: WorkPosture?
-    public struct WorkPosture: Decodable, Sendable { public let state: String; public let reason: String }
+    public struct WorkPosture: Decodable, Sendable {
+        public let state: String
+        public let reason: String
+        /// The account's typed cut-off while `access` stands on it; the record reads only its class.
+        public let hold: Hold?
+        public struct Hold: Decodable, Sendable { public let `class`: String? }
+    }
     public let goal: String?
     public let startedAt: Double?
     public internal(set) var moves: [String: PhoneMove]?
@@ -71,7 +79,7 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
     /// Mac's rows still decode: the board row's lifecycle facts, then the record's own reading (`.detail`).
     public internal(set) var closedReason: String?
     public let flags: Flags?
-    public struct Flags: Decodable, Sendable { public let blocked: Bool; public let held: Bool }
+    public struct Flags: Decodable, Sendable { public let blocked: Bool; public let held: Bool; public let needsYou: Bool? }
     public let children: Children?
     public struct Children: Decodable, Sendable { public let total: Int; public let closed: Int }
     public let startNotice: StartNotice?
@@ -86,14 +94,90 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
     /// INF-1517: a card of this task put aside on the Mac, set only by `PhoneBoard.presenting`, as the Mac's own
     /// `presentTask` (src/shared/taskWaiting.ts) sets it for presentation alone.
     public internal(set) var minimizedCardId: String?
+    /// INF-2928 piece 1: what the Mac's Tasks rows read beyond the facts above (src/panels/now/rows.ts), each optional so
+    /// an older Mac's rows still decode: the order (`priority`, 0 urgent to 3 low, then `createdAt`; Done by `closedAt`),
+    /// the crew filing's origin and whether it is new, and started work sent back to the backlog.
+    public let priority: Double?
+    public let closedAt: Double?
+    public let foundOn: String?
+    public let filingNew: Bool?
+    public let backlogSince: Double?
+    /// INF-2935, piece 2: what the Mac's task record reads beyond the facts above (src/shared/tasks.ts
+    /// `taskDetailSchema`), each optional so an older Mac's record still decodes. The board row carries the first four.
+    public let blocks: [String]?
+    public let replacedBy: String?
+    public let captainWait: Bool?
+    public let waits: [Wait]?
+    public let repo: Repo?
+    public let cards: [CardRow]?
+    public let runsOn: RunsOn?
+    public let policies: Policies?
+    public let rigor: String?
+    public let dropEffects: DropEffects?
+    public let closing: Closing?
+    public let hold: Hold?
+    public let filing: Filing?
+    public let asks: [Ask]?
+    public let skippedPlanBecause: String?
+    public let browser: Browser?
+    public let deliverable: String?
+    /// A standing wait's owner fact (`taskWaitSchema`, src/shared/taskWaits.ts).
+    public struct Wait: Decodable, Sendable {
+        public let id: String
+        public let kind: String
+        public let label: String
+        public let since: Double?
+        public let next: Next?
+        public struct Next: Decodable, Sendable { public let kind: String; public let at: Double }
+    }
+    public struct Repo: Decodable, Sendable { public let name: String; public let branch: String? }
+    /// One card the task showed, newest first: open on the stage or put aside, or closed with how it ended.
+    public struct CardRow: Decodable, Identifiable, Sendable {
+        public let id: String
+        public let kind: String
+        public let title: String
+        public let state: String
+        public let minimized: Bool?
+        public let ending: String?
+        public let at: Double
+    }
+    public struct RunsOn: Decodable, Sendable { public let label: String; public let source: String; public let reason: String? }
+    public struct Policies: Decodable, Sendable {
+        public let delivery: Choice<String>
+        public let autonomy: Choice<Bool>
+        public let rigor: Care
+        public struct Choice<Value: Decodable & Sendable>: Decodable, Sendable { public let value: Value; public let source: String }
+        public struct Care: Decodable, Sendable { public let value: String; public let source: String; public let requested: String? }
+    }
+    /// What Drop task would affect; present only while Drop task applies.
+    public struct DropEffects: Decodable, Sendable {
+        public let parts: [Part]
+        public let waiting: [Named]
+        public let underway: [Named]
+        public struct Part: Decodable, Sendable { public let key: String; public let title: String; public let started: Bool? }
+        public struct Named: Decodable, Sendable { public let key: String; public let title: String }
+    }
+    public struct Closing: Decodable, Sendable { public let at: Double; public let note: String? }
+    public struct Hold: Decodable, Sendable { public let title: String; public let text: String }
+    public struct Filing: Decodable, Sendable { public let why: String; public let originKey: String; public let verdict: String? }
+    public struct Ask: Decodable, Identifiable, Sendable { public let id: String; public let at: Double; public let text: String }
+    /// The task's own browser on its Mac; the record reads only whether the captain holds it.
+    public struct Browser: Decodable, Sendable { public let state: String; public let control: String? }
     public var canSteer: Bool { status == "active" && startedAt != nil }
+    /// The Mac's `nowGroupOf` (src/shared/nowPanel.ts) through its generated table. A note's answer, like a card put
+    /// aside, lists under Waiting on you whatever the task's state, as the table's minimized input does.
     public var group: PhoneTaskGroup? {
         .reading(status: status, work: kind == "work", required: requiredAction != nil,
-                 waiting: waitingCardId != nil || answerNoteId != nil,
+                 waiting: waitingCardId != nil,
                  starting: startAttempt?.phase == "preparing" || startAttempt?.phase == "checking" || (status == "active" && activity == "starting"),
-                 onRequest: startPolicy == "on-request", minimized: minimizedCardId != nil)
+                 onRequest: startPolicy == "on-request", minimized: minimizedCardId != nil || answerNoteId != nil,
+                 backlog: backlogSince != nil)
     }
-    public struct StartAttempt: Decodable, Sendable { public let phase: String }
+    public struct StartAttempt: Decodable, Sendable {
+        public let phase: String
+        /// When the attempt was accepted, for the record's slow-start line; absent from an older Mac.
+        public let since: Double?
+    }
     public struct RequiredAction: Decodable, Sendable { public let state: String?; public let result: String? }
     public var state: String {
         if status == "done" { return "Done" }
@@ -143,6 +227,9 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
         public let runChecks: RunChecks?
         public let reviewVerdict: String?
         public let reviewRisk: String?
+        /// How the work reaches its project (`direct-pr`, `queue-pr`, `local-only`, `in-place`).
+        public let mode: String?
+        public let landedMode: String?
         public struct CheckSnapshot: Decodable, Sendable {
             public let headSha: String
             public let items: [Item]
@@ -160,11 +247,15 @@ public struct PhoneTask: Decodable, Identifiable, Sendable {
     }
     /// One row of the record's Activity; `from` is set on a row another task wrote.
     public struct ActivityRow: Decodable, Sendable {
+        public let id: Int?
         public let at: Double
         public let kind: String
         public let text: String
         public let from: From?
         public let actions: [ActionLine]?
+        /// The minor events folded under the row, oldest first.
+        public let folded: [Folded]?
+        public struct Folded: Decodable, Sendable { public let at: Double; public let kind: String; public let text: String }
         public struct From: Decodable, Sendable { public let id: String; public let key: String }
     }
     public struct ActionLine: Decodable, Sendable { public let at: Double; public let text: String }
@@ -184,7 +275,15 @@ public struct PhoneBoard: Decodable, Sendable {
     public let projects: [Project]
     public let links: [Link]?
     public struct Link: Decodable, Sendable { public let fromId: String; public let toId: String; public let type: String }
-    public struct Project: Decodable, Sendable { public let id: String; public let name: String }
+    public struct Project: Decodable, Sendable {
+        public let id: String
+        public let name: String
+        /// Whether a repository backs the project, and whether it is archived: a row leaves out the project's name where
+        /// only one such project could be meant (the Mac's `hasSingleRegisteredRepoProject`).
+        public let repo: Repo?
+        public let archived: Bool?
+        public struct Repo: Decodable, Sendable { public let name: String }
+    }
 
     /// The Mac's `applyTaskBoardDelta` (src/shared/tasks.ts): this board when the delta is older, the next board when
     /// the delta's base is this board's seq, and nil on a gap, which resyncs from a full read (INF-1854: re-reading
@@ -254,24 +353,23 @@ public struct PhoneBoard: Decodable, Sendable {
         cards.filter { $0.minimized && ($0.taskID == task.id || $0.id == task.waitingCardId || $0.id == task.minimizedCardId) }
     }
 
-    /// Keep an active parent and its parts together, as the Mac's Tasks panel does.
+    /// Keep a working parent and its live parts together, as the Mac's Tasks panel does (`nowGroupsOf`): the tree is live
+    /// work only, so a closed part keeps its own group and Working never lists finished work.
     public var groups: [String: PhoneTaskGroup] {
-        let byID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
+        let byID = Dictionary(tasks.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        func live(_ task: PhoneTask?) -> PhoneTask? { task.flatMap { $0.status == "done" || $0.status == "dropped" ? nil : $0 } }
+        func liveParent(_ task: PhoneTask) -> PhoneTask? { live(task.parentId.flatMap { byID[$0] }) }
         var working = Set<String>()
         for task in tasks where task.group == .working {
-            var member: PhoneTask? = task
+            var member = live(task)
+            while let next = member, working.insert(next.id).inserted { member = liveParent(next) }
+        }
+        for task in tasks where live(task) != nil {
+            var member = liveParent(task)
             var visited = Set<String>()
             while let next = member, visited.insert(next.id).inserted {
-                working.insert(next.id)
-                member = next.parentId.flatMap { byID[$0] }
-            }
-        }
-        for task in tasks {
-            var parent = task.parentId
-            var visited = Set<String>()
-            while let id = parent, visited.insert(id).inserted {
-                if working.contains(id) { working.insert(task.id); break }
-                parent = byID[id]?.parentId
+                if working.contains(next.id) { working.insert(task.id); break }
+                member = liveParent(next)
             }
         }
         return Dictionary(uniqueKeysWithValues: tasks.compactMap { task in

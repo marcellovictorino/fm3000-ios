@@ -90,12 +90,14 @@ import SwiftUI
         self.view = view
         // Agent HTML is assigned to an opaque iframe's srcdoc, never interpolated into this parent.
         // Its own hash policy narrows this parent's inline permission. Neither realm can use the network.
-        view.loadHTMLString("""
+        view.onWindow = { [weak self] in self?.loadOnWindow() }
+        page = """
         <!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' app-frame://runtime; style-src 'unsafe-inline'; frame-src about:; img-src data: app-frame:; font-src app-frame:; base-uri 'none'; form-action 'none'">
         <style>html,body{margin:0;padding:0;background:transparent}iframe{width:100%;border:0}</style>
         <script src="app-frame://runtime/CardHost.generated.js"></script></head><body></body></html>
-        """, baseURL: nil)
+        """
+        loadOnWindow()
         watch = CardWatchdog()
         watchdog = Task { [weak self] in
             while !Task.isCancelled {
@@ -114,6 +116,16 @@ import SwiftUI
             }
         }
         return view
+    }
+
+    /// The card's page, kept until its view reaches a window.
+    private var page: String?
+    /// A body built behind another tab loads only once it is on the screen. WebKit suspends a hidden view's process, and a
+    /// page that began loading there drew about half a minute after its tab showed again, its choices unusable until then.
+    private func loadOnWindow() {
+        guard let view, view.window != nil, let page else { return }
+        self.page = nil
+        view.loadHTMLString(page, baseURL: nil)
     }
 
     func close() {
@@ -296,6 +308,8 @@ import SwiftUI
 final class CardBodyView: WKWebView {
     var onLayout: (() -> Void)?
     override func layoutSubviews() { super.layoutSubviews(); onLayout?() }
+    var onWindow: (() -> Void)?
+    override func didMoveToWindow() { super.didMoveToWindow(); onWindow?() }
 }
 
 struct CardWebView: UIViewRepresentable {

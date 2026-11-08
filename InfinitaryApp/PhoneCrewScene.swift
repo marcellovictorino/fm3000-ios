@@ -42,7 +42,8 @@ struct PhoneCrewScene: View {
             .onScrollGeometryChange(for: CGPoint.self) { $0.contentOffset } action: { _, point in pan.point = point; renderer.pan(to: point) }
             .overlay {
                 // The drawing stays over the viewport and draws the scene where the scroller has panned it.
-                PhoneSceneSurface(renderer: renderer, roster: roster, state: session.firstmateBusy ? .working : .idle, still: still,
+                PhoneSceneSurface(renderer: renderer, roster: roster, state: session.firstmateBusy ? .working : .idle,
+                                  fold: CharacterFold(folding: session.firstmateFolding, starts: session.firstmateFoldStarts), still: still,
                                   running: !still && preview == nil, offset: viewport.offset, selection: selectedCrew,
                                   bracketed: preview.map { ($0.id, previewComputer ?? PhoneSceneRoster.computerID($0)) })
                     .allowsHitTesting(false).accessibilityHidden(true)
@@ -96,7 +97,7 @@ struct PhoneCrewScene: View {
         .sheet(item: sheet, onDismiss: { if record == nil { messageContext.taskID = nil } }) { shown in
             switch shown {
             case .summary(let task):
-                PhoneCrewSummary(session: session, task: task, roster: roster,
+                PhoneCrewSummary(session: session, task: task, tasks: roster.allTasks,
                                  show: { task in preview = task; previewComputer = PhoneSceneRoster.computerID(task) },
                                  open: { task in record = task; preview = nil; messageContext.taskID = task.id },
                                  close: { preview = nil; previewComputer = nil })
@@ -104,7 +105,7 @@ struct PhoneCrewScene: View {
                     .tint(PhoneTheme.accent)
             case .record(let task):
                 NavigationStack {
-                    PhoneTaskRecord(session: session, initial: task)
+                    PhoneTaskRecord(session: session, initial: task, leave: { record = nil })
                         .toolbar { ToolbarItem(placement: .cancellationAction) { PhoneRecordLeaveButton(record: $record) } }
                 }.font(PhoneFont.body).tint(PhoneTheme.accent)
             }

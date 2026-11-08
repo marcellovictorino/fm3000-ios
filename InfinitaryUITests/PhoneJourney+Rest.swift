@@ -216,6 +216,7 @@ extension PhoneJourney {
         XCTAssertEqual(app.staticTexts["task-record-title"].label, "Read the offshore chart")
         picture("native-scene-existing-task-record")
         tapOnPhone(app.buttons["close-record"])
+        verifyTapAfterDrag(from: remote, to: app.buttons["crew-task-" + (try XCTUnwrap(fixture["remotePart"] as? String))], in: scene)
         let computerID = try XCTUnwrap(fixture["computer"] as? String), programID = try XCTUnwrap(fixture["program"] as? String)
         let mark = app.buttons["crew-task-" + computerID + ":" + programID]
         revealCrew(mark, in: scene)
@@ -328,8 +329,8 @@ extension PhoneJourney {
     }
 
     /// INF-2528, the captain's "more details should be shown in the task card, not in the preview": Open task shows
-    /// what the summary leaves out - the check counts, the reasoning level and when each wait was recorded - in the
-    /// desktop's words for the same task (`record` in tests/helpers/phoneScene.ts), then the record closes.
+    /// what the summary leaves out - the check counts, the reasoning level and each task it waits on - in the desktop's
+    /// words for the same task (`record` and `blocked` in tests/helpers/phoneScene.ts), then the record closes.
     private func verifyRecordDetails(_ want: [String: Any], picture name: String) throws {
         let record = try XCTUnwrap(want["record"] as? [String: Any])
         tapOnPhone(app.buttons["open-crew-task"])
@@ -347,10 +348,13 @@ extension PhoneJourney {
         } else {
             XCTAssertFalse(reasoning.exists, "\(name): the desktop's record shows no reasoning")
         }
-        for key in record["recorded"] as? [String] ?? [] {
-            let waiting = app.staticTexts["task-record-waiting"]
-            XCTAssertTrue(waiting.waitForPresence(timeout: 10), "\(name): the record shows what it waits for")
-            XCTAssertTrue(waiting.label.contains("\(key) recorded "), "\(name): Waiting for reads \(waiting.label)")
+        // INF-2935, the captain's direction A: the record lists each task it waits on by its key under Waits on, as the
+        // Mac's record does.
+        for key in want["blocked"] as? [String] ?? [] {
+            let waitsOn = app.descendants(matching: .any).matching(identifier: "task-record-waits-on").firstMatch
+            XCTAssertTrue(waitsOn.waitForPresence(timeout: 10), "\(name): the record shows what it waits on")
+            XCTAssertTrue(waitsOn.descendants(matching: .any).matching(NSPredicate(format: "label == %@", key)).firstMatch.exists,
+                          "\(name): Waits on lists \(key)")
         }
         picture(name)
         tapOnPhone(app.buttons["close-record"])
@@ -399,6 +403,16 @@ extension PhoneJourney {
                 print("INF-1399 fully revealed crew: scene=\(viewport), target=\(target)")
                 return
             }
+            // With the scene's center already on the crewmate, the drag would barely move, and a press that never pans
+            // lands as a tap on whatever crewmate is under the center. In phone run 42179127070 a warp carried the waiting
+            // crewmate off the center between its frame read and the press, and the press opened another crewmate's sheet.
+            // So a centered crewmate is waited for instead, and the next pass drags again if it has moved on.
+            if target.contains(CGPoint(x: viewport.midX, y: viewport.midY)) {
+                _ = waitForPhonePredicate(NSPredicate { _, _ in
+                    self.crewReadyToTap(element.isHittable, frame: element.frame, in: scene.frame)
+                }, object: nil, timeout: 2)
+                continue
+            }
             // A finger drags content the opposite way the viewport travels; stay inside the viewport's inner area.
             let reach = CGVector(dx: viewport.width * 0.4, dy: viewport.height * 0.4)
             let dx = max(-reach.dx, min(reach.dx, viewport.midX - target.midX))
@@ -408,6 +422,31 @@ extension PhoneJourney {
             start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.3)
         }
         XCTAssertTrue(crewReadyToTap(element.isHittable, frame: element.frame, in: scene.frame), "Continuous panning must bring the whole crewmate inside the scene before tapping")
+    }
+
+    /// A tap opens the crewmate under the finger where the tap itself landed, never where a drag before it started.
+    /// The other computer is out of reach, so its formation holds still. The drag starts on its crewmate and rests there
+    /// past the scroller's touch delay, so the scene hears it land before the scroller takes the touch over; the tap then
+    /// goes to that computer's other crewmate. A tap that read the drag's landing opened the held crewmate's sheet, as
+    /// taps after panning toward an orbiting crewmate opened another's (phone runs 42091135465 and 42153303451).
+    private func verifyTapAfterDrag(from held: XCUIElement, to tapped: XCUIElement, in scene: XCUIElement) {
+        revealCrew(held, in: scene)
+        waitForSteadyTarget(held)
+        let start = held.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let toward: CGFloat = held.frame.midX > scene.frame.midX ? -1 : 1
+        start.press(forDuration: 0.5, thenDragTo: start.withOffset(CGVector(dx: toward * 60, dy: 0)), withVelocity: .slow, thenHoldForDuration: 0.3)
+        // Another drag would land again, so the tapped crewmate must already be in full view.
+        XCTAssertTrue(crewReadyToTap(tapped.isHittable, frame: tapped.frame, in: scene.frame),
+                      "\(tapped.identifier) must be in full view after the drag: \(tapped.frame) in \(scene.frame)")
+        // Each crewmate's label is its key, then its title.
+        let title = tapped.label.components(separatedBy: ", ").dropFirst().joined(separator: ", ")
+        tapOnPhone(tapped)
+        let preview = app.otherElements["crew-preview"], task = preview.staticTexts["crew-summary-task"]
+        XCTAssertTrue(preview.waitForPresence(timeout: 10), "A tap after a drag opens the crewmate under the finger")
+        XCTAssertEqual(waitForPhonePredicate(NSPredicate(format: "label == %@", title), object: task, timeout: 10), .completed,
+                       "A tap on \(tapped.identifier) after a drag from \(held.identifier) opens \(title), not \(task.label)")
+        picture("native-scene-tap-after-drag")
+        closeCrewSummary()
     }
 
     /// INF-2039: the first mate's warp fidget speeds the home crew up five to eleven times, and a crewmate trailing the
@@ -498,7 +537,11 @@ extension PhoneJourney {
     private func verifyPastMessageContext() async throws {
         let fixture = try await home("context-fixture")
         showCard(try XCTUnwrap(fixture["title"] as? String))
-        tapOnPhone(app.buttons["put-aside-card"])
+        // INF-2794: the note's own Got it reads it into the past; the corner would only put it aside.
+        let gotIt = app.buttons["note-done"]
+        XCTAssertTrue(gotIt.waitForPresence(timeout: 10), app.debugDescription)
+        reveal(gotIt)
+        tapOnPhone(gotIt)
         _ = try await home("show-context-past")
         XCTAssertTrue(app.staticTexts["Past"].waitForPresence(timeout: 10))
         let input = app.textFields["message-box"]

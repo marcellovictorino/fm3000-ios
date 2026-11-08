@@ -69,6 +69,10 @@ public struct PhoneNotice: Equatable, Sendable {
     /// An older home keeps event-only activity; there is still no phone dictation/listening signal.
     public private(set) var firstmateBusy = false
     public private(set) var firstmateObserved = false
+    /// INF-3011: the first mate is shortening its conversation (`firstmate_state` folding), heard live only;
+    /// `firstmateFoldStarts` counts each start, so one heard starting and ending at once still plays the cinch.
+    public private(set) var firstmateFolding = false
+    public private(set) var firstmateFoldStarts = 0
     public private(set) var computers: [PhoneComputerPresence] = []
     /// Every welcome settles its initial roster rather than replaying arrivals or packets.
     public private(set) var sceneGeneration = 0
@@ -78,6 +82,11 @@ public struct PhoneNotice: Equatable, Sendable {
     /// The contract the computer's welcome said it speaks, which names the side a reads-only phone updates.
     public private(set) var homeVersion: String?
     public var notice: PhoneNotice?
+    /// INF-2631: what this phone's usage events say of it; nil sends none.
+    public var usage: PhoneUsage?
+    @ObservationIgnored private var usageWaiting = PhoneDiagnosticsQueue()
+    /// The computer's welcome named the change that takes a phone's usage events.
+    @ObservationIgnored private var homeTakesUsage = false
     /// Offers the stage has drawn while the person could see it, kept for this computer's session only.
     private var seenCards = Set<String>()
     public private(set) var sharedCardSeen = false
@@ -113,6 +122,8 @@ public struct PhoneNotice: Equatable, Sendable {
     @ObservationIgnored private var loop: Task<Void, Never>?
     @ObservationIgnored private var socket: URLSessionWebSocketTask?
     @ObservationIgnored private var transport: PinnedTransport?
+    /// The address the current connection was dialed at: the route it reached once it turns In reach.
+    @ObservationIgnored private var serving: String?
     @ObservationIgnored private var epoch: String?
     @ObservationIgnored private var sequence = 0
     @ObservationIgnored private var nextID = 0
@@ -135,7 +146,7 @@ public struct PhoneNotice: Equatable, Sendable {
     @ObservationIgnored private var reaches = 0
     /// When the computer was last heard, on the clock the deadlines use.
     @ObservationIgnored private var heard: ContinuousClock.Instant?
-    /// When the computer last sent a frame, which a pong is not.
+    /// When the computer last sent a frame or a part of one, which a pong is not.
     @ObservationIgnored private var framed: ContinuousClock.Instant?
     @ObservationIgnored private var reachTimer: Task<Void, Never>?
     /// INF-2668: every first read has answered since the last reload, so a replaying welcome needs none of them.
@@ -258,7 +269,7 @@ public struct PhoneNotice: Equatable, Sendable {
     private func clearContent() {
         computers = []
         held = nil
-        syncedCards = []; activity = []; syncedBoard = nil; syncedTurn = nil; notice = nil; firstmateBusy = false; firstmateObserved = false
+        syncedCards = []; activity = []; syncedBoard = nil; syncedTurn = nil; notice = nil; firstmateBusy = false; firstmateObserved = false; firstmateFolding = false
         syncedThreads = [:]; pastCards = []; showCardID = nil; threadRevisions = [:]; seenCards = []
         ledger.clear(); restorers = [:]; changeNotice = nil; takenBack = [:]; refold()
         notified = [:]; awaited = []; primed = false; workRevision += 1
@@ -324,6 +335,7 @@ public struct PhoneNotice: Equatable, Sendable {
             let result = try await ask(channel, args)
             if let refusal = result["refusal"].text { refuse(id, refusal); throw PhoneRequestError(refusal) }
             accept(id)
+            if channel == .act { noteUsage(.cardAnswered) }
             return result
         } catch { settle(id, after: error); throw error }
     }
@@ -339,6 +351,7 @@ public struct PhoneNotice: Equatable, Sendable {
                 refuse(id, words); throw PhoneError.refused(words)
             }
             accept(id)
+            if channel == .converse { noteUsage(.messageSent) }
         } catch { settle(id, after: error); throw error }
     }
 
@@ -630,8 +643,8 @@ public struct PhoneNotice: Equatable, Sendable {
         replacing?.cancel(); replacing = nil; doubted = nil
         replacement?.transport.close(); replacement = nil
         finishLeave(PhoneError.unavailable)
-        failCalls(); notice = nil; access = "read"; firstmateBusy = false; firstmateObserved = false
-        socket?.cancel(with: .goingAway, reason: nil); socket = nil
+        failCalls(); notice = nil; access = "read"; firstmateBusy = false; firstmateObserved = false; firstmateFolding = false
+        socket?.cancel(with: .goingAway, reason: nil); socket = nil; serving = nil
         transport?.close(); transport = nil
         // A deliberate close has nothing to be patient about: the words follow at once, so a reopen reads Reaching
         // until its dial is in reach rather than an In reach no connection backs.
@@ -681,7 +694,7 @@ public struct PhoneNotice: Equatable, Sendable {
         while alive(current) {
             failCalls()
             pending.removeAll(); waitingSince.removeAll(); dirty.removeAll(); ready.removeAll()
-            access = "read"; firstmateBusy = false; firstmateObserved = false
+            access = "read"; firstmateBusy = false; firstmateObserved = false; firstmateFolding = false
             // Out of reach stays while later rounds try again on their own; a reopen says it is reaching.
             if attempt == 0 || woken { contact = "reaching" }
             woken = false
@@ -770,10 +783,11 @@ public struct PhoneNotice: Equatable, Sendable {
     /// Greets the opened socket and reads it until it ends; true when the computer was in reach on it.
     private func serve(_ dialed: Dialed, generation current: Int) async -> Bool {
         let (address, transport, socket) = (dialed.address, dialed.transport, dialed.socket)
-        self.socket = socket; self.transport = transport; cutting = nil
+        self.socket = socket; self.transport = transport; serving = address; cutting = nil
         var reached = false
         var hello: [String: Any] = ["t": "hello", "protocolVersion": PhoneContract.version,
-            "as": "view", "viewFloor": PhoneContract.viewFloor, "system": "ios", "spellings": ["inf"], "appVersion": "0.1.0"]
+            "as": "view", "viewFloor": PhoneContract.viewFloor, "system": "ios", "spellings": ["inf"], "appVersion": "0.1.0",
+            "changes": [PhoneContract.frameParts]]
         if let epoch { hello["cursor"] = ["epoch": epoch, "seq": sequence] }
         let opened = ContinuousClock.now
         // INF-2668: the connection is cut for silence alone, never because an answer is slow. Quiet for `patience`
@@ -803,30 +817,22 @@ public struct PhoneNotice: Equatable, Sendable {
             }
         }
         defer { watchdog.cancel() }
+        var parts = PhoneParts()
         do {
             try await send(hello, on: socket)
             while !Task.isCancelled {
                 let message = try await socket.receive()
                 guard current == generation, !Task.isCancelled else { break }
                 guard case .string(let text) = message else { throw PhoneError.invalidReply }
+                // INF-2832: each part of a long frame is the computer sending, heard as it arrives; the frame is read
+                // once whole, so an answer still arriving is never cut as a stuck one.
+                guard let whole = try parts.read(text) else { hear(); framed = .now; continue }
                 // INF-2566: the frame is parsed and its payload decoded off the main thread, then read here in order.
-                let frame = try await PhoneFrame.decode(text, reads: pending)
+                let frame = try await PhoneFrame.decode(whole, reads: pending)
                 guard current == generation, !Task.isCancelled else { break }
                 try await receive(frame, on: socket)
                 guard current == generation, !Task.isCancelled else { break }
-                if contact == "in-reach" {
-                    refused = 0
-                    // INF-2773: the preference is worked out when this connection first reaches its address.
-                    if !reached || reachedAddress != address {
-                        reached = true
-                        if reachedAddress != address { reachedAddress = address }
-                        let preferred = Array(PhoneAddresses.preferred(mac.addresses + [address]).prefix(25))
-                        if mac.addresses != preferred {
-                            mac.addresses = preferred
-                            onMacChanged?(mac)
-                        }
-                    }
-                }
+                if contact == "in-reach" { refused = 0; reached = true }
             }
         } catch {
             guard current == generation, !Task.isCancelled else {
@@ -843,10 +849,10 @@ public struct PhoneNotice: Equatable, Sendable {
         }
         if current == generation { showHeld() }
         owed.formUnion(pending.values)
-        failCalls(); firstmateBusy = false; firstmateObserved = false
+        failCalls(); firstmateBusy = false; firstmateObserved = false; firstmateFolding = false
         transport.close()
         guard current == generation else { return reached }
-        self.socket = nil; self.transport = nil; checking = nil
+        self.socket = nil; self.transport = nil; serving = nil; checking = nil
         if doubted === socket { doubted = nil; replacing?.cancel(); replacing = nil }
         return reached
     }
@@ -890,6 +896,8 @@ public struct PhoneNotice: Equatable, Sendable {
                 || (frame["changes"] as? [String] ?? []).contains(PhoneContract.cardCurrentUpdateSeen)
             sceneObservations = homeMajor >= PhoneContract.sceneObservationsSince
                 || (frame["changes"] as? [String] ?? []).contains(PhoneContract.sceneObservations)
+            homeTakesUsage = homeMajor >= PhoneContract.phoneDiagnosticsSince
+                || (frame["changes"] as? [String] ?? []).contains(PhoneDiagnosticEvent.change)
             if !sceneObservations { computers = [] }
             sceneGeneration += 1
             contact = "reaching"
@@ -973,6 +981,10 @@ public struct PhoneNotice: Equatable, Sendable {
             if frame["channel"] as? String == "inf:event", let event = frame["payload"] as? [String: Any], let type = event["type"] as? String {
                 if type == "firstmate_state", let busy = event["busy"] as? Bool {
                     if holding { held?.busy = busy } else { firstmateBusy = busy; firstmateObserved = true }
+                    // A shortening replayed while reconnecting is over by now, so only a live one plays.
+                    let folding = !replayed && event["folding"] as? Bool == true
+                    if folding && !firstmateFolding { firstmateFoldStarts += 1 }
+                    firstmateFolding = folding
                     if sceneObservations { supersede(PhoneRequest.conversationState.rawValue) }
                 }
                 // A reaction replayed while reconnecting is not played (INF-2773: a caught-up replay is in reach).
@@ -1055,9 +1067,41 @@ public struct PhoneNotice: Equatable, Sendable {
         guard initialReads.allSatisfy({ ready.contains($0) }) else { return }
         caughtUp = true
         let reached = contact != "in-reach"
+        if reached { reachRoute() }
         contact = "in-reach"
         if missed { missed = false; returns += 1 }
-        if reached { reaches += 1; wakeReachWaiters() }
+        if reached { reaches += 1; wakeReachWaiters(); handUsage() }
+    }
+
+    /// INF-2773: the route and its preference are worked out once per connection, in the step that turns it In reach,
+    /// so nothing reads In reach beside the last connection's route while the catch-up's reads are still being sent.
+    private func reachRoute() {
+        guard let address = serving else { return }
+        if reachedAddress != address { reachedAddress = address }
+        let preferred = Array(PhoneAddresses.preferred(mac.addresses + [address]).prefix(25))
+        if mac.addresses != preferred {
+            mac.addresses = preferred
+            onMacChanged?(mac)
+        }
+    }
+
+    // MARK: INF-2631: the phone's usage events go to its computer, which alone decides whether any leaves.
+
+    /// Notes one usage event: it waits in memory until the computer is in reach, then is handed over once.
+    public func noteUsage(_ event: PhoneDiagnosticEvent) {
+        guard usage != nil, !removed else { return }
+        usageWaiting.note(event, at: Date())
+        handUsage()
+    }
+
+    /// Hands every waiting event to a computer in reach. One that does not take them, or that this phone may only read
+    /// from, is sent nothing and keeps nothing. A lost answer is never sent again.
+    private func handUsage() {
+        guard let usage, contact == "in-reach", socket != nil else { return }
+        guard homeTakesUsage, access == "full" else { usageWaiting.drop(); return }
+        for argument in usageWaiting.handOver(as: usage) {
+            Task { _ = try? await self.invoke(PhoneDiagnosticEvent.request, changes: true, args: [argument]) }
+        }
     }
 
     private func refresh(_ channel: String, on socket: URLSessionWebSocketTask) async throws {
