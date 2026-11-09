@@ -16,6 +16,33 @@ extension PhoneJourney {
         try await verifyAskedLine()
         try await verifyCardReadiness()
         try await verifySharedSeen()
+        try await verifyEndedCard()
+        try await verifyNextAfterClose()
+    }
+
+    /// INF-3155, the captain: "when all the cards are already read, dismissing the current card should reveal the next
+    /// one, not going back to the first. this should behave consistently on both desktop and ios". With every card read,
+    /// a closed card gives way to the card after it, and the last card to the one before it, as on the Mac.
+    private func verifyNextAfterClose() async throws {
+        let fixture = try await home("next-card-fixture")
+        let titles = try XCTUnwrap(fixture["titles"] as? [String])
+        XCTAssertEqual(titles.count, 4)
+        for title in titles {
+            showCard(title)
+            _ = try await home("seen-wait", body: title)
+        }
+        showCard(titles[1])
+        _ = try await home("close-titled", body: titles[1])
+        XCTAssertTrue(cardHeading(titles[1]).waitForAbsence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(cardHeading(titles[2]).waitForPresence(timeout: 10), "A middle close brings up the card after it")
+        XCTAssertEqual(app.buttons["card-pager"].label, "2 of 3")
+        picture("next-after-middle-close")
+        showCard(titles[3])
+        _ = try await home("close-titled", body: titles[3])
+        XCTAssertTrue(cardHeading(titles[3]).waitForAbsence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(cardHeading(titles[2]).waitForPresence(timeout: 10), "Closing the last card brings up the one before it")
+        XCTAssertEqual(app.buttons["card-pager"].label, "2 of 2")
+        picture("next-after-last-close")
     }
 
     /// INF-1610: a card about the captain's message names it under its title, as on the Mac.
@@ -116,9 +143,14 @@ extension PhoneJourney {
         XCTAssertTrue(app.staticTexts["card-revised"].exists)
         XCTAssertTrue(app.buttons["put-aside-card"].exists)
         XCTAssertEqual(app.buttons["maximize-card"].exists, UIDevice.current.userInterfaceIdiom == .pad)
-        // The foot: the host's fact strip and what to do after merging stay with the choices.
+        // The foot: the host's fact strip stays with the choices.
         XCTAssertTrue(app.webViews["card-facts"].staticTexts.firstMatch.waitForPresence(timeout: 20), app.debugDescription)
-        XCTAssertTrue(app.staticTexts[try XCTUnwrap(fixture["requiredLead"] as? String)].exists)
+        // INF-3149: what happens after the merge leads the body, the captain's actions before the crew's steps.
+        let required = app.staticTexts[try XCTUnwrap(fixture["requiredLead"] as? String)]
+        let crew = app.staticTexts[try XCTUnwrap(fixture["crewLead"] as? String)]
+        XCTAssertTrue(required.exists, app.debugDescription)
+        XCTAssertTrue(crew.exists, app.debugDescription)
+        XCTAssertLessThan(required.frame.minY, crew.frame.minY, "The captain's actions come first")
         waitUntilEnabled(app.buttons["card-action-merge"])
         // Both appearances of the merge card supply the release note's hero pair.
         try await appearances("merge-card", showing: cardHeading(title))
@@ -224,6 +256,33 @@ extension PhoneJourney {
         showCard(leader)
         XCTAssertTrue(app.buttons["card-new"].waitForAbsence(timeout: 10), app.debugDescription)
         picture("shared-seen-relaunched")
+    }
+
+    /// INF-3071: a card its author ended after the captain saw it stays, as on the Mac, crewmates and the first mate
+    /// alike: its chip reads Ended, its thread ends with the computer's line, and its one Close takes it away.
+    private func verifyEndedCard() async throws {
+        let fixture = try await home("ended-card-fixture")
+        let id = try XCTUnwrap(fixture["id"] as? String)
+        let title = try XCTUnwrap(fixture["title"] as? String)
+        showCard(title)
+        XCTAssertTrue(app.staticTexts[try XCTUnwrap(fixture["chip"] as? String)].waitForPresence(timeout: 10), app.debugDescription)
+        let close = app.buttons["note-done"]
+        XCTAssertTrue(close.waitForPresence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(close.label, try XCTUnwrap(fixture["close"] as? String))
+        XCTAssertFalse(app.buttons["card-action-build"].exists, "An ended card keeps none of its choices")
+        let cue = app.buttons["thread-cue"]
+        reveal(cue); tapOnPhone(cue)
+        let back = app.descendants(matching: .any).matching(identifier: "card-back").firstMatch
+        XCTAssertTrue(back.staticTexts[try XCTUnwrap(fixture["line"] as? String)].waitForPresence(timeout: 10), app.debugDescription)
+        picture("ended-card-thread")
+        tapOnPhone(app.buttons["thread-return"])
+        XCTAssertTrue(back.waitForAbsence(timeout: 10), app.debugDescription)
+        picture("ended-card")
+        reveal(close); tapOnPhone(close)
+        XCTAssertTrue(cardHeading(title).waitForAbsence(timeout: 10), app.debugDescription)
+        let state = try await home("ended-card-state", body: "{\"id\":\"\(id)\"}")
+        XCTAssertEqual(state["ended"] as? Bool, false, "Close took the ended card off the stack")
+        XCTAssertEqual(state["open"] as? Bool, false)
     }
 
     /// INF-1879: putting an answer aside never completes it; Done remains available on its record.

@@ -58,7 +58,9 @@ struct PhoneCards: View {
             if let marked = session.stack.first(where: { !previousIDs.contains($0.id) && $0.value["holdsPlace"].flag }) {
                 selected = marked.id; past = nil
             } else if selected == nil || !ids.contains(selected!) {
-                selected = session.stack.first(where: { !session.hasSeen($0) })?.id ?? ids.first
+                // FI3-711 and INF-3155: an unread card first, else the card after the one that left, as on the Mac.
+                let unread = Set(session.stack.filter { !session.hasSeen($0) }.map(\.id))
+                selected = PhoneCardDeparture.comesUp(after: selected, previous: previousIDs, ids: ids, unread: unread.contains)
             }
             showRestored(ids)
             previousIDs = ids
@@ -318,7 +320,15 @@ private struct PhoneCardPane: View {
         return CardWebHost(card: card, session: session, fill: fill, keys: keys, heightLag: heightLag)
     }
     private static func messages(_ card: PhoneCard, _ session: ReadOnlySession) -> [PhoneJSON] {
-        card.isPast ? card.value["messages"].list : session.threads[card.id]?["messages"].list ?? []
+        if card.isPast { return card.value["messages"].list }
+        let thread = session.threads[card.id]?["messages"].list ?? []
+        // INF-3071: a card its author ended carries the computer's app line, as on the Mac, among the
+        // messages by when it ended, so a line written after it, naming the work a reply started, reads under it.
+        guard let line = card.value["ended"]["line"].text else { return thread }
+        let at = card.value["ended"]["at"]
+        let split = thread.firstIndex { ($0["at"].numeric ?? 0) > (at.numeric ?? .infinity) } ?? thread.count
+        return Array(thread[..<split]) + [.object(["who": .string("host"), "text": .string(line), "at": at])]
+            + Array(thread[split...])
     }
     private var messages: [PhoneJSON] { Self.messages(card, session) }
     /// What the face draws; a revision that changes it gives the card a new offer.
@@ -363,8 +373,7 @@ private struct PhoneCardPane: View {
     private var line: String? { problem ?? (phoneOnItsSide(verticalSize) ? session.takenBack[card.id] : nil) }
 
     private var hasFoot: Bool {
-        !card.actions.isEmpty || line != nil || (takesReply && !replyAtFoot) || factsHost != nil || !card.value["requiredActions"].list.isEmpty
-            || !messages.isEmpty
+        !card.actions.isEmpty || line != nil || (takesReply && !replyAtFoot) || factsHost != nil || !messages.isEmpty
     }
     /// The back shows: a card has a back only once its thread has a message.
     private var showsBack: Bool { turned && !messages.isEmpty }
@@ -397,7 +406,6 @@ private struct PhoneCardPane: View {
     private var measuredHead: some View {
         head.padding([.horizontal, .top], PhoneTheme.space4).padding(.bottom, PhoneTheme.space3)
             .fixedSize(horizontal: false, vertical: true)
-            .contentShape(Rectangle()).simultaneousGesture(tapClosesReply, isEnabled: keyboardOpen)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headHeight = $0 }
     }
 
@@ -411,6 +419,11 @@ private struct PhoneCardPane: View {
             front.modifier(PhoneCardTurn(angle: turnAngle, back: false))
             if backMounted && !messages.isEmpty { back.modifier(PhoneCardTurn(angle: turnAngle, back: true)) }
         }
+        // INF-3106 direction B: a pull down that starts anywhere on the card, its head included, puts the keyboard away.
+        .simultaneousGesture(DragGesture(minimumDistance: 16).onEnded { value in
+            if messageContext.keyboardUp && value.translation.height > 30
+                && value.translation.height > abs(value.translation.width) { dismissPhoneKeyboard() }
+        })
         .coordinateSpace(.named(Self.paneSpace))
         .offset(y: -lift)
         // INF-2568: the pane is the room the stage offers, never the card's own height, so a card taller than the room the
@@ -426,20 +439,6 @@ private struct PhoneCardPane: View {
             if messageContext.replier?.token == replierToken { messageContext.replier = nil }
         }
         .onChange(of: [takesReply, host.drawn, host.changing], initial: true) { publishReplier() }
-        // fm3000-ios: with the keyboard up the head, the reply and the choices can fill the pane and leave the body no room
-        // to scroll, so scrolling alone never closed the keyboard. A swipe down on the card, a tap on its head or body, or
-        // Done above the keyboard closes it; the draft stays in the field.
-        .simultaneousGesture(DragGesture(minimumDistance: 20).onEnded { drag in
-            if drag.translation.height > 40 && drag.translation.height > abs(drag.translation.width) { closeReplyKeyboard() }
-        }, isEnabled: keyboardOpen)
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                if replyFocus != nil {
-                    Spacer()
-                    Button("Done") { closeReplyKeyboard() }.accessibilityIdentifier("card-reply-done")
-                }
-            }
-        }
         .background(alignment: .topTrailing) {
             if showsNext {
                 // The stack follows the card's frame, which never reaches the pager; the sliver is raised as the card is.
@@ -467,7 +466,12 @@ private struct PhoneCardPane: View {
             if back { readCount = messages.count; side.faceOffer = offer }
             turn(to: back)
         }
-        .sheet(isPresented: Binding(get: { host.presentation != nil }, set: { if !$0 { host.presentation = nil } })) {
+        // INF-3107: a picture or diagram opens full screen, where it can be read at its own size; a recording keeps its sheet.
+        .sheet(isPresented: Binding(get: { host.presentation?["type"].text == "demo" }, set: { if !$0 { host.presentation = nil } })) {
+            if let presentation = host.presentation { CardMediaView(presentation: presentation, session: session) }
+        }
+        .fullScreenCover(isPresented: Binding(get: { host.presentation.map { $0["type"].text != "demo" } ?? false },
+                                              set: { if !$0 { host.presentation = nil } })) {
             if let presentation = host.presentation { CardMediaView(presentation: presentation, session: session) }
         }
         .photosPicker(isPresented: $libraryOpen, selection: $photoSelection,
@@ -498,12 +502,6 @@ private struct PhoneCardPane: View {
     }
 
     private func followCaret() { if replyFocus == .face { replyGrew += 1 } }
-
-    private func closeReplyKeyboard() { replyFocus = nil; dismissPhoneKeyboard() }
-    /// fm3000-ios: the keyboard is the message box's, so the card closes it whoever has the focus.
-    private var keyboardOpen: Bool { replyFocus != nil || messageContext.keyboardUp }
-    /// A tap on the card's head or body closes the reply's keyboard; the head's own buttons still take the tap.
-    private var tapClosesReply: some Gesture { TapGesture().onEnded { if keyboardOpen { closeReplyKeyboard() } } }
 
     /// A card's scroller closes the keyboard as a person starts to scroll it, never as the scroller follows the caret.
     private func scrolled(_ phase: ScrollPhase) {
@@ -549,7 +547,6 @@ private struct PhoneCardPane: View {
                         if !pinsFrame { measuredHead }
                         content.padding([.horizontal], PhoneTheme.space4).padding(.bottom, PhoneTheme.space4)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle()).simultaneousGesture(tapClosesReply, isEnabled: keyboardOpen)
                         if hasFoot && !pinsFrame { measuredFoot }
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
@@ -617,20 +614,14 @@ private struct PhoneCardPane: View {
                     .padding(.bottom, PhoneTheme.space2).accessibilityIdentifier("thread-title")
             }
             .padding(.leading, PhoneTheme.space3).padding(.trailing, PhoneTheme.space4)
+            // INF-3106 direction B: a tap on the thread's head puts the keyboard away; Card still turns the card over.
+            .contentShape(Rectangle())
+            .onTapGesture { if messageContext.keyboardUp { dismissPhoneKeyboard() } }
             .fixedSize(horizontal: false, vertical: true)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { backHeadHeight = $0 }
-            ScrollView {
-                PhoneCardThread(messages: messages, working: working)
-                    .padding(.horizontal, PhoneTheme.space4).padding(.vertical, PhoneTheme.space3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { threadHeight = $0 }
-            }
-            .frame(maxHeight: threadHeight > 0 ? threadHeight : nil)
-            .defaultScrollAnchor(.bottom)
-            .scrollBounceBehavior(bounce)
-            .scrollDismissesKeyboard(.interactively)
-            .onScrollPhaseChange { _, phase in scrolled(phase) }
-            .accessibilityIdentifier("card-thread")
+            PhoneThreadScroller(messages: messages, working: working, bounce: bounce,
+                                onHeight: { threadHeight = $0 }, onPhase: scrolled)
+                .frame(maxHeight: threadHeight > 0 ? threadHeight : nil)
             Spacer(minLength: 0)
             backFoot.fixedSize(horizontal: false, vertical: true)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { backFootHeight = $0 }
@@ -739,7 +730,9 @@ private struct PhoneCardPane: View {
                 .accessibilityIdentifier("put-aside-card").disabled(host.changing || (!card.isPast && !session.canChange))
         }
         .contentShape(Rectangle())
-        // fm3000-ios: the head's own sideways swipe is gone; the whole card's swipe (PhoneSwipePaging) turns the page.
+        // INF-3106 direction B: a tap on the card's head puts the keyboard away; the head's own buttons keep their taps.
+        .onTapGesture { if messageContext.keyboardUp { dismissPhoneKeyboard() } }
+        // fm3000-ios: upstream's sideways swipe on the head is gone; the whole card's swipe (PhoneSwipePaging) turns the page.
         // With both, one swipe on the head turned two pages, and the head read its drag in a card already following the finger.
     }
 
@@ -764,6 +757,8 @@ private struct PhoneCardPane: View {
             if card.isPast {
                 Text(ending).font(PhoneFont.caption).foregroundStyle(PhoneTheme.secondary).accessibilityIdentifier("past-ending")
             }
+            // INF-3149, the captain's direction C: what happens after the merge leads the body and scrolls away with it.
+            PhoneAfterMerge(actions: card.value["requiredActions"].list, steps: card.value["afterMerge"].list)
             if let failure = host.failure {
                 Text(failure).foregroundStyle(PhoneTheme.secondary)
                 if host.reading["of"].numeric != nil {
@@ -819,12 +814,10 @@ private struct PhoneCardPane: View {
 
     private var foot: some View {
         VStack(alignment: .leading, spacing: PhoneTheme.space2) {
-            // INF-1524 piece 3: a merge card's facts and what to do after merging stay with its choices.
+            // INF-1524 piece 3: a merge card's facts stay with its choices.
             if let factsHost, factsHost.failure == nil {
                 CardWebView(host: factsHost).frame(height: factsHost.height)
             }
-            let required = card.value["requiredActions"].list
-            if !required.isEmpty { PhoneRequiredActions(actions: required) }
             if let line { Text(line).foregroundStyle(PhoneTheme.warning).accessibilityIdentifier("card-error") }
             // INF-2565: a pane built again while its back shows starts turned, and its latest line gives way as the field does.
             if !messages.isEmpty { latestLine.modifier(PhoneFaceOnly(angle: turnAngle)) }
@@ -923,6 +916,7 @@ private struct PhoneCardPane: View {
                         .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                 }.accessibilityIdentifier("send-reply")
                     .disabled(!canSendReply)
+                    .hidesKeyboardBefore(replyFocus == side && messageContext.keyboardUp)
             }.phoneInput()
                 // INF-589 item 11: the line under the composer says why; the reply row only dims.
                 .opacity(session.canChange ? 1 : 0.5)
@@ -932,7 +926,8 @@ private struct PhoneCardPane: View {
 
     private var kind: some View {
         let attention = !card.isPast && card.author == "host"
-        return Text(card.isPast ? "Past" : attention ? "Attention" : card.actions.isEmpty ? "Note" : "Decision")
+        let ended = !card.isPast && card.value["ended"] != .null
+        return Text(card.isPast ? "Past" : ended ? "Ended" : attention ? "Attention" : card.actions.isEmpty ? "Note" : "Decision")
             .font(.custom("JetBrainsMono-Regular", size: 11, relativeTo: .caption2))
             .foregroundStyle(attention ? PhoneTheme.danger : card.actions.isEmpty || card.isPast ? PhoneTheme.secondary : PhoneTheme.accent)
             .padding(.horizontal, PhoneTheme.space2).padding(.vertical, 4)

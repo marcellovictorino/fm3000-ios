@@ -89,7 +89,8 @@ window.addEventListener("message", (event: MessageEvent) => {
     }
     case "image": {
       if (!document.hasFocus() || !navigator.userActivation.isActive) return;
-      const set = viewablePictures(message.index, message.pictures);
+      // INF-3107: a tapped diagram comes as a picture of its own; a playable preview's drawings open nothing.
+      const set = viewablePictures(message.index, message.pictures, !isPreviewBody(input.body));
       if (set) void native({ type: "image", ...set }).catch(() => {});
       break;
     }

@@ -1,9 +1,9 @@
 # Changes from upstream
 
-Based on Infinitary **0.6.3-alpha.191** (installed app commit `9687d5ac4e25e3daf4302386b79ce67827ad1fe7`, upstream branch commit `3e5ea9d`), `ios/Infinitary`, Apache 2.0.
-Before that the base was 0.6.2-alpha.115 (commit `8421eddf0010a80709febc5ad5d8fbfd661878a1`).
+Based on Infinitary **0.6.5-alpha.403** (installed app commit `ddbb0143092fc2824c32444daf72dccdd8259e62`, upstream branch commit `ba91d46`), `ios/Infinitary`, Apache 2.0.
+Before that the base was 0.6.4-alpha.337, 0.6.3-alpha.191 (commit `9687d5ac4e25e3daf4302386b79ce67827ad1fe7`) and 0.6.2-alpha.115 (commit `8421eddf0010a80709febc5ad5d8fbfd661878a1`).
 
-Each entry says the PR, what changes for you, why, and whether the original app has the same problem at 0.6.3-alpha.191. The upstream checks read the original app's source at that version. None of them was run on a phone.
+Each entry says the PR, what changes for you, why, and whether the original app has the same problem at the version the entry was written against (0.6.3-alpha.191 unless it says otherwise). The upstream checks read the original app's source at that version. None of them was run on a phone.
 
 ## Identity and build
 
@@ -64,14 +64,22 @@ Each entry says the PR, what changes for you, why, and whether the original app 
   - **Changes for you:** swiping left or right moves one card at a time, wherever on the card the swipe starts.
   - **Why:** you reported the swipe skipping the middle of three cards, without the drag animation.
   - **In the original app:** not a defect. At 0.6.3-alpha.191 only the head's swipe turns the page, once per swipe. Checked in a simulator harness with upstream's head swipe alone; the double turn needs this fork's whole-card swipe.
-- **PR #8.** While typing a card's reply, a swipe down on the card, a tap on its head or body, or Done above the keyboard closes the keyboard and keeps the draft. Files: edits to `InfinitaryApp/PhoneCards.swift`.
+- **PR #8. Retired on 9 November 2026, see "Retired" below.** While typing a card's reply, a swipe down on the card, a tap on its head or body, or Done above the keyboard closes the keyboard and keeps the draft. Files: edits to `InfinitaryApp/PhoneCards.swift`.
   - **Changes for you:** put the keyboard away mid-reply to read the card again, without losing what you typed.
   - **Why:** with the keyboard up, the card's body had no room to scroll, so nothing closed the keyboard.
   - **In the original app:** the same problem at 0.6.2-alpha.115, as you reported. At 0.6.3-alpha.191 upstream changes the card's scroll bounce for the same case (INF-2737, in the same file). That change is in this build beside these gestures. Not confirmed on a phone whether it alone closes the keyboard.
-- **PR #9.** Tapping a diagram (an inline SVG drawing) opens it in the card picture viewer. The viewer pinches from 1x to 8x, pans when zoomed, and a double tap zooms in at the tap or back out. Files: new `InfinitaryApp/CardDiagramZoom.swift` (a script in its own content world inside the card body's frame, answering real taps only), edits to `InfinitaryApp/CardWebView.swift` and `InfinitaryApp/CardMediaView.swift`.
+- **PR #9. Retired on 9 November 2026, see "Retired" below.** Tapping a diagram (an inline SVG drawing) opens it in the card picture viewer. The viewer pinches from 1x to 8x, pans when zoomed, and a double tap zooms in at the tap or back out. Files: new `InfinitaryApp/CardDiagramZoom.swift` (a script in its own content world inside the card body's frame, answering real taps only), edits to `InfinitaryApp/CardWebView.swift` and `InfinitaryApp/CardMediaView.swift`.
   - **Changes for you:** read the small print of a diagram or picture on a card by enlarging it.
   - **Why:** a phone screen is too small to show a diagram whole.
   - **In the original app:** the same gap at 0.6.3-alpha.191. A diagram on a card cannot be tapped open. The card body keeps zoom off (`maximum-scale=1`, pinch disabled in `CardWebView.swift`), and the picture viewer in `CardMediaView.swift` has no zoom.
+
+## Retired
+
+Dropped on 9 November 2026 when the base moved to 0.6.5-alpha.403 (installed app commit `ddbb014`). Both were asked for by the captain, who found upstream now does the same.
+
+- **PR #9 (tap a diagram to zoom).** Replaced by upstream's INF-3107. At 0.6.5-alpha.403 a tapped inline diagram arrives from the card runtime as a picture of its own (`CardRuntime/cardHost.ts`), and the picture viewer (`InfinitaryApp/CardMediaView.swift`) fits it, pinches to 8x, pans, double-taps to its own size and closes on a swipe down. Removed: `InfinitaryApp/CardDiagramZoom.swift`, the fork's edits to `CardWebView.swift` and `CardMediaView.swift` (both now identical to upstream). Left out on purpose: keeping both would open the viewer twice per tap. Difference: the fork's script copied the drawing with its computed colours; upstream sends the card's own drawing source. Not run on a phone.
+- **PR #8 (swipe, tap or Done closes the reply's keyboard).** Replaced by upstream's INF-3106. At 0.6.5-alpha.403 a pull down that starts anywhere on the card, a tap on the card's head or on the thread's head, and a keyboard-down circle beside send (`InfinitaryApp/PhoneHideKeyboard.swift`, `MessageComposer.swift`) put the keyboard away, and the top bar's Done stays. Removed: the fork's swipe-down gesture, body tap, head tap and the Done above the keyboard in `InfinitaryApp/PhoneCards.swift`. Not covered: a tap on the card's body no longer closes the keyboard (upstream scrolling and the pull down remain). The circle is untested against PR #13's send-arrow overlap on iOS 27; not run on a phone.
+- **PR #12 stays.** Upstream's head tap is kept, but its sideways swipe on the head is still removed, since the whole-card swipe (PR #5/#7) already turns the page.
 
 ## Earlier client, not in this tree
 
@@ -86,3 +94,4 @@ These came before the rebuild in PR #3 and are not in this tree. The rebuild rep
 - **0.6.2-alpha.115.** Imported by hand in `d858c43`. Recorded as a merge in `880f01c` (tree kept as it was), so the upstream branch is an ancestor of this branch.
 - **0.6.3-alpha.191.** Merged in `c78aceb`; one conflict, in `InfinitaryApp/PhoneTasks.swift`, resolved as the Tasks entries above describe.
 - **0.6.4-alpha.337.** Imported with `scripts/sync-upstream.sh`, linked with `git merge -s ours` on the 0.6.3-alpha.191 import, then merged; one conflict, in `InfinitaryApp/PhoneTasks.swift`. Upstream's rewritten Tasks list (groups, row moves, task record) is taken whole, and the Board/List switch, project pills and board are re-attached around it. Pairing with a Mac on contract 14 is not tested.
+- **0.6.5-alpha.403.** Imported with `scripts/sync-upstream.sh`, linked with `git merge -s ours` on the 0.6.4-alpha.337 import, then merged; conflicts in `InfinitaryApp/CardMediaView.swift` (taken whole from upstream, PR #9 retired) and `InfinitaryApp/PhoneCards.swift` (the card's footer keeps the fork's message-box rule and drops upstream's reply field; the head keeps upstream's tap and the fork's no-swipe, PR #12). Ended cards and the card departure animation are taken as upstream has them. `swift test` and the simulator build pass.
