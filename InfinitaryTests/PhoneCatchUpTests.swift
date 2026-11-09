@@ -26,6 +26,9 @@ import XCTest
     }
 
     /// Each change the screens are told of: every assignment of the shown board or cards, as SwiftUI observes them.
+    /// The session changes them on the main actor, which calls `onChange` inside the assignment, so each is counted
+    /// and watched again there. A count left to a Task queued after the assignment trailed the board and cards the
+    /// wait already saw, and missed a second assignment made before that Task ran.
     @MainActor private final class Shown {
         private(set) var boards = 0
         private(set) var cards = 0
@@ -33,12 +36,12 @@ import XCTest
         init(_ session: ReadOnlySession) { self.session = session; watchBoard(); watchCards() }
         private func watchBoard() {
             withObservationTracking { _ = session.board } onChange: { [weak self] in
-                Task { @MainActor in self?.boards += 1; self?.watchBoard() }
+                MainActor.assumeIsolated { self?.boards += 1; self?.watchBoard() }
             }
         }
         private func watchCards() {
             withObservationTracking { _ = session.cards } onChange: { [weak self] in
-                Task { @MainActor in self?.cards += 1; self?.watchCards() }
+                MainActor.assumeIsolated { self?.cards += 1; self?.watchCards() }
             }
         }
     }

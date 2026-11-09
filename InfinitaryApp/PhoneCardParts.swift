@@ -108,36 +108,59 @@ private struct PhoneRiskSheet: View {
     }
 }
 
-/// INF-1524 piece 3: what the captain must do after merging, pinned with the choices as the Mac's: the lead, then one
-/// action written out, or more folded under their count that opens into each one's title, target and consequence.
-struct PhoneRequiredActions: View {
+/// INF-3149, the captain's direction C, as the Mac's AfterMergeStrip: what happens after the merge, at the top of the
+/// card's body where it scrolls away. The captain's own actions come first under a lead in the warning color, then the
+/// steps the crew starts on its own, each with its goal, what it waits for and who does it. A card with neither draws
+/// nothing.
+struct PhoneAfterMerge: View {
     let actions: [PhoneJSON]
-    @State private var open = false
+    let steps: [PhoneJSON]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PhoneTheme.space2) {
-            Text(PhoneCardWords.requiredActionsLead).font(PhoneFont.callout).foregroundStyle(PhoneTheme.text)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            if actions.count == 1 {
-                entries
-            } else {
-                DisclosureGroup(isExpanded: $open) { entries.padding(.top, PhoneTheme.space2) } label: {
-                    Text(PhoneCardWords.requiredActionsCount(actions.count)).font(PhoneFont.mono).foregroundStyle(PhoneTheme.warning)
-                }.tint(PhoneTheme.secondary)
-            }
-        }
-        .accessibilityElement(children: .contain).accessibilityIdentifier("card-required-actions")
-    }
-
-    private var entries: some View {
-        VStack(alignment: .leading, spacing: PhoneTheme.space2) {
-            ForEach(Array(actions.enumerated()), id: \.offset) { _, action in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(action["title"].text ?? "") · \(action["target"].text ?? "")").font(PhoneFont.callout)
-                    Text(action["consequence"].text ?? "").font(PhoneFont.caption).foregroundStyle(PhoneTheme.secondary)
+        if !actions.isEmpty || !steps.isEmpty {
+            VStack(alignment: .leading, spacing: PhoneTheme.space3) {
+                if !actions.isEmpty {
+                    group(PhoneCardWords.requiredActionsLead, color: PhoneTheme.warning, id: "card-required-actions") {
+                        ForEach(Array(actions.enumerated()), id: \.offset) { _, action in
+                            entry("\(action["title"].text ?? "") · \(action["target"].text ?? "")", [action["consequence"].text ?? ""])
+                        }
+                    }
+                }
+                if !steps.isEmpty {
+                    group(PhoneCardWords.afterMergeLead, color: PhoneTheme.text, id: "card-after-merge") {
+                        ForEach(Array(steps.enumerated()), id: \.offset) { _, step in
+                            let key = step["key"].text.map { "\($0) " } ?? ""
+                            let waits = step["waitsFor"].list.compactMap(\.text)
+                            entry(key + (step["title"].text ?? ""), [
+                                step["goal"].text, waits.isEmpty ? nil : PhoneCardWords.afterMergeWait(waits),
+                                PhoneCardWords.afterMergeDoer[step["doer"].text ?? "crewmate"],
+                            ].compactMap { $0 })
+                        }
+                    }
                 }
             }
-        }.frame(maxWidth: .infinity, alignment: .leading)
+            .padding(PhoneTheme.space3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(RoundedRectangle(cornerRadius: PhoneTheme.controlRadius).stroke(PhoneTheme.line, lineWidth: 1))
+        }
+    }
+
+    private func group(_ lead: String, color: Color, id: String, @ViewBuilder rows: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: PhoneTheme.space2) {
+            Text(lead).font(PhoneFont.callout).foregroundStyle(color)
+            rows()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain).accessibilityIdentifier(id)
+    }
+
+    private func entry(_ title: String, _ lines: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(PhoneFont.callout).foregroundStyle(PhoneTheme.text)
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                Text(line).font(PhoneFont.caption).foregroundStyle(PhoneTheme.secondary)
+            }
+        }
     }
 }
 
@@ -202,8 +225,8 @@ struct PhoneCardThread: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PhoneTheme.space3) {
-            ForEach(Array(messages.enumerated()), id: \.offset) { _, message in
-                PhoneThreadMessage(message: message)
+            ForEach(Array(messages.enumerated()), id: \.offset) { index, message in
+                PhoneThreadMessage(message: message).id(index)
             }
             if working {
                 HStack(spacing: PhoneTheme.space2) {
@@ -213,6 +236,125 @@ struct PhoneCardThread: View {
             }
         }
     }
+}
+
+/// INF-3124, the captain's direction B: the card back's thread keeps the captain's place, as the Mac's does
+/// (docs/card-threads.md, "Keeping your place"). It opens at its foot and follows new messages and the working line
+/// only while the captain rests there; new messages taller than the thread open at their first line, the captain's
+/// own reply always goes to the foot, and once they scroll up nothing else moves it. While they read above, the jump
+/// down floats over the foot: a plain arrow until messages arrive below, then how many.
+struct PhoneThreadScroller: View {
+    let messages: [PhoneJSON]
+    let working: Bool
+    let bounce: ScrollBounceBehavior
+    let onHeight: (CGFloat) -> Void
+    let onPhase: (ScrollPhase) -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Whether the thread follows: true at its foot, false once the captain leaves it or a long reply opens at its start.
+    @State private var follows = true
+    @State private var atFoot = true
+    /// New messages were brought to the top, so the next move away from the foot is that, not the captain's own.
+    @State private var opening = false
+    /// The first message that came while the captain read above, by its place in the thread, and how many came.
+    @State private var unreadFrom: Int?
+    @State private var unreadCount = 0
+
+    /// The thread's whole content, whose bottom is the foot.
+    private static let content = "thread-content"
+
+    var body: some View {
+        ScrollViewReader { scroller in
+            ScrollView {
+                PhoneCardThread(messages: messages, working: working)
+                    .padding(.horizontal, PhoneTheme.space4).padding(.vertical, PhoneTheme.space3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .id(Self.content)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { onHeight($0) }
+            }
+            .defaultScrollAnchor(.bottom, for: .initialOffset)
+            .scrollBounceBehavior(bounce)
+            .scrollDismissesKeyboard(.interactively)
+            // About one line from the foot still counts as at it, the Mac's slack. Read again whenever the content grows
+            // too, so new lines that fit, which leave the distance below unchanged, still end an opening.
+            .onScrollGeometryChange(for: ThreadFoot.self) { geometry in
+                ThreadFoot(
+                    below: geometry.contentSize.height + geometry.contentInsets.bottom - geometry.visibleRect.maxY,
+                    height: geometry.contentSize.height)
+            } action: { _, foot in
+                atFoot = foot.below <= PhoneTheme.space5
+                if atFoot {
+                    follows = true; opening = false; unreadFrom = nil; unreadCount = 0
+                } else if opening {
+                    follows = false; opening = false
+                }
+            }
+            // Only the captain's own scroll ends or starts following, once it comes to rest.
+            .onScrollPhaseChange { _, phase in
+                if phase == .idle { follows = atFoot }
+                onPhase(phase)
+            }
+            .onChange(of: messages.count) { old, count in arrived(from: old, to: count, scroller) }
+            // A tall reply opening at its first line keeps its place when the working line leaves with it.
+            .onChange(of: working) { if follows && !opening { scroller.scrollTo(Self.content, anchor: .bottom) } }
+            // The keyboard or the card's foot shortening the thread keeps a following foot in view.
+            .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height } action: { _, _ in
+                if follows { scroller.scrollTo(Self.content, anchor: .bottom) }
+            }
+            // The thread's own name sits on the scroll view, under the jump down, which keeps its own.
+            .accessibilityIdentifier("card-thread")
+            .overlay(alignment: .bottom) {
+                if !follows { jump(scroller) }
+            }
+        }
+    }
+
+    /// Messages that came: the captain's own takes the thread to its foot; read above, they are counted; at the
+    /// foot the first of them goes to the top, which a scroll that cannot go so far leaves at the foot.
+    private func arrived(from old: Int, to count: Int, _ scroller: ScrollViewProxy) {
+        guard count > old, old >= 0 else { return }
+        if messages[old..<count].contains(where: { $0["who"].text == "captain" }) {
+            follows = true; unreadFrom = nil; unreadCount = 0
+            scroller.scrollTo(Self.content, anchor: .bottom)
+        } else if !follows {
+            unreadFrom = unreadFrom ?? old
+            unreadCount += count - old
+        } else {
+            opening = true
+            scroller.scrollTo(old, anchor: .top)
+        }
+    }
+
+    /// The jump down: to the first message that came while the captain read above, or to the foot.
+    private func jump(_ scroller: ScrollViewProxy) -> some View {
+        let unread = unreadCount > 0
+        return Button {
+            let from = unreadFrom
+            unreadFrom = nil; unreadCount = 0
+            let move = {
+                if let from { scroller.scrollTo(from, anchor: .top) } else { scroller.scrollTo(Self.content, anchor: .bottom) }
+            }
+            if reduceMotion { move() } else { withAnimation(PhoneTheme.surfaceMove) { move() } }
+        } label: {
+            Text(PhoneCardWords.threadJump(unreadCount).uppercased()).font(PhoneFont.micro)
+                .foregroundStyle(unread ? PhoneTheme.accent : PhoneTheme.secondary)
+                .padding(.horizontal, PhoneTheme.space3).padding(.vertical, 6)
+                .background {
+                    Capsule().fill(PhoneTheme.surface)
+                    if unread { Capsule().fill(PhoneTheme.accentDim) }
+                }
+                .overlay { Capsule().stroke(PhoneTheme.line) }
+                .frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.bottom, PhoneTheme.space2)
+        .accessibilityIdentifier("thread-jump")
+    }
+}
+
+/// How far the thread's foot is below the view, and how tall its content is.
+private struct ThreadFoot: Equatable {
+    let below: CGFloat
+    let height: CGFloat
 }
 
 private struct PhoneThreadMessage: View {

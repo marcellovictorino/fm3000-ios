@@ -43,6 +43,31 @@ extension PhoneJourney {
         picture("picture-zoomed")
         _ = try await home("capture-stop")
         tapOnPhone(app.buttons["Done"])
+        // INF-3107 (the captain's Approve and build): a tapped diagram opens full screen, fitted; a double-tap shows it
+        // at its own size where tapped and a second one fits it again; a swipe down while fitted closes it.
+        let diagram = app.webViews.images["Harbour approach in three legs"].firstMatch
+        XCTAssertTrue(diagram.waitForPresence(timeout: 10), app.debugDescription)
+        reveal(diagram); tapOnPhone(diagram)
+        let viewer = app.webViews["card-picture"]
+        XCTAssertTrue(viewer.waitForPresence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.navigationBars["Card diagram"].waitForPresence(timeout: 10), app.debugDescription)
+        // The viewer's web page reads the drawing out by the diagram's own label.
+        XCTAssertTrue(viewer.images["Harbour approach in three legs"].firstMatch.waitForPresence(timeout: 10), app.debugDescription)
+        // WebKit places the drawing's own frame inside the picture, not where it is drawn, so the zoom is read from
+        // the viewer's horizontal scroll bar: one page fitted, more once enlarged.
+        let across = viewer.otherElements.matching(NSPredicate(format: "label BEGINSWITH %@", "Horizontal scroll bar")).firstMatch
+        XCTAssertTrue(across.waitForPresence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(across.label, "Horizontal scroll bar, 1 page", "A diagram opens fitted")
+        picture("diagram-viewer")
+        viewer.doubleTap()
+        XCTAssertTrue(waitForPhonePredicate(NSPredicate { _, _ in across.label != "Horizontal scroll bar, 1 page" }, object: across, timeout: 10) == .completed,
+                      "A double-tap enlarges the diagram: \(across.label)")
+        picture("diagram-enlarged")
+        viewer.doubleTap()
+        XCTAssertTrue(waitForPhonePredicate(NSPredicate { _, _ in across.label == "Horizontal scroll bar, 1 page" }, object: across, timeout: 10) == .completed,
+                      "A second double-tap fits it again: \(across.label)")
+        viewer.swipeDown()
+        XCTAssertTrue(viewer.waitForAbsence(timeout: 10), "A swipe down while fitted closes the viewer")
         // The home measures the recording and owns its duration label.
         let play = app.webViews.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Play the demo,")).firstMatch
         reveal(play)

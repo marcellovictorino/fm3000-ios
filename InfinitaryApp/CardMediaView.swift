@@ -44,7 +44,12 @@ struct CardMediaView: View {
                     } else { ProgressView("Loading recording") }
                     Text(presentation["caption"].text ?? "").font(PhoneFont.caption)
                 } else if pictures.indices.contains(index), let source = pictures[index]["src"].text {
-                    PassiveCardMedia(source: source, session: session).id(index)
+                    // INF-3107: one viewer for pictures and diagrams - fitted, pinch to 8x, double-tap to its own size, drag.
+                    PassiveCardMedia(source: source, session: session,
+                                     zoom: CardMediaZoom(width: pictures[index]["width"].numeric ?? 0,
+                                                         height: pictures[index]["height"].numeric ?? 0,
+                                                         drawing: source.hasPrefix(CardDrawing.prefix)),
+                                     close: { dismiss() }).id(index)
                     Text(pictures[index]["alt"].text ?? "").font(PhoneFont.caption)
                     if pictures.count > 1 {
                         HStack {
@@ -55,7 +60,9 @@ struct CardMediaView: View {
                     }
                 }
             }.background(PhoneTheme.background)
-                .phoneTitle(presentation["type"].text == "demo" ? "Card recording" : "Card picture")
+                .phoneTitle(presentation["type"].text == "demo" ? "Card recording"
+                    : (pictures.indices.contains(index) && pictures[index]["src"].text?.hasPrefix(CardDrawing.prefix) == true)
+                        ? "Card diagram" : "Card picture")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }.onAppear { index = Int(presentation["index"].numeric ?? 0); playGif = presentation["play"].flag }
             .task { if presentation["type"].text == "demo" { await loadRecording() } }
@@ -74,10 +81,50 @@ struct CardMediaView: View {
     }
 }
 
+/// INF-3107: how the viewer zooms a picture or diagram - its own size, from the card, and whether it is a drawing,
+/// which may fill the screen larger than its own size since it stays sharp at any zoom.
+struct CardMediaZoom: Equatable {
+    var width: Double
+    var height: Double
+    var drawing: Bool
+    /// The deepest pinch, counted from the fitted view.
+    static let deepest: CGFloat = 8
+    /// What a double-tap goes to: the picture's own size, one unit to a point, where that is larger than fitted,
+    /// and otherwise twice fitted.
+    func doubleTapScale(room: CGSize) -> CGFloat {
+        guard width > 0, height > 0, room.width > 0, room.height > 0 else { return 2 }
+        let fitted = min(drawing ? .infinity : 1, room.width / width, room.height / height)
+        let own = 1 / fitted
+        return min(Self.deepest, own > 1.05 ? own : 2)
+    }
+}
+
+/// A diagram the card wrote out (`DRAWING_SOURCE_PREFIX`): its typefaces go inside it, since a picture loads nothing.
+enum CardDrawing {
+    static let prefix = "data:image/svg+xml;charset=utf-8,"
+    @MainActor static func withFaces(_ source: String, assets: CardAssets) async -> String {
+        guard source.hasPrefix(prefix), let markup = String(source.dropFirst(prefix.count)).removingPercentEncoding,
+              let pattern = try? NSRegularExpression(pattern: "app-frame://fonts/([a-z0-9-]+\\.woff2)") else { return source }
+        let whole = NSRange(markup.startIndex..., in: markup)
+        var faces: [String: String] = [:]
+        for match in pattern.matches(in: markup, range: whole) {
+            guard let range = Range(match.range, in: markup), faces[String(markup[range])] == nil,
+                  let url = URL(string: String(markup[range])),
+                  let face = try? await assets.load(url), face.1 == "font/woff2" else { continue }
+            faces[String(markup[range])] = "data:font/woff2;base64,\(face.0.base64EncodedString())"
+        }
+        var embedded = markup
+        for (address, face) in faces { embedded = embedded.replacingOccurrences(of: address, with: face) }
+        return "data:image/svg+xml;base64,\(Data(embedded.utf8).base64EncodedString())"
+    }
+}
+
 /// No script, native handler, filesystem URL, external page or shared website data in a picture viewer.
 private struct PassiveCardMedia: UIViewRepresentable {
     let source: String
     let session: ReadOnlySession
+    var zoom: CardMediaZoom? = nil
+    var close: (() -> Void)? = nil
     func makeCoordinator() -> Coordinator { Coordinator(session: session) }
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -86,33 +133,98 @@ private struct PassiveCardMedia: UIViewRepresentable {
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = .all
         configuration.setURLSchemeHandler(context.coordinator.assets, forURLScheme: "app-frame")
-        let view = WKWebView(frame: .zero, configuration: configuration)
+        let view = FittingWebView(frame: .zero, configuration: configuration)
         view.allowsLinkPreview = false
         view.navigationDelegate = context.coordinator
         view.isOpaque = false; view.backgroundColor = .clear; view.accessibilityIdentifier = "card-picture"
+        view.scrollView.backgroundColor = .clear
+        if zoom != nil {
+            // WebKit's own double-tap is off (touch-action below); this one goes to the picture's own size where tapped.
+            let twice = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.doubleTapped(_:)))
+            twice.numberOfTapsRequired = 2
+            twice.delegate = context.coordinator
+            view.addGestureRecognizer(twice)
+            let down = UISwipeGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.swipedDown(_:)))
+            down.direction = .down
+            down.delegate = context.coordinator
+            view.addGestureRecognizer(down)
+        }
         return view
     }
     func updateUIView(_ view: WKWebView, context: Context) {
+        context.coordinator.zoom = zoom
+        context.coordinator.close = close
         guard context.coordinator.source != source else { return }
         context.coordinator.source = source
-        let escaped = source.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "\"", with: "&quot;").replacingOccurrences(of: "<", with: "&lt;")
-        let element = "<img alt=\"Card picture\" src=\"\(escaped)\">"
-        view.loadHTMLString("""
-        <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: app-frame://images app-frame://media; media-src 'none'; style-src 'unsafe-inline'; base-uri 'none'">
-        <style>html,body{margin:0;height:100%;background:transparent}body{display:flex;align-items:center;justify-content:center}img,video{max-width:100%;max-height:100%;object-fit:contain}</style>
-        </head><body>\(element)</body></html>
-        """, baseURL: nil)
+        let drawing = zoom?.drawing == true
+        let assets = context.coordinator.assets
+        context.coordinator.loading?.cancel()
+        context.coordinator.loading = Task { @MainActor in
+            let shown = drawing ? await CardDrawing.withFaces(source, assets: assets) : source
+            guard !Task.isCancelled else { return }
+            view.loadHTMLString(Self.page(shown, zoom: zoom), baseURL: nil)
+        }
     }
-    static func dismantleUIView(_ view: WKWebView, coordinator: Coordinator) { view.stopLoading(); coordinator.assets.cancel() }
-    @MainActor final class Coordinator: NSObject, WKNavigationDelegate {
+    /// Fitted at first: a drawing fills the screen, a picture never grows past its own pixels. Pinch runs from fitted to 8x.
+    private static func page(_ source: String, zoom: CardMediaZoom?) -> String {
+        let escaped = source.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "\"", with: "&quot;").replacingOccurrences(of: "<", with: "&lt;")
+        let element = "<img alt=\"Card picture\" src=\"\(escaped)\"\(zoom?.drawing == true ? " class=\"drawing\"" : "")>"
+        let viewport = zoom == nil ? "width=device-width,initial-scale=1"
+            : "width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=\(Int(CardMediaZoom.deepest))"
+        return """
+        <!doctype html><html><head><meta name="viewport" content="\(viewport)">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: app-frame://images app-frame://media; media-src 'none'; style-src 'unsafe-inline'; base-uri 'none'">
+        <style>html,body{margin:0;height:100%;background:transparent}html{touch-action:manipulation}body{display:flex;align-items:center;justify-content:center}img,video{max-width:100%;max-height:100%;object-fit:contain}img.drawing{width:100%;height:100%}</style>
+        </head><body>\(element)</body></html>
+        """
+    }
+    static func dismantleUIView(_ view: WKWebView, coordinator: Coordinator) {
+        coordinator.loading?.cancel(); view.stopLoading(); coordinator.assets.cancel()
+    }
+    @MainActor final class Coordinator: NSObject, WKNavigationDelegate, UIGestureRecognizerDelegate {
         let assets: CardAssets
         var source: String?
+        var zoom: CardMediaZoom?
+        var close: (() -> Void)?
+        var loading: Task<Void, Never>?
         init(session: ReadOnlySession) { assets = CardAssets(session: session) }
+        /// Fitted: to its own size, centred where tapped. Zoomed: back to fitted, as Photos does.
+        @objc func doubleTapped(_ gesture: UITapGestureRecognizer) {
+            guard let view = gesture.view as? WKWebView, let zoom else { return }
+            let scroll = view.scrollView
+            if scroll.zoomScale > scroll.minimumZoomScale + 0.01 { scroll.setZoomScale(scroll.minimumZoomScale, animated: true); return }
+            // WebKit keeps its zooming view to itself, so the tap is read in the scroll view and divided by the
+            // current zoom, the zooming view's own units.
+            let scale = zoom.doubleTapScale(room: scroll.bounds.size)
+            let tapped = gesture.location(in: scroll)
+            let point = CGPoint(x: tapped.x / scroll.zoomScale, y: tapped.y / scroll.zoomScale)
+            let size = CGSize(width: scroll.bounds.width / scale, height: scroll.bounds.height / scale)
+            scroll.zoom(to: CGRect(x: point.x - size.width / 2, y: point.y - size.height / 2, width: size.width, height: size.height),
+                        animated: true)
+        }
+        /// A swipe down while fitted closes the viewer; zoomed, the drag pans instead.
+        @objc func swipedDown(_ gesture: UISwipeGestureRecognizer) {
+            guard let view = gesture.view as? WKWebView, view.scrollView.zoomScale <= view.scrollView.minimumZoomScale + 0.01 else { return }
+            close?()
+        }
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                      decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
             decisionHandler(navigationAction.request.url?.absoluteString == "about:blank" && navigationAction.navigationType == .other ? .allow : .cancel)
         }
+    }
+}
+
+/// Turning the device refits the picture: a new size starts fitted again.
+private final class FittingWebView: WKWebView {
+    private var laidOut: CGSize = .zero
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard bounds.size != laidOut else { return }
+        let first = laidOut == .zero
+        laidOut = bounds.size
+        if !first { scrollView.setZoomScale(scrollView.minimumZoomScale, animated: false) }
     }
 }
 
