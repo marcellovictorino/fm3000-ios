@@ -14,6 +14,7 @@ extension PhoneJourney {
         let merge = try await home("merge-card")
         XCTAssertTrue(cardHeading(try XCTUnwrap(merge["title"] as? String)).waitForPresence(timeout: 10), app.debugDescription)
         waitForShownBodyRevealed()
+        waitForFactsStripRevealed()
         var failures: [String] = []
         let box = keyboardInput("message-box"), reply = keyboardInput("card-reply")
         let scroll = app.scrollViews["card-scroll"].firstMatch
@@ -39,6 +40,18 @@ extension PhoneJourney {
             turnForProbe(.portrait)
         }
         finishKeyboardChecks(failures)
+    }
+
+    /// INF-3182 / INF-3200: the merge card's fact strip draws in a web view of its own in the card's foot, above the reply,
+    /// after the body has drawn. Until it reveals it holds a placeholder height, and its drawn height then pushes the reply
+    /// down; on the iPad a tap read the reply's point just before that move and landed above the field, which never began
+    /// editing. The strip reveals only once its drawn height is the foot's own geometry (CardWebHost.revealIfShown), so
+    /// the reply holds its place from then and its steady check reads where it will stay.
+    private func waitForFactsStripRevealed() {
+        let facts = app.webViews.matching(identifier: "card-facts").firstMatch
+        XCTAssertTrue(facts.waitForPresence(timeout: 20), app.debugDescription)
+        let revealed = NSPredicate { _, _ in facts.descendants(matching: .any).firstMatch.exists }
+        XCTAssertEqual(waitForPhonePredicate(revealed, object: nil, timeout: 20), .completed, "The merge card's fact strip was never revealed")
     }
 
     /// The captain's added ask: "scrolling a card should dismiss the keyboard if keyboard is up". Records the scroll that

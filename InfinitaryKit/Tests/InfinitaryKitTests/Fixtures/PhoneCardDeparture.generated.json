@@ -1,0 +1,152 @@
+[
+  {
+    "name": "all read, a middle card closes",
+    "previous": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "left": "b",
+    "ids": [
+      "a",
+      "c",
+      "d"
+    ],
+    "unread": [],
+    "comesUp": "c"
+  },
+  {
+    "name": "all read, the first card closes",
+    "previous": [
+      "a",
+      "b",
+      "c"
+    ],
+    "left": "a",
+    "ids": [
+      "b",
+      "c"
+    ],
+    "unread": [],
+    "comesUp": "b"
+  },
+  {
+    "name": "all read, the last card closes",
+    "previous": [
+      "a",
+      "b",
+      "c"
+    ],
+    "left": "c",
+    "ids": [
+      "a",
+      "b"
+    ],
+    "unread": [],
+    "comesUp": "b"
+  },
+  {
+    "name": "all read, the next card left too",
+    "previous": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "left": "b",
+    "ids": [
+      "a",
+      "d"
+    ],
+    "unread": [],
+    "comesUp": "d"
+  },
+  {
+    "name": "all read, the last two left together",
+    "previous": [
+      "a",
+      "b",
+      "c"
+    ],
+    "left": "c",
+    "ids": [
+      "a"
+    ],
+    "unread": [],
+    "comesUp": "a"
+  },
+  {
+    "name": "all read, the stack reordered as it closed",
+    "previous": [
+      "a",
+      "b",
+      "c"
+    ],
+    "left": "a",
+    "ids": [
+      "c",
+      "b"
+    ],
+    "unread": [],
+    "comesUp": "b"
+  },
+  {
+    "name": "an unread card waits before it",
+    "previous": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "left": "c",
+    "ids": [
+      "a",
+      "b",
+      "d"
+    ],
+    "unread": [
+      "a"
+    ],
+    "comesUp": "a"
+  },
+  {
+    "name": "an unread card arrived as it closed",
+    "previous": [
+      "a",
+      "b"
+    ],
+    "left": "b",
+    "ids": [
+      "a",
+      "c"
+    ],
+    "unread": [
+      "c"
+    ],
+    "comesUp": "c"
+  },
+  {
+    "name": "only new cards are left",
+    "previous": [
+      "a"
+    ],
+    "left": "a",
+    "ids": [
+      "x",
+      "y"
+    ],
+    "unread": [],
+    "comesUp": "x"
+  },
+  {
+    "name": "the only card closes",
+    "previous": [
+      "a"
+    ],
+    "left": "a",
+    "ids": [],
+    "unread": [],
+    "comesUp": null
+  }
+]

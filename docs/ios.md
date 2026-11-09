@@ -171,6 +171,7 @@ A reply inside the scroller of a card that scrolls whole keeps its last line in 
 On an iPhone on its side the keyboard leaves about two lines of room, so while it is up the pager steps aside, and while a card's reply types the message box steps aside too, keeping its draft.
 A person starting to scroll a card or its thread closes the keyboard; the scroller following the caret does not.
 While the keyboard is up, a card or thread that fits whole above it bounces under a flick, so that flick closes the keyboard too (INF-2737); with the keyboard down, one that fits does not move.
+While the keyboard is up, a pull down that starts anywhere on the card, its head included, closes it, and so does a tap on the head of the card's face or of its thread; the head's own buttons keep their taps (INF-3106).
 When the home is on `CARD_SEEN_UPDATE_SINCE` (major 13) or later, or advertises `card-current-update-seen`, every snapshot supplies the owner's exact released-update seen state, which drives unread counts and the next chevron's dot.
 A sighting acknowledges the exact released update only after the pane draws while visible, active and connected; reading never hides a note or changes another view's selection.
 The session consumes initial state before reporting again on reconnect and never queues offline sightings.
@@ -179,7 +180,7 @@ Older native readers ignore the optional fields; older desktop readers receive a
 Full shared marks require updated owner and views; offline views keep last-known state until delivery resumes.
 Project filters stay local to each desktop window, with no new phone filter.
 Swiping the native head pages cards without capturing the body's horizontal form and canvas gestures.
-Ordinary arrivals keep the shown card in place; a new `holdsPlace` card comes forward, and a departure chooses an unread card before the first card.
+Ordinary arrivals keep the shown card in place; a new `holdsPlace` card comes forward, and a departure chooses an unread card first, else the card after the one that left, else the one before it, by the Mac's rule (`PhoneCardDeparture`, which `PhoneCardDepartureTests` holds to the Mac's recorded choices).
 On Home, unread cards besides the shown one are counted beside the pager ("1 new"), and a press shows the first of them; the new-card pill shows only on the other tabs, while a reply's pill shows on every tab.
 Form and reply drafts live only in memory and survive paging.
 Native controls own the head, footer choices and reply field; a body cannot draw over or press them.
@@ -199,7 +200,8 @@ The footer choices are the Mac's row (`PhoneChoiceStyle` in `PhoneChoiceRow`): r
 As on the Mac (`footerGroups`), the default is drawn last, filled with the accent; a danger choice has a red outline and the rest a hairline outline.
 The answers line (`answersLine.ts`) sits in mono at the start of the first line, and a hairline sits above the row while the body runs on beneath it.
 While a required question has no answer the default choice is drawn muted, and a press of it asks for the missing answer; a pressed choice shows a pending mark while its answers are read from the body.
-Above the choices sit the host's fact strip, which the body's page splits off as the Mac does and a second read-only web view draws, then the actions to take after merging, one written out or more folded under their count, as the Mac shows them, then the reply field.
+Above the choices sit the host's fact strip, which the body's page splits off as the Mac does and a second read-only web view draws, then the reply field.
+What happens after the merge leads the body, as on the Mac: the captain's actions under their lead in the warning color, then the crew's steps with their goal, what they wait for and who does them, every one written out, scrolling away with the body.
 The reply field reads "anything to add?", takes photos from the library or the camera, and its words also go with a choice as the `anything_else` answer, as the Mac's field does.
 A footer press collects a fresh form reading through the computer’s shared bridge, including question definitions and staged settings, and sends the mounted offer and lifecycle with its own interaction id.
 If the body has already failed, a later deliberate press may use its last observed draft, marked `fallback` with `no-fresh-reading` rather than fresh question evidence.
@@ -226,6 +228,8 @@ A crewmate's browser on its card is a strip naming Browser, the page's site and 
 A lone or marked card stays; an ordinary reply with another card declares its departure to the core.
 Settings and browser doors name the computer where they must be used and send no action.
 The host’s saved-sign-in choice needs no local browser page and is sent like any other choice.
+A card its author ended after the captain had seen it stays on Home as the Mac draws it (INF-3071): its chip reads Ended, its thread carries the computer's app line among the messages by when it ended, and its one button and the minus both read Close, which the computer sends as the note's button and the card's close.
+A phone from before ended cards draws the same card as a note whose one button reads Close.
 The phone keeps recently closed cards in memory through `inf:cards:past` and also opens a past card the Mac points to with `past_card_shown`.
 A past card has its last-seen body, saved answers, inert choices with the chosen one at full contrast and an accent edge, the words sent with that choice, its thread and Hide; it has no reply or mutation path.
 Its ending words are generated from `src/shared/pastCard.ts`, so the captain, first mate and crewmate keep their own attribution, alongside withdrawn, taken-down and duplicate endings.
@@ -247,6 +251,8 @@ A native collection timeout also releases a waiting footer or reply when the web
 `CardAssets` serves bundled fonts and minted picture, project-font and recording names through the pinned connection; it never opens an arbitrary URL or filesystem path.
 It asks through `ReadOnlySession.read`, which waits until the computer is in reach and asks again after a reconnect, so a card drawn from the first cards read, before the other first reads answer, still gets its pictures.
 A separate script-free, nonpersistent web view shows pictures and GIFs, with no native message handler.
+A tap on a picture or a diagram opens it full screen (INF-3107): fitted, with pinch from fitted to eight times fitted, a double-tap to its own size centred where tapped and back, a drag to pan, a refit when the device turns, and Done or a swipe down while fitted to close; a recording keeps its sheet.
+A diagram arrives as the SVG picture the bridge wrote out of the card, and native code puts the bundled faces it names inside it, since a picture loads nothing.
 Both web views disable system link previews as well as refusing navigation.
 A body's link leaves only on the captain's own press, when the parent's `isSafeCardHref` admits it, and native code checks its scheme again before the system opens it.
 MP4 recordings use the native player, whose resource loader serves only bounded bytes read through the pinned connection and writes nothing to disk.
@@ -283,6 +289,8 @@ Settings is this phone's own sheet, `PhoneSettingsSheet`: this device and what i
 Both open at half height on the system's glass and can be pulled up, with the same headings and spacing; Leave, or Forget while out of reach, is the computer sheet's second section under its own heading.
 While the keyboard is open, Done takes Settings' place in the leading slot and the Hide keyboard command (Shift-Command-K) dismisses it without sending or clearing the draft.
 The dismissal command does not belong to the keyboard’s transient accessory view.
+Apple's iPhone keyboard has no hide key and no app may add one, so while the software keyboard is up for a card's reply or the message box, a keyboard-down button sits inside that field just before its send circle, on an iPhone and an iPad alike (INF-3106, `PhoneHideKeyboard.swift`).
+It is a neutral circle the size of send's, drawn on send itself so the two share one center line however many lines the field holds, and it leaves with the keyboard; it takes no room above the keyboard, so the layout around the field stays as it was.
 The tabs read Home, Tasks and Activity, in that order.
 The iPad's wide landscape workspace places a sidebar beside the stage, with Tasks and Activity as a segmented pair at its top, opening on Tasks, each scrolling alone, keeps the composer at the stage's foot and shows no strip in the bar.
 Portrait or narrow multitasking returns to the strip; layout measurement excludes the keyboard.
@@ -341,6 +349,7 @@ Crew sit on the desktop's growing two-orbit ring (`docs/crew-orbits.md`): the fi
 Returning crew open a seat among visible survivors on the same logical orbit; a fallback crew member takes part in main-orbit spacing.
 A re-spaced or resized orbit glides its crew around it, and neither orbits nor another computer's center are outlined.
 `PhoneOrbitSeatsTests` replays the desktop's own seat choices, recorded by `scripts/generate-phone-scene.ts`.
+`PhoneCardDepartureTests` replays the desktop stack's own choice of the card that comes up after a close, recorded the same way.
 Its native Browse crew command, Shift-Command-C, enters app-owned browsing with an accent viewport outline; arrow keys pan it, Tab selects a real crewmate and Space opens that crewmate's preview.
 While browsing, a scene-owned responder holds first-responder status and offers those unmodified keys as priority key commands, because SwiftUI shortcuts for them lose to the system's focus and text handling.
 Each crewmate and program answers touch across its 44-point square, not only the drawn circle.
@@ -573,7 +582,7 @@ Add `--ipad` for the iPad Pro 11-inch (M4); the default uses an iPhone 16.
 The gate refuses any other Xcode before it builds, and `scripts/phone-simulator.ts` refuses a Mac without that runtime, or one whose runtime does not support the device, naming the download that fixes it; it never takes a newer or older runtime in its place.
 Moving to a new pair is one pull request that edits the pin, after the virtual Mac image and every Mac that runs the check have the new pair.
 Add `--both` to run the checks and build once, then the iPhone and the iPad side by side; the evidence folder then holds the shared logs and an `iphone` and an `ipad` folder.
-The native journey is tests in `PhoneJourney`, one per part (`scripts/phone-test-plan.ts`): three join parts (`join-read`, `join-activity`, `join-away`), three talk parts (`talk-compose`, `talk-tasks`, `talk-drafts`), two relaunch parts (`relaunch-first`, `relaunch-second`), three cards parts (`cards-merge`, `cards-form`, `cards-media`), `address` (join by its address), `pick` (a card pager pick across a workspace redraw), `cards-revise` (a revision while the thread shows), two keyboard parts (`keyboard-pinned`, `keyboard-scrolling`: the message box and a card's reply with the keyboard up, INF-2568), `weak-link` (the app-hosted `PhoneWeakLinkTests` class alone), and `rest`, which runs the character and past choices with the other app-hosted tests and any test no other part names.
+The native journey is tests in `PhoneJourney`, one per part (`scripts/phone-test-plan.ts`): three join parts (`join-read`, `join-activity`, `join-away`), three talk parts (`talk-compose`, `talk-tasks`, `talk-drafts`), two relaunch parts (`relaunch-first`, `relaunch-second`), three cards parts (`cards-merge`, `cards-form`, `cards-media`), `address` (join by its address), `pick` (a card pager pick across a workspace redraw), `cards-revise` (a revision while the thread shows), three keyboard parts (`keyboard-pinned`, `keyboard-scrolling`: the message box and a card's reply with the keyboard up, INF-2568; `keyboard-ways-out`: each way out of that keyboard, INF-3106), `weak-link` (the app-hosted `PhoneWeakLinkTests` class alone), and `rest`, which runs the character and past choices with the other app-hosted tests and any test no other part names.
 The weak link checks wait out real slow links, outages and silences, about five minutes a device, so they take a part of their own rather than doubling the rest part, and a change to the other app-hosted tests does not repeat them (INF-2989).
 Each part's test, with the steps only it takes, is in a file of its own beside `InfinitaryUITests/PhoneJourney.swift`, named for the part (`PhoneJourney+JoinRead.swift` for `join-read`, `PhoneJourney+Rest.swift` for `rest`).
 `PhoneJourney.swift` keeps the class and the steps two or more parts share.

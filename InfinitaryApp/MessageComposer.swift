@@ -104,6 +104,8 @@ struct MessageComposer: View {
                         .disabled(!canSend)
                         .accessibilityLabel("Send")
                         .accessibilityIdentifier("send-message")
+                        // INF-3106 direction B: the keyboard-down circle before send, matching its 32 points.
+                        .hidesKeyboardBefore(focused && messageContext.keyboardUp, diameter: 32, height: 48)
                 }.phoneInput(floating: true)
                     // INF-589 item 11: out of reach, the input dims; a draft stays typeable and is kept.
                     .opacity(session.canChange ? 1 : 0.5)
