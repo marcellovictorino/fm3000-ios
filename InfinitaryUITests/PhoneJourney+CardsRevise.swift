@@ -9,6 +9,8 @@ extension PhoneJourney {
     /// which carries its answer to the captain's question (INF-2225: a handoff line leaves the question waiting).
     /// Completion: the revision's own thread line and its answer reach the phone; the card still shows its back, Card
     /// carries the update's mark, and Card turns to a face that draws the revised body.
+    /// Then the captain's ask that a card showing its thread still offers its minus: the thread's head carries the
+    /// face's minus, with its words, and a press of it there puts the card aside, which the computer saves as minimized.
     func testRevisionKeepsTheThreadShowing() async throws {
         try await launchJoined()
         let fixture = try await home("flip-card")
@@ -16,6 +18,9 @@ extension PhoneJourney {
         let mate = try XCTUnwrap(fixture["mate"] as? String)
         XCTAssertTrue(cardHeading(title).waitForPresence(timeout: 10), app.debugDescription)
         waitForShownBodyRevealed()
+        let faceAside = app.buttons["put-aside-card"]
+        XCTAssertTrue(faceAside.waitForPresence(timeout: 10), app.debugDescription)
+        let asideLabel = faceAside.label
         let cue = app.buttons["thread-cue"]
         XCTAssertTrue(cue.waitForPresence(timeout: 10), app.debugDescription)
         reveal(cue); tapOnPhone(cue)
@@ -44,5 +49,20 @@ extension PhoneJourney {
         XCTAssertTrue(app.webViews.staticTexts[added].waitForPresence(timeout: 10), app.debugDescription)
         XCTAssertTrue(cue.waitForPresence(timeout: 10), app.debugDescription)
         picture("3-face-after-revision")
+        // The thread's own minus puts the card aside, as the face's does.
+        reveal(cue); tapOnPhone(cue)
+        XCTAssertTrue(back.waitForPresence(timeout: 10), app.debugDescription)
+        let threadAside = app.buttons["thread-put-aside"]
+        XCTAssertTrue(threadAside.waitForPresence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(threadAside.label, asideLabel, "The thread's minus names what the face's does")
+        picture("4-thread-minus")
+        tapOnPhone(threadAside)
+        let threadTitle = app.staticTexts.matching(identifier: "thread-title")
+            .matching(NSPredicate(format: "label == %@", title)).firstMatch
+        XCTAssertTrue(threadTitle.waitForAbsence(timeout: 10), "The thread's minus left the card on Home\n\(app.debugDescription)")
+        let aside = try await home("card-state", method: "GET")
+        let listed = (aside["cards"] as? [[String: Any]] ?? []).first { $0["title"] as? String == title }
+        XCTAssertEqual(listed?["minimized"] as? Bool, true, "The thread's minus did not minimize the card on the computer")
+        picture("5-after-thread-minus")
     }
 }

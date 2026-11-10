@@ -106,9 +106,11 @@ struct MessageComposer: View {
                         .accessibilityIdentifier("send-message")
                         // INF-3106 direction B: the keyboard-down circle before send, matching its 32 points.
                         .hidesKeyboardBefore(focused && messageContext.keyboardUp, diameter: 32, height: 48)
-                }.phoneInput(floating: true)
-                    // INF-589 item 11: out of reach, the input dims; a draft stays typeable and is kept.
+                }
+                    // INF-589 item 11: out of reach, the input dims; a draft stays typeable and is kept. INF-3462: only what
+                    // the box holds dims, so its glass keeps blurring the crew scene that passes behind it.
                     .opacity(session.canChange ? 1 : 0.5)
+                    .phoneInput(floating: true)
             }
             if loading { ProgressView("Adding photos…") }
             if let words = session.changesOffLine {
@@ -177,7 +179,7 @@ struct MessageComposer: View {
         return VStack(spacing: 12) {
             if let older {
                 round(older, newest: false)
-                    .opacity(hidden ? 0 : 0.5).accessibilityHidden(hidden).disabled(hidden)
+                    .opacity(hidden ? 0 : 1).accessibilityHidden(hidden).disabled(hidden)
             }
             round(PhoneLastRound(you: turn.you, reply: turn.reply), newest: true)
         }.font(PhoneFont.subheadline).lineLimit(1)
@@ -193,13 +195,19 @@ struct MessageComposer: View {
     private func round(_ round: PhoneLastRound, newest: Bool) -> some View {
         let id = newest ? "last-turn" : "last-turn-older"
         let busy = newest && session.firstmateBusy
+        // The older round is drawn at half strength.
+        let strength = newest ? 1.0 : 0.5
+        let bubble = UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 5, topTrailingRadius: 14)
         return VStack(alignment: .leading, spacing: 4) {
             BubbleColumn {
                 Text(round.you.isEmpty ? "A picture" : round.you)
                     .foregroundStyle(PhoneTheme.text)
                     .padding(.vertical, 4).padding(.horizontal, 12)
-                    .background(PhoneTheme.text.opacity(0.1), in: UnevenRoundedRectangle(
-                        topLeadingRadius: 14, bottomLeadingRadius: 14, bottomTrailingRadius: 5, topTrailingRadius: 14))
+                    .background(PhoneTheme.text.opacity(0.1), in: bubble)
+                    .opacity(strength)
+                    // INF-3462, the captain's pick: the bubble is solid in the colour it always showed, so the crew scene
+                    // passing behind it is hidden.
+                    .background(PhoneTheme.background, in: bubble)
                     .accessibilityIdentifier("\(id)-you")
             }
             if round.reply != nil || busy || (newest && session.messageSending) {
@@ -219,7 +227,7 @@ struct MessageComposer: View {
                         Text("Working…").foregroundStyle(PhoneTheme.muted)
                             .frame(minHeight: 24).accessibilityElement(children: .combine).accessibilityIdentifier("\(id)-reply")
                     }
-                }.frame(maxWidth: .infinity, alignment: .leading)
+                }.frame(maxWidth: .infinity, alignment: .leading).opacity(strength)
             } else {
                 Text(verbatim: " ").frame(minHeight: 24).accessibilityHidden(true)
             }

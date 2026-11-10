@@ -30,6 +30,7 @@ struct PhoneTaskListTests {
         let word: String
         let trailing: Trailing
         let wait: String?
+        let home: String?
         let mark: String
         let reason: String
     }
@@ -65,6 +66,8 @@ struct PhoneTaskListTests {
                                                                connecting: want.trailing.connecting, reach: want.trailing.reach),
                             "\(want.key): its trailing words")
                     #expect(part.waitLine(of: row.task) == want.wait, "\(want.key): its wait line")
+                    // A pinned row keeps what its home gives it, a backlog row's Start among them (INF-3127).
+                    #expect(part.home(of: row.task)?.rawValue == want.home, "\(want.key): its home")
                     let status = PhoneTaskFacts.status(row.task, now: reading.now)
                     #expect(status.mark == want.mark, "\(want.key): its mark")
                     #expect(status.reason == want.reason, "\(want.key): its reason")

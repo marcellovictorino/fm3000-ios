@@ -66,6 +66,66 @@ import XCTest
         XCTAssertNotEqual(during.first?.rotation, during.last?.rotation, "The scene moves while the main thread is held; \(summary)")
     }
 
+    /// Approved batch gate: real task delivery facts name the batch; the native painter turns only an active batch.
+    /// Disposable paired home, no provider or external forge. Completion is the roster, row words and rendered pixels.
+    func testBatchGateMatchesTheDesktopAndOnlyAnActiveBatchTurns() async throws {
+        for state in ["waiting", "in-batch", "paused"] {
+            let fixture = try await home("scene-batch-" + state)
+            do {
+                let board = try JSONDecoder().decode(PhoneBoard.self, from: JSONSerialization.data(withJSONObject: XCTUnwrap(fixture["board"])))
+                let computers = try JSONDecoder().decode([PhoneComputerPresence].self, from: JSONSerialization.data(withJSONObject: XCTUnwrap(fixture["computers"])))
+                let id = try XCTUnwrap(fixture["checks"] as? String)
+                let roster = PhoneSceneRoster(board: board, presence: computers, homeName: "Test computer", inReach: true, generation: 1)
+                let motion = PhoneSceneMotion()
+                let frame = motion.frame(roster: roster, now: 0, settled: true)
+                var glyph = try XCTUnwrap(frame.glyphs.first { $0.task.id == id })
+                XCTAssertTrue(glyph.batch); XCTAssertEqual(glyph.batchRunning, state == "in-batch")
+                XCTAssertEqual(glyph.wait, 1); XCTAssertEqual(glyph.work, 0); XCTAssertEqual(glyph.job, 0)
+                let status = PhoneTaskFacts.status(glyph.task)
+                XCTAssertEqual(status.label, "Working · Waiting for the batch check")
+                XCTAssertEqual(PhoneTaskList.word(glyph.task), PhoneTaskRowWords.batch)
+                XCTAssertEqual(glyph.task.group, .working)
+                if state == "waiting" {
+                    let cache = CharacterPainter.Cache()
+                    let renderer = ImageRenderer(content: Canvas { context, _ in
+                        PhoneCrewPainter.draw(frame, roster: roster, now: 0, still: true, in: &context, palette: cache.palette(context.environment))
+                        var center = context; center.translateBy(x: roster.homeX - 140, y: roster.height / 2 - 140)
+                        CharacterPainter.draw(.still(.idle, at: 0), in: &center, size: CGSize(width: 280, height: 280), cache: cache)
+                    }.frame(width: roster.width, height: roster.height).background(PhoneTheme.background).environment(\.colorScheme, .dark))
+                    renderer.scale = 1
+                    let picture = XCTAttachment(image: try XCTUnwrap(renderer.uiImage))
+                    picture.name = "native-scene-batch-gate-formations-dark"
+                    picture.lifetime = .keepAlways; add(picture)
+                }
+                // Freeze solid orientation and placement so any pixel difference comes from the batch gate alone.
+                glyph.point = CGPoint(x: 60, y: 60); glyph.spin = 0
+                let fixed = glyph
+                func picture(_ at: Double, _ still: Bool, _ theme: ColorScheme) throws -> UIImage {
+                    let cache = CharacterPainter.Cache()
+                    let renderer = ImageRenderer(content: VStack(spacing: 8) {
+                        Canvas { context, _ in
+                            PhoneCrewPainter.draw(PhoneSceneMotion.Frame(glyphs: [fixed], marks: [], packets: [], links: []), roster: roster,
+                                                  now: at, still: still, in: &context, palette: cache.palette(context.environment))
+                        }.frame(width: 120, height: 120)
+                        HStack { PhoneTaskMark(status: status); Text(PhoneTaskRowWords.batch).font(PhoneFont.micro).foregroundStyle(PhoneTheme.secondary) }
+                    }.padding(12).background(PhoneTheme.background).environment(\.colorScheme, theme))
+                    renderer.scale = 3
+                    return try XCTUnwrap(renderer.uiImage)
+                }
+                let start = try picture(0, false, .dark), later = try picture(2, false, .dark)
+                if state == "in-batch" { XCTAssertNotEqual(start.pngData(), later.pngData()) }
+                else { XCTAssertEqual(start.pngData(), later.pngData()) }
+                XCTAssertEqual(try picture(0, true, .dark).pngData(), try picture(2, true, .dark).pngData())
+                for theme in [ColorScheme.dark, .light] {
+                    let attachment = XCTAttachment(image: try picture(0, true, theme))
+                    attachment.name = "native-batch-gate-\(state)-\(theme == .dark ? "dark" : "light")"
+                    attachment.lifetime = .keepAlways; add(attachment)
+                }
+            } catch { _ = try? await home("scene-cleanup"); throw error }
+            _ = try await home("scene-cleanup")
+        }
+    }
+
     func testPublicFactsKeepEveryLiveGlyphAndSettleReconnects() async throws {
         let fixture = try await home("scene-fixture")
         do {

@@ -271,6 +271,51 @@ final class PhoneSceneSurfaceView: UIView {
     }
 }
 
+/// INF-3462, the captain's "never clipped" and "it can sit underneath other elements": the crew scene's stage hands up
+/// its frame and its drawing's inputs, and Home draws the scene from them as its bottom layer, across the whole window.
+/// The bars, the messages, the message box, the sidebar and the keyboard draw over it, and nothing cuts it at the stage's
+/// edge. The stage keeps its touch, so tapping a crewmate, panning and crew browsing stay in the middle space. With a card
+/// up the stage leaves Home, its frame with it, and nothing is drawn.
+struct PhoneSceneBackdrop {
+    let stage: Anchor<CGRect>
+    let renderer: PhoneSceneRenderer
+    let roster: PhoneSceneRoster
+    let state: PhoneCharacter.State
+    let fold: CharacterFold
+    let still: Bool
+    let running: Bool
+    /// Where the scroller has panned the scene, measured from the stage's corner.
+    let offset: CGSize
+    let selection: String?
+    let bracketed: (task: String, computer: String)?
+
+    struct Key: PreferenceKey {
+        static let defaultValue: PhoneSceneBackdrop? = nil
+        static func reduce(value: inout PhoneSceneBackdrop?, nextValue: () -> PhoneSceneBackdrop?) { value = value ?? nextValue() }
+    }
+}
+
+extension View {
+    /// Draws the crew scene a stage inside this view hands up, under this view and across the whole window.
+    func phoneSceneBackdrop() -> some View {
+        backgroundPreferenceValue(PhoneSceneBackdrop.Key.self) { backdrop in
+            GeometryReader { window in
+                if let backdrop {
+                    // The stage's corner in the window's space, so the scene sits where the stage shows it.
+                    let stage = window[backdrop.stage]
+                    PhoneSceneSurface(renderer: backdrop.renderer, roster: backdrop.roster, state: backdrop.state, fold: backdrop.fold,
+                                      still: backdrop.still, running: backdrop.running,
+                                      offset: CGSize(width: backdrop.offset.width + stage.minX, height: backdrop.offset.height + stage.minY),
+                                      selection: backdrop.selection, bracketed: backdrop.bracketed)
+                        // One surface per renderer: a new scene attaches its own drawing rather than borrowing the last one's.
+                        .id(ObjectIdentifier(backdrop.renderer))
+                }
+            }
+            .ignoresSafeArea().allowsHitTesting(false).accessibilityHidden(true)
+        }
+    }
+}
+
 /// Hands the scene's inputs to its renderer whenever SwiftUI updates them; nothing here runs per frame.
 struct PhoneSceneSurface: UIViewRepresentable {
     let renderer: PhoneSceneRenderer

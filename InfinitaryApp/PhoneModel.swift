@@ -19,10 +19,15 @@ struct AddressJoin: Equatable {
     let address: SSHAddress
     var step: Step
     var problem: String?
+    /// INF-3307 row 13: this attempt, apart from a later one at the same or another address. A sign-in's answer
+    /// lands only on the attempt that asked, so a cancelled one can never put its key on the next sheet.
+    let attempt = UUID()
 }
 
 @MainActor @Observable final class PhoneModel {
     var connection: ReadOnlySession?
+    /// This phone's Secrets approvals with the joined computer.
+    var secrets: PhoneSecrets?
     var proposal: JoinLink?
     var problem: String?
     var busy = false
@@ -54,16 +59,22 @@ struct AddressJoin: Equatable {
     private let loadIdentity: () throws -> PhoneIdentity
     private let readMac: () throws -> JoinedMac?
     private let protectedDataAvailable: @MainActor () -> Bool
+    /// Signs in to a typed address and asks its home for a link (`SSHJoin.link`); a test stands in for the home.
+    private let askLink: @MainActor (SSHAddress, SSHHostKey?, PhoneSSHKey) async throws -> JoinLink
 
     init(loadIdentity: @escaping () throws -> PhoneIdentity = PhoneIdentity.loadOrCreate,
          readMac: (() throws -> JoinedMac?)? = nil,
-         protectedDataAvailable: @escaping @MainActor () -> Bool = { UIApplication.shared.isProtectedDataAvailable }) {
+         protectedDataAvailable: @escaping @MainActor () -> Bool = { UIApplication.shared.isProtectedDataAvailable },
+         askLink: @escaping @MainActor (SSHAddress, SSHHostKey?, PhoneSSHKey) async throws -> JoinLink = {
+             try await SSHJoin.link($0, trusted: $1, key: $2)
+         }) {
         let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("JoinedMac.json")
         savedURL = url
         trustedURL = url.deletingLastPathComponent().appendingPathComponent("TrustedHomes.json")
         self.loadIdentity = loadIdentity
         self.protectedDataAvailable = protectedDataAvailable
+        self.askLink = askLink
         self.readMac = readMac ?? {
             guard FileManager.default.fileExists(atPath: url.path) else { return nil }
             return try JSONDecoder().decode(JoinedMac.self, from: Data(contentsOf: url))
@@ -206,16 +217,16 @@ struct AddressJoin: Equatable {
         guard let join = addressJoin, case .keyRefused(true) = join.step, signingIn == nil, !password.isEmpty else { return }
         addressJoin?.step = .working; addressJoin?.problem = nil
         signingIn = Task {
-            defer { signingIn = nil }
             do {
                 try await SSHJoin.placeKey(join.address, trusted: trustedHomes().key(for: join.address),
                                            key: try phoneSSHKey(), password: password)
             } catch {
+                guard asking(join) else { return }
                 addressJoin?.step = .keyRefused(password: true)
                 addressJoin?.problem = error.localizedDescription
                 return
             }
-            signingIn = nil
+            guard asking(join) else { return }
             askForLink()
         }
     }
@@ -228,23 +239,31 @@ struct AddressJoin: Equatable {
         guard let join = addressJoin, signingIn == nil else { return }
         addressJoin?.step = .working; addressJoin?.problem = nil
         signingIn = Task {
-            defer { signingIn = nil }
             do {
-                let link = try await SSHJoin.link(join.address, trusted: trustedHomes().key(for: join.address),
-                                                  key: try phoneSSHKey())
-                guard addressJoin?.address == join.address else { return }
+                let link = try await askLink(join.address, trustedHomes().key(for: join.address), try phoneSSHKey())
+                guard asking(join) else { return }
                 // The link is never shown: the phone joins with it at once, typed address first.
                 addressJoin = nil; problem = nil
                 self.join(link)
-            } catch SSHJoinError.unknownHost(let key) {
-                addressJoin?.step = .trust(key)
-            } catch SSHJoinError.keyRefused(_, let password) {
-                addressJoin?.step = .keyRefused(password: password)
             } catch {
-                addressJoin?.step = .stopped
-                addressJoin?.problem = error.localizedDescription
+                guard asking(join) else { return }
+                switch error {
+                case SSHJoinError.unknownHost(let key): addressJoin?.step = .trust(key)
+                case SSHJoinError.keyRefused(_, let password): addressJoin?.step = .keyRefused(password: password)
+                default:
+                    addressJoin?.step = .stopped
+                    addressJoin?.problem = error.localizedDescription
+                }
             }
         }
+    }
+
+    /// Whether `join` is still the attempt on the sheet. Its sign-in has answered, so the attempt asks no more.
+    /// A cancelled or replaced attempt's answer changes nothing, and leaves the next attempt's sign-in running.
+    private func asking(_ join: AddressJoin) -> Bool {
+        guard addressJoin?.attempt == join.attempt else { return false }
+        signingIn = nil
+        return true
     }
 
     private func trustedHomes() -> TrustedHomes {
@@ -267,7 +286,7 @@ struct AddressJoin: Equatable {
     func forgetMac() {
         do {
             try forget()
-            connection?.stop(); connection = nil
+            connection?.stop(); connection = nil; secrets = nil
             removed = false; proposal = nil; problem = nil
         } catch {
             problem = needsUnlock(error) ? "Could not forget this computer. Unlock your phone and try again."
@@ -330,6 +349,7 @@ struct AddressJoin: Equatable {
         session.onEmote = { emote in CharacterCues.reacted(emote) }
         session.onSceneSignal = { signal in CharacterCues.signal(signal) }
         connection = session
+        secrets = PhoneSecrets(session: session)
         session.found(addresses: nearby.macs.map(\.address))
         if foreground { session.start() }
     }

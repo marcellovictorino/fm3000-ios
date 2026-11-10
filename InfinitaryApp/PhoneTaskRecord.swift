@@ -592,7 +592,7 @@ struct PhoneTaskRecord: View {
         }
     }
 
-    /// The Mac's record bar: Drop task or Dismiss at the leading edge, the next step at the trailing edge; Drop task asks
+    /// The Mac's record bar: Drop task or Decline at the leading edge, the next step at the trailing edge; Drop task asks
     /// once between them before it drops.
     @ViewBuilder private func recordBar(_ bar: PhoneRecord.Bar) -> some View {
         if dropping, let end = bar.end, end != .dismissQuestion {
@@ -610,7 +610,7 @@ struct PhoneTaskRecord: View {
             PhoneChoiceRow {
                 switch bar.end {
                 case .dismissQuestion:
-                    choice("Dismiss", id: "dismiss-question", kind: .secondary) {
+                    choice(PhoneCardWords.decline, id: "dismiss-question", kind: .secondary) {
                         change(.finish(task: task.id, ending: .dismissQuestion), .run, args: [task.id, PhoneTaskEnding.dismissQuestion.rawValue], from: "dismiss-question")
                     }.layoutValue(key: PhoneChoiceRow.Leading.self, value: true)
                 case .dropTask, .stopTask:

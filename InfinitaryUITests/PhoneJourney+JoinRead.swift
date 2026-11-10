@@ -63,6 +63,7 @@ extension PhoneJourney {
         XCTAssertTrue(app.staticTexts["app-version"].label.hasPrefix("Version "), app.staticTexts["app-version"].label)
         XCTAssertFalse(app.buttons["leave"].exists)
         try await appearances("phone-settings", showing: app.staticTexts["app-version"])
+        try await phoneTheme()
         tapOnPhone(app.buttons["close-phone-settings"])
         XCTAssertTrue(app.buttons["close-phone-settings"].waitForAbsence(timeout: 10))
         let settings = app.buttons["phone-settings"]
@@ -154,5 +155,35 @@ extension PhoneJourney {
         let afterInactive = try await home("state", method: "GET")
         XCTAssertEqual((afterInactive["readings"] as? [String: Int])?["connections"],
             (beforeInactive["readings"] as? [String: Int])?["connections"], "An inactive scene keeps its connection")
+    }
+
+    /// The captain's Approve and build on the phone's own theme, from Settings open on a light simulator: Dark drawn
+    /// dark across the whole screen with the simulator still light, still dark after a relaunch, and Device chosen by
+    /// keyboard (the left arrow) follows the simulator's light again. Leaves Settings open, drawing light.
+    /// Data: the join part's test home and its one card. Resources: this part's own simulator; no account or signing.
+    func phoneTheme() async throws {
+        let theme = app.segmentedControls["phone-theme"]
+        XCTAssertTrue(theme.waitForPresence(timeout: 10), app.debugDescription)
+        let device = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        XCTAssertEqual(app.staticTexts["phone-theme-scope"].label, "Set on this \(device) only. Test Mac mini keeps its own.")
+        XCTAssertEqual(theme.buttons.allElementsBoundByIndex.map(\.label), ["Device", "Dark", "Light"])
+        XCTAssertTrue(theme.buttons["Device"].isSelected, "A new install matches the device")
+        tapOnPhone(theme.buttons["Dark"])
+        XCTAssertEqual(waitForPhonePredicate(NSPredicate(format: "selected == true"), object: theme.buttons["Dark"], timeout: 10), .completed)
+        try drawn("phone-theme-dark", dark: true)
+        app.terminate(); try await launchPhoneApp(app)
+        reach("In reach", timeout: 20)
+        XCTAssertTrue(app.staticTexts["Your phone is reading your Mac"].waitForPresence(timeout: 10), app.debugDescription)
+        try drawn("phone-theme-dark-relaunched", dark: true)
+        try await pressPhoneKey(",", modifiers: .command, in: app)
+        XCTAssertTrue(theme.waitForPresence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(theme.buttons["Dark"].isSelected, "The choice survives a relaunch")
+        waitForSteadyTarget(theme)
+        // BackBoard publishes only chords with a modifier, so an unmodified arrow has no registration to wait for; as
+        // INF-1066's browsing keys, it is one actual input with visible-result proof, no wait or retry.
+        app.typeKey(XCUIKeyboardKey.leftArrow.rawValue, modifierFlags: [])
+        XCTAssertEqual(waitForPhonePredicate(NSPredicate(format: "selected == true"), object: theme.buttons["Device"], timeout: 10),
+                       .completed, "In Settings the left arrow moves the theme from Dark to Device")
+        try drawn("phone-theme-device", dark: false)
     }
 }

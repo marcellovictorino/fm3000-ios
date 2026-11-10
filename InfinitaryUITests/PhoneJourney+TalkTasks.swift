@@ -86,6 +86,32 @@ extension PhoneJourney {
         XCTAssertTrue(notice.waitForAbsence(timeout: 10))
     }
 
+    /// INF-3127, the captain's "when a task is pinned, it always show in a "pinned" section in the tasks panel at the
+    /// top, no matter what state it's in": Pin from a row's long press lists it once, under Pinned above every group,
+    /// and Unpin lists it under its state again.
+    private func pinRow(_ id: String) {
+        let row = app.buttons["task-\(id)"]
+        let pinned = app.descendants(matching: .any).matching(identifier: "group-pinned").firstMatch
+        XCTAssertFalse(pinned.exists, "Nothing is pinned yet")
+        waitForSteadyTarget(row)
+        row.press(forDuration: 1.2)
+        let pin = moveEntry("Pin")
+        XCTAssertTrue(pin.waitForPresence(timeout: 10), app.debugDescription)
+        tapOnPhone(pin)
+        XCTAssertTrue(pinned.waitForPresence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(row.waitForPresence(timeout: 10), app.debugDescription)
+        XCTAssertLessThan(pinned.frame.minY, app.buttons["group-backlog"].frame.minY, "Pinned sits above every group")
+        XCTAssertLessThan(pinned.frame.minY, row.frame.minY, "The row lists under Pinned")
+        picture("tasks-pinned")
+        waitForSteadyTarget(row)
+        row.press(forDuration: 1.2)
+        let unpin = moveEntry("Unpin")
+        XCTAssertTrue(unpin.waitForPresence(timeout: 10), app.debugDescription)
+        tapOnPhone(unpin)
+        XCTAssertTrue(pinned.waitForAbsence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(row.waitForPresence(timeout: 10), "Unpinned, it lists under its state again")
+    }
+
     private func tasksAndSteer(_ fixture: [String: Any]) async throws {
         // One pair here for the hero pictures; the relaunch parts run INF-1735's 20.
         try await relaunchPairs(1, pictured: true)
@@ -99,6 +125,7 @@ extension PhoneJourney {
         XCTAssertTrue(app.buttons["task-phone-work"].waitForPresence(timeout: 10))
         picture("tasks-backlog")
         try await rowMoves()
+        pinRow("phone-work")
         // INF-589 item 9: search waits above the list until it is pulled down, and Find a task opens it by key, as on the Mac.
         let search = app.textFields["task-search"]
         XCTAssertFalse(search.exists)
