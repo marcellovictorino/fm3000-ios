@@ -4794,7 +4794,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
   const AFTER_MERGE_TITLE_ROOM = 64 - AFTER_MERGE_TITLE_PREFIX.length;
   const taskRef = string().trim().min(1).max(64);
   const AFTER_MERGE_DOERS = ["crewmate", "firstmate"];
-  const afterMergeStepSchema = object({
+  object({
     /** Who does it: a crewmate (the default) or the first mate, for a change in the app itself. */
     doer: _enum(AFTER_MERGE_DOERS).optional(),
     /** An existing open task the merge starts, in place of a new one (title, goal, why). */
@@ -4805,17 +4805,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
     /** The project a new step is filed in, by key; the origin's when absent. */
     project: taskRef.optional(),
     /** Tasks whose merge the step waits for, by key: each a `blocks` link into it. */
-    blockedBy: array(taskRef).max(10).optional()
+    blockedBy: array(taskRef).optional()
   });
-  array(afterMergeStepSchema).max(10);
   const afterMergeShownSchema = object({
     doer: _enum(AFTER_MERGE_DOERS).optional(),
     title: string().min(1).max(500),
     goal: string().max(4e3).optional(),
     key: string().max(64).optional(),
-    waitsFor: array(string().max(64)).max(10).optional()
+    waitsFor: array(string().max(64)).optional()
   });
-  const afterMergeShownListSchema = array(afterMergeShownSchema).max(10);
+  const afterMergeShownListSchema = array(afterMergeShownSchema);
   const cardCornerSchema = object({
     icon: literal("minus"),
     label: string(),
@@ -4868,7 +4867,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
     "defer-required-action",
     "allow-cost",
     "lift-cost-limit",
-    "stop-at-cost"
+    "stop-at-cost",
+    "secrets-decision"
   ];
   const requiredActionSchema = object({
     id: string().min(1).max(64).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -5078,7 +5078,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
      * the merge it words; no agent declares it, and a body's script cannot
      * press it.
      */
-    passes: literal("checks").optional()
+    passes: literal("checks").optional(),
+    /** The choice says no to every other one (INF-3108); a decision with none gets `withAppDecline`'s. */
+    declines: literal(true).optional()
   });
   const cardDemoSchema = strictObject({
     /** The copy's minted id, `<taskId>-<32 hex>`; its file is `<id>.<kind>`. */
@@ -5511,7 +5513,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
   const cardMessageSchema = strictObject({
     revision: cardRevisionSchema.optional(),
     revisionShown: revisionShownSchema.optional(),
-    /** Who wrote a line on a card that is not theirs (`shared-cards.md`). */
+    /** Who wrote a line on a card that is not theirs (`major-15.md`). */
     contributor: cardContributorSchema.optional(),
     /** The captain's message this line answers and ends, by its row id. */
     answersMessage: number().int().positive().optional(),
@@ -8365,6 +8367,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
       risk: "close",
       keys: []
     },
+    // INF-3108: the shown decision's way to say no, the app's Decline or the
+    // author's own, chosen by name; ⌘1-⌘4 also reach it by its place.
+    "cards.decline": {
+      label: "Decline every choice on the card",
+      searchWords: ["card", "decline", "no", "not now", "none", "reject"],
+      scope: "window",
+      runs: "shell",
+      repeat: false,
+      risk: "close",
+      keys: []
+    },
     "cards.maximize": {
       label: "Maximize or restore card",
       scope: "window",
@@ -8633,6 +8646,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
       risk: "navigate",
       keys: [],
       searchWords: ["github", "connection", "connect", "sign in"]
+    },
+    "settings.secrets": {
+      label: "Open Secrets",
+      scope: "window",
+      runs: "shell",
+      repeat: false,
+      risk: "navigate",
+      keys: [],
+      searchWords: ["secret", "key", "approval", "recovery"],
+      section: "secrets"
     },
     // Every running automation paused at once, as Settings → Automation's
     // Pause all does; it opens Automation so the change is seen. No default key.

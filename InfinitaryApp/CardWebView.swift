@@ -4,7 +4,8 @@ import Observation
 import SwiftUI
 @preconcurrency import WebKit
 
-/// A separate, nonpersistent web process holds only the shown card. No account or Mac URL enters it.
+/// A separate, nonpersistent web process holds only its own card: the shown one or one beside it in the row. No account or
+/// Mac URL enters it.
 @MainActor @Observable final class CardWebHost: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate, WKUIDelegate {
     var height: CGFloat = 48
     var drawn = false
@@ -15,6 +16,8 @@ import SwiftUI
     var reading: PhoneJSON = .object(["answers": .array([])])
     var presentation: PhoneJSON?
     var notice: String?
+    /// A field in the body holds the keyboard.
+    var typing = false
     private(set) var card: PhoneCard
     private let session: ReadOnlySession
     private var view: WKWebView?
@@ -25,6 +28,9 @@ import SwiftUI
     private var watch = CardWatchdog()
     private var theme = "light"
     private(set) var revealed = false
+    /// INF-3110: the card sits beside the shown one in the row, so its body is one closed element with no name, which
+    /// no search reaches; WebKit ignores the hidden-children flag, so this is the only way to keep its page out.
+    var aside = false { didSet { if aside != oldValue { applyReach() } } }
     /// The height the page last reported its body drew at; `height` is the frame native code asks the view for.
     private var bodyHeight: CGFloat = 48
     private let fill: PhoneJSON
@@ -71,8 +77,12 @@ import SwiftUI
         self.assets = assets
         configuration.setURLSchemeHandler(assets, forURLScheme: "app-frame")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "cardHost")
+        // INF-3110: the body's own sideways controls, read in a world of their own, which the row's swipe leaves alone.
+        configuration.userContentController.addUserScript(CardClaims.script)
+        configuration.userContentController.add(CardClaimsReader(), contentWorld: CardClaims.world, name: CardClaims.handler)
         let view = CardBodyView(frame: .zero, configuration: configuration)
         view.onLayout = { [weak self] in self?.revealIfShown() }
+        view.onTyping = { [weak self] typing in self?.typing = typing }
         view.allowsLinkPreview = false
         view.navigationDelegate = self; view.uiDelegate = self
         view.isOpaque = false; view.backgroundColor = .clear; view.scrollView.backgroundColor = .clear
@@ -88,6 +98,7 @@ import SwiftUI
         // WebKit ignores the hidden-children flag, and hiding the frame inside the page sticks on iOS 27.0.
         view.isAccessibilityElement = true; view.isUserInteractionEnabled = false
         self.view = view
+        applyReach()
         // Agent HTML is assigned to an opaque iframe's srcdoc, never interpolated into this parent.
         // Its own hash policy narrows this parent's inline permission. Neither realm can use the network.
         view.onWindow = { [weak self] in self?.loadOnWindow() }
@@ -133,6 +144,7 @@ import SwiftUI
         if let id = collection?.id { finishCollection(id, .failure(PhoneRequestError("This card did not answer. Your choice was not sent."))) }
         onReading = nil; onDrawn = nil; onLink = nil; onDraft = nil; onTask = nil
         view?.configuration.userContentController.removeScriptMessageHandler(forName: "cardHost", contentWorld: .page)
+        view?.configuration.userContentController.removeScriptMessageHandler(forName: CardClaims.handler, contentWorld: CardClaims.world)
         assets?.cancel(); assets = nil
         view?.stopLoading(); view?.navigationDelegate = nil; view?.uiDelegate = nil; view = nil
     }
@@ -153,9 +165,15 @@ import SwiftUI
         DispatchQueue.main.async { [weak self] in
             guard let self, self.isShown else { return }
             self.revealed = true
-            self.view?.isAccessibilityElement = false; self.view?.isUserInteractionEnabled = true
+            self.view?.isUserInteractionEnabled = true
+            self.applyReach()
             UIAccessibility.post(notification: .layoutChanged, argument: nil)
         }
+    }
+    private func applyReach() {
+        guard let view else { return }
+        view.accessibilityIdentifier = aside ? nil : part == .facts ? "card-facts" : "card-body"
+        view.isAccessibilityElement = aside || !revealed
     }
     private var isShown: Bool {
         guard drawn, !revealed, let view else { return false }
@@ -234,6 +252,8 @@ import SwiftUI
             replyHandler(scripts.map { "sha256-" + Data(SHA256.hash(data: Data($0.utf8))).base64EncodedString() }, nil)
         case "answers":
             reading = payload["reading"]; onReading?(reading); replyHandler(true, nil)
+            // A field that grows as it types, such as a text area, keeps its caret in view.
+            (view as? CardBodyView)?.queueReveal()
         case "drawn":
             let drawnHeight = max(48, min(100_000, payload["height"].numeric ?? 48))
             bodyHeight = drawnHeight
@@ -309,7 +329,107 @@ final class CardBodyView: WKWebView {
     var onLayout: (() -> Void)?
     override func layoutSubviews() { super.layoutSubviews(); onLayout?() }
     var onWindow: (() -> Void)?
-    override func didMoveToWindow() { super.didMoveToWindow(); onWindow?() }
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        watchTyping(window != nil)
+        onWindow?()
+    }
+    /// INF-3427, the captain: "when i tap on a textbox inside of a card body, the keyboard pops up, and the textbox would
+    /// no longer be in the viewport.. it gets scrolled away. so i can't see what i type". WebKit reveals a focused field by
+    /// moving the page inside the web view's own scroll view, which never scrolls (INF-944), so the page slid away from
+    /// where the card's scroller draws it; and nothing moved the card's scroller to the field. The web view's page now
+    /// stays at its top, and the card's scroller brings the caret's line, with room around it, into the room it shows.
+    private var offsetWatch: NSKeyValueObservation?
+    private var keyboardWatch: [NSObjectProtocol] = []
+    private var revealQueued = false
+    private func watchTyping(_ on: Bool) {
+        keyboardWatch.forEach(NotificationCenter.default.removeObserver)
+        keyboardWatch = []
+        guard on else { readTyping(hides: true); keyboardFrame = nil; return }
+        if offsetWatch == nil {
+            offsetWatch = scrollView.observe(\.contentOffset) { [weak self] scroll, _ in
+                MainActor.assumeIsolated {
+                    guard scroll.contentOffset != .zero else { return }
+                    // WebKit asked to reveal what takes the keyboard: the card's own scroller does that instead.
+                    scroll.contentOffset = .zero
+                    self?.queueReveal()
+                }
+            }
+        }
+        for name in [UIResponder.keyboardDidShowNotification, UIResponder.keyboardDidChangeFrameNotification] {
+            keyboardWatch.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue
+                MainActor.assumeIsolated { self?.keyboardFrame = end; self?.queueReveal() }
+            })
+        }
+        for name in [UIResponder.keyboardWillShowNotification, UIResponder.keyboardWillChangeFrameNotification,
+                     UIResponder.keyboardWillHideNotification] {
+            let hides = name == UIResponder.keyboardWillHideNotification
+            keyboardWatch.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.readTyping(hides: hides) }
+            })
+        }
+    }
+    /// Whether a field in the body holds the keyboard, which on a phone on its side asks the message box to step aside
+    /// for it, as a card's reply does (INF-2568).
+    var onTyping: ((Bool) -> Void)?
+    private var typing = false
+    private func readTyping(hides: Bool) {
+        if hides { keyboardFrame = nil }
+        let now = !hides && window != nil && firstResponder(in: self) != nil
+        guard now != typing else { return }
+        typing = now
+        onTyping?(now)
+    }
+    /// After the layout the keyboard brought, such as the stage shortening and the frame reshaping, has run.
+    func queueReveal() {
+        guard !revealQueued else { return }
+        revealQueued = true
+        DispatchQueue.main.async { [weak self] in self?.revealQueued = false; self?.revealTyping() }
+    }
+    /// Scrolls the card to the caret of the body's field that holds the keyboard; a keyboard raised by anything else,
+    /// or a body beside the shown card, leaves it alone.
+    /// The keyboard's last frame on the screen, its accessory bar included: on an iPhone, WebKit's own bar with a form's
+    /// previous, next and Done stands above the keys, and the card's scroller does not count it as the keyboard's.
+    private var keyboardFrame: CGRect?
+    private func revealTyping() {
+        guard let window, let typing = firstResponder(in: self) as? UITextInput,
+              let range = typing.selectedTextRange, let scroller = enclosingScroller() else { return }
+        let caret = typing.caretRect(for: range.end)
+        guard !caret.isNull, !caret.isInfinite, caret.height > 0 else { return }
+        let line = (typing.textInputView ?? self).convert(caret, to: window)
+        // The room the scroller shows, in the window: inside its insets, such as the bar's, and above the keyboard.
+        let frame = scroller.convert(scroller.bounds, to: window)
+        let inset = scroller.adjustedContentInset
+        var top = frame.minY + inset.top, foot = frame.maxY - inset.bottom
+        if let keyboardFrame {
+            let keys = window.convert(keyboardFrame, from: window.screen.coordinateSpace)
+            if keys.minY < window.bounds.maxY - 1 { foot = min(foot, keys.minY) }
+        }
+        top = max(top, window.bounds.minY)
+        // The field's own padding and edge lie around its caret's line; where the room is short, the line comes first.
+        let margin = min(PhoneTheme.space4, max(0, (foot - top - line.height) / 2))
+        var move: CGFloat = 0
+        if line.maxY + margin > foot { move = line.maxY + margin - foot }
+        if line.minY - margin - move < top { move = line.minY - margin - top }
+        guard abs(move) > 0.5 else { return }
+        let lowest = max(-inset.top, scroller.contentSize.height + inset.bottom - scroller.bounds.height)
+        let y = min(max(scroller.contentOffset.y + move, -inset.top), lowest)
+        scroller.setContentOffset(CGPoint(x: scroller.contentOffset.x, y: y), animated: true)
+    }
+    private func firstResponder(in view: UIView) -> UIView? {
+        if view.isFirstResponder { return view }
+        for child in view.subviews { if let found = firstResponder(in: child) { return found } }
+        return nil
+    }
+    private func enclosingScroller() -> UIScrollView? {
+        var parent = superview
+        while let view = parent { if let scroller = view as? UIScrollView { return scroller }; parent = view.superview }
+        return nil
+    }
+    /// INF-3110: where the body's own sideways controls sit, in the view's points, as its frame last reported them.
+    var claimed: [CGRect] = []
+    func claims(_ point: CGPoint) -> Bool { claimed.contains { $0.contains(point) } }
 }
 
 struct CardWebView: UIViewRepresentable {

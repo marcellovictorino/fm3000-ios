@@ -78,6 +78,8 @@ public struct PhoneNotice: Equatable, Sendable {
     public private(set) var sceneGeneration = 0
     @ObservationIgnored private var sceneObservations = false
     public private(set) var workRevision = 0
+    /// Rises when the home's Secrets change or contact comes back, so this phone reads its approvals again.
+    public private(set) var secretsRevision = 0
     public private(set) var access = "read"
     /// The contract the computer's welcome said it speaks, which names the side a reads-only phone updates.
     public private(set) var homeVersion: String?
@@ -997,6 +999,7 @@ public struct PhoneNotice: Equatable, Sendable {
                     if holding { held?.work = true } else { workRevision += 1 }
                 }
             }
+            if frame["channel"] as? String == "inf:secrets:changed" { secretsRevision += 1 }
             if frame["channel"] as? String == "inf:cards:thread", let payload = frame["payload"] {
                 let thread = try PhoneJSON.read(payload)
                 if let id = thread["cardId"].text {
@@ -1070,7 +1073,7 @@ public struct PhoneNotice: Equatable, Sendable {
         if reached { reachRoute() }
         contact = "in-reach"
         if missed { missed = false; returns += 1 }
-        if reached { reaches += 1; wakeReachWaiters(); handUsage() }
+        if reached { reaches += 1; secretsRevision += 1; wakeReachWaiters(); handUsage() }
     }
 
     /// INF-2773: the route and its preference are worked out once per connection, in the step that turns it In reach,

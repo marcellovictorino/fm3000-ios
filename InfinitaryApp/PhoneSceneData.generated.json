@@ -3729,5 +3729,12 @@
     "dashes": 12,
     "dashShare": 0.55,
     "arcRate": 1.6
+  },
+  "batch": {
+    "ring": 0.8,
+    "arcDeg": 110,
+    "line": 1.2,
+    "alpha": 0.6,
+    "turnRadPerS": 0.5
   }
 }

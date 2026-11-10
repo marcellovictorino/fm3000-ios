@@ -40,13 +40,13 @@ struct PhoneCrewScene: View {
             // The captain pans the scene by touch; scroll bars at its edges say nothing (INF-1328).
             .scrollIndicators(.hidden)
             .onScrollGeometryChange(for: CGPoint.self) { $0.contentOffset } action: { _, point in pan.point = point; renderer.pan(to: point) }
-            .overlay {
-                // The drawing stays over the viewport and draws the scene where the scroller has panned it.
-                PhoneSceneSurface(renderer: renderer, roster: roster, state: session.firstmateBusy ? .working : .idle,
-                                  fold: CharacterFold(folding: session.firstmateFolding, starts: session.firstmateFoldStarts), still: still,
-                                  running: !still && preview == nil, offset: viewport.offset, selection: selectedCrew,
-                                  bracketed: preview.map { ($0.id, previewComputer ?? PhoneSceneRoster.computerID($0)) })
-                    .allowsHitTesting(false).accessibilityHidden(true)
+            // INF-3462, the captain's "never clipped": the scroller takes touch in the middle space only, and Home draws
+            // the scene under everything else across its whole window (`PhoneSceneBackdrop`), lined up with this frame.
+            .anchorPreference(key: PhoneSceneBackdrop.Key.self, value: .bounds) { stage in
+                PhoneSceneBackdrop(stage: stage, renderer: renderer, roster: roster, state: session.firstmateBusy ? .working : .idle,
+                                   fold: CharacterFold(folding: session.firstmateFolding, starts: session.firstmateFoldStarts), still: still,
+                                   running: !still && preview == nil, offset: viewport.offset, selection: selectedCrew,
+                                   bracketed: preview.map { ($0.id, previewComputer ?? PhoneSceneRoster.computerID($0)) })
             }
             .overlay {
                 RoundedRectangle(cornerRadius: PhoneTheme.controlRadius)

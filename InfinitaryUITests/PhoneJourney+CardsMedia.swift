@@ -156,7 +156,7 @@ extension PhoneJourney {
         let bodyPast = try XCTUnwrap(bodyChoice["conversation"] as? [String: Any])
         XCTAssertEqual((bodyPast["ending"] as? [String: Any])?["actionId"] as? String, "body")
         // The choice wakes the first mate; its turn ends before INF-1060 below reads the footer's reply button.
-        _ = try await home("card-choice-turn-ended")
+        _ = try await home("script-choice-heard")
         _ = try await home("show-body-past")
         XCTAssertTrue(app.staticTexts["Past"].waitForPresence(timeout: 10))
         XCTAssertEqual((bodyPast["ending"] as? [String: Any])?["by"] as? String, "frame")

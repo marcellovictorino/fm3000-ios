@@ -2,7 +2,8 @@ import Foundation
 import Testing
 @testable import InfinitaryKit
 
-/// INF-1879: Done answers a saved answer, Dismiss cancels a question, and hiding does neither.
+/// INF-1879: Done answers a saved answer, the question's explicit ending answers it, and hiding does neither.
+/// INF-3108: that ending is Decline, the captain's answer no to every choice, so it closes as answered.
 /// INF-2553's intent owner must preserve that distinction after the conflict update.
 /// These pure folds use the existing home-shaped task-facts readings; the device journey owns the writes.
 struct CardLeaveIntentTests {
@@ -25,10 +26,8 @@ struct CardLeaveIntentTests {
         let shown = PhoneIntentFold.task(before, ledger.intents)
         #expect(before.state == "Waiting on you")
         switch ending {
-        case .answerDone:
+        case .answerDone, .dismissQuestion:
             #expect(shown.status == "done" && shown.closedReason == "answered" && shown.state == "Done")
-        case .dismissQuestion:
-            #expect(shown.status == "dropped" && shown.closedReason == "cancelled" && shown.state == "Dropped")
         }
         #expect(before.status == "active" && before.closedReason == nil)
         #expect(ledger.intents.first?.taskID == before.id)

@@ -1067,8 +1067,8 @@
       "fold": "Your 1 message",
       "asks": [],
       "drop": {
-        "refusal": "Cannot drop INF-3001: INF-3012 \"Sound the channel\" has started. Handle that work separately first.",
-        "question": null
+        "refusal": null,
+        "question": "Drop INF-3001? It won't start, and there is no unfinished work to keep. Its record stays. Its part INF-3013 stays planned. Its part INF-3012 has started and keeps working."
       }
     },
     {
@@ -1171,8 +1171,8 @@
       "fold": "Your 1 message",
       "asks": [],
       "drop": {
-        "refusal": "Cannot drop INF-3001 while 2 parts are still open: INF-3012 \"Sound the channel\", INF-3013 \"Mark the reef\". Handle them separately first.",
-        "question": null
+        "refusal": null,
+        "question": "Drop INF-3001? It won't start, and there is no unfinished work to keep. Its record stays. Its 2 parts (INF-3012, INF-3013) stay planned."
       }
     },
     {

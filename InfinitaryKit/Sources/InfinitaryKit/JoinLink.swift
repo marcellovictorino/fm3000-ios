@@ -5,6 +5,12 @@ public enum PhoneError: LocalizedError, Sendable {
     /// A change was sent and its result never came back: its outcome is unknown (INF-2553 keeps it shown until the
     /// next snapshot after reconnecting says otherwise).
     case unconfirmed
+    /// This phone keeps an approval record it must never sign with, a software key on a physical device. Unlike
+    /// a Keychain it cannot read now, only a new key replaces it.
+    case unusableApproval
+    /// This phone's Keychain gave back its approval record whole, but the phone cannot decode it. Unlike a
+    /// Keychain it cannot read now, it stays damaged; only the person's Set up approvals again replaces it.
+    case damagedApproval(ApprovalKey.Damage)
     public var errorDescription: String? {
         switch self {
         case .damagedLink: "This link is damaged. Copy a new link from Devices on your computer."
@@ -14,6 +20,8 @@ public enum PhoneError: LocalizedError, Sendable {
         case .invalidReply: "This computer sent an answer Infinitary could not read."
         case .refused(let reason): reason
         case .unconfirmed: "Could not confirm the change. Check your computer before sending it again."
+        case .unusableApproval: ApprovalKey.unusable
+        case .damagedApproval: ApprovalKey.damaged
         }
     }
 }

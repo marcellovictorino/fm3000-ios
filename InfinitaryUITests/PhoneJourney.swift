@@ -96,6 +96,12 @@ import XCTest
         _ = try appearancePicture(name + "-restored", dark: false)
     }
 
+    /// The whole screen draws `dark` or light without a change of the simulator's own appearance, as when the app's
+    /// own Theme overrides it; the drawn frame is kept as `name`.
+    func drawn(_ name: String, dark: Bool) throws {
+        picture(name, screenshot: try appearancePicture(name, dark: dark))
+    }
+
     func computerDetails() {
         let details = app.buttons["computer-details"]
         XCTAssertTrue(details.waitForPresence(timeout: 10))
@@ -382,4 +388,239 @@ import XCTest
     func waitUntilHittable(_ element: XCUIElement) {
         XCTAssertTrue(waitForPhonePress(element), app.debugDescription)
     }
+    /// INF-1109's phone approvals (docs/secrets.md, "Remote decisions"), built by INF-1202. Result: this phone offers its
+    /// own approval key from Settings, the computer's card shows the same code and only a click there enrolls it, one
+    /// Allow here, confirmed by Face ID, runs exactly the use waiting on the computer, and Deny needs no key. Data: the
+    /// real Secrets controller over disposable custody and an invented calendar token; the computer's own confirmation
+    /// and the calendar are the test home's stand-ins. Completion: the computer's Secrets history reads each use's end.
+    /// Prerequisites: the owned simulator's Face ID, which the test home enrolls. It runs alone or in the rest part,
+    /// installs its own native wait and failure hooks, and joins only when the phone has not.
+    /// INF-1109's decision on a damaged record ends it: Settings says so, and only Set up approvals again replaces
+    /// the record, whose new key the computer enrolls only after its own confirmation, beside the earlier one.
+    func testSecretsApprovals() async throws {
+        continueAfterFailure = false
+        // INF-1109 / INF-2092: this test must run alone, without launchFresh installing its prerequisites first.
+        PhoneFailures.watch()
+        try skipPhoneAnimationWait()
+        app.launchEnvironment["INFINITARY_ISOLATED_PHONE_TEST"] = "1"
+        XCUIDevice.shared.orientation = .portrait
+        try await launchPhoneApp(app)
+        let start = app.buttons.matching(NSPredicate(format: "identifier IN %@", ["paste-link", "computer-details"])).firstMatch
+        XCTAssertTrue(start.waitForPresence(timeout: 10), app.debugDescription)
+        if app.buttons["paste-link"].exists { try await join() } else { reach("In reach", timeout: 20) }
+        _ = try await home("empty-cards")
+        _ = try await home("biometry-enroll")
+        let ready = try await home("secrets-ready")
+        XCTAssertEqual(ready["availability"] as? String, "available")
+        let confirmWords = try XCTUnwrap(ready["confirm"] as? String)
+
+        // INF-1109: after the old sheet disappears, UIKit can still ignore a press on the Settings control.
+        // The touch owner waits for the drawn target and records delivery, without repeating the press.
+        func openSettings() {
+            let settings = app.buttons["phone-settings"]
+            tapOnPhone(settings, repeatDiscarded: false)
+        }
+
+        // INF-1109: an enrolled label can appear before Settings finishes entering, while UIKit still ignores
+        // interaction. Every close waits for its own drawn target, sends one press and keeps the absence check.
+        func closeSettings() {
+            let close = app.buttons["close-phone-settings"]
+            tapOnPhone(close, repeatDiscarded: false)
+            XCTAssertTrue(close.waitForAbsence(timeout: 10))
+        }
+
+        // Settings offers this phone's key; the computer raises its card with the code this phone shows.
+        openSettings()
+        let setUp = app.buttons["approval-set-up"]
+        XCTAssertTrue(setUp.waitForPresence(timeout: 20), app.debugDescription)
+        XCTAssertEqual(setUp.label, "Set up approvals")
+        // INF-1109: UIKit dropped the setup press while Settings was still sliding in, so it is pressed once Settings
+        // holds still. The touch owner records delivery but is forbidden to repeat this press.
+        waitForSteadyTarget(setUp)
+        picture("secrets-settings")
+        tapOnPhone(setUp, repeatDiscarded: false)
+        let code = app.staticTexts["approval-code"]
+        XCTAssertTrue(code.waitForPresence(timeout: 20), app.debugDescription)
+        let shown = code.label.replacingOccurrences(of: "Code ", with: "")
+        XCTAssertNotNil(shown.range(of: #"^\d{4} \d{4}$"#, options: .regularExpression), shown)
+        picture("secrets-settings-code")
+        closeSettings()
+
+        // The enrollment is the computer's to confirm: on this phone its Confirm only says so, and nothing changes.
+        let offered = try await home("secrets-state", method: "GET")
+        let enrollment = try XCTUnwrap((offered["cards"] as? [[String: Any]])?.first?["title"] as? String)
+        XCTAssertTrue(enrollment.contains(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"), enrollment)
+        showCard(enrollment)
+        let confirmHere = app.buttons.matching(NSPredicate(format: "label == %@", confirmWords)).firstMatch
+        XCTAssertTrue(confirmHere.waitForPresence(timeout: 10), app.debugDescription)
+        // Like every card's choices (INF-1083), Confirm takes a press only once the body reports drawn; a press
+        // before then is refused and the phone never says where to confirm.
+        waitUntilEnabled(confirmHere)
+        picture("secrets-enrollment-card")
+        reveal(confirmHere); tapOnPhone(confirmHere, repeatDiscarded: false)
+        XCTAssertTrue(app.staticTexts["Do this on Test Mac mini."].waitForPresence(timeout: 10))
+        let unconfirmed = try await home("secrets-state", method: "GET")
+        XCTAssertEqual((unconfirmed["devices"] as? [Any])?.count, 0)
+        let confirmed = try await home("secrets-confirm")
+        XCTAssertEqual(confirmed["title"] as? String, enrollment)
+        XCTAssertEqual(confirmed["code"] as? String, shown, "The computer's card shows the code this phone shows")
+        XCTAssertEqual(confirmed["confirmed"] as? Int, 1, "Enrolling asked for this computer's own confirmation once")
+        let devices = try XCTUnwrap(confirmed["devices"] as? [[String: Any]])
+        XCTAssertEqual(devices.count, 1); XCTAssertEqual(devices.first?["code"] as? String, shown)
+        XCTAssertTrue(cardHeading(enrollment).waitForAbsence(timeout: 20), app.debugDescription)
+        openSettings()
+        XCTAssertTrue(app.staticTexts["approval-enrolled"].waitForPresence(timeout: 20), app.debugDescription)
+        picture("secrets-settings-enrolled")
+        closeSettings()
+
+        // One use waits on the computer; this phone allows it once, with Face ID.
+        let first = try await home("secrets-request")
+        XCTAssertEqual(first["state"] as? String, "waiting")
+        let title = try XCTUnwrap(first["title"] as? String)
+        showCard(title)
+        let allow = app.buttons["approval-allow"]
+        XCTAssertTrue(allow.waitForPresence(timeout: 20), app.debugDescription)
+        XCTAssertEqual(allow.label, "Allow once")
+        XCTAssertTrue(app.staticTexts["approval-note"].label.hasPrefix("Each Allow here asks for Face ID"), app.staticTexts["approval-note"].label)
+        // The computer's own approval body names the same secret, its prepared environment and saved version.
+        func body(_ words: String) -> XCUIElement {
+            app.webViews.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", words)).firstMatch
+        }
+        for words in ["Planning calendar", "Personal", "Saved version 1"] {
+            XCTAssertTrue(body(words).waitForPresence(timeout: 20), app.debugDescription)
+        }
+        // INF-1109: the shared body says confirmation comes before sharing without naming a device, and that
+        // temporary access is only the computer's; no Allow here offers it.
+        XCTAssertTrue(body("after you confirm").exists, app.debugDescription)
+        XCTAssertFalse(body("Your computer asks you to confirm").exists, app.debugDescription)
+        let temporary = body("Temporary access is available only on your computer")
+        XCTAssertTrue(temporary.exists, app.debugDescription)
+        // INF-1109: the foot names the requested secret by name, environment, reference and version, beside
+        // choices that stay in the card's frame rather than scrolling away with its body.
+        let named = app.staticTexts["approval-secret-calendar"]
+        XCTAssertTrue(named.waitForPresence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(named.label, "Planning calendar (Personal, calendar, version 1)")
+        XCTAssertTrue(app.descendants(matching: .any)["card-frame"].exists, "The choices stay pinned: \(app.debugDescription)")
+        // The choices take a press once the computer's body is revealed at its drawn height, as every card's do.
+        waitUntilEnabled(allow)
+        XCTAssertTrue(allow.isHittable, app.debugDescription)
+        picture("secrets-use")
+        // The scope lies below an iPhone's fold; the body scrolls to it while the pinned choices stay.
+        let reading = app.scrollViews["card-scroll"]
+        revealPhoneCardReading(temporary, in: reading, app: app)
+        XCTAssertTrue(phoneCardReadingBounds(reading, app: app).contains(phoneAccessibilityBounds(temporary.frame)),
+            "The scope reads whole \(temporary.frame) inside \(phoneCardReadingBounds(reading, app: app))")
+        XCTAssertTrue(allow.isHittable, app.debugDescription)
+        picture("secrets-use-scope")
+        let waiting = try await home("secrets-state", method: "GET")
+        let asked = try XCTUnwrap(waiting["confirmed"] as? Int)
+        // perform() puts a failed approval in the card's error foot, not the body's informational notice.
+        let confirmationError = app.staticTexts["card-error"]
+        XCTAssertFalse(confirmationError.exists, app.debugDescription)
+        var confirmationProblem: String?
+        func confirmationRefused() -> Bool {
+            if confirmationProblem != nil { return true }
+            guard confirmationError.exists else { return false }
+            confirmationProblem = confirmationError.label
+            return true
+        }
+        func requireConfirmationNotRefused() async throws {
+            guard confirmationRefused() else { return }
+            picture("secrets-confirmation-refused")
+            let refused = try await home("secrets-state", method: "GET")
+            let pending = try XCTUnwrap((refused["uses"] as? [[String: Any]])?.first {
+                $0["request"] as? String == first["request"] as? String
+            })
+            XCTAssertEqual(pending["state"] as? String, "waiting", "A failed confirmation leaves the same use waiting")
+            XCTAssertEqual(refused["sent"] as? [Bool], [], "An unconfirmed Allow sends nothing")
+            XCTAssertEqual(refused["confirmed"] as? Int, asked, "A failed phone confirmation does not ask on the computer")
+            throw NSError(domain: "PhoneSecretsConfirmation", code: 1, userInfo: [NSLocalizedDescriptionKey:
+                "The phone did not confirm the use: \(confirmationProblem ?? "No confirmation result")"])
+        }
+        reveal(allow); tapOnPhone(allow, repeatDiscarded: false)
+        // INF-1109: the system can fail to start Face ID. That is a terminal refusal, not an optional permission
+        // alert still to come. Observe the card's error too, keep the no-send proof, and never retry Allow.
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let permitted = springboard.alerts.buttons["OK"]
+        _ = waitForPhonePredicate(NSPredicate { _, _ in confirmationRefused() || permitted.exists }, object: nil, timeout: 10)
+        try await requireConfirmationNotRefused()
+        if permitted.exists { picture("secrets-face-id-permission"); tapOnPhone(permitted, repeatDiscarded: false) }
+        picture("secrets-face-id")
+        _ = try await home("face-in-view")
+        let confirmationEnded = waitForPhonePredicate(NSPredicate { _, _ in
+            confirmationRefused() || !self.cardHeading(title).exists
+        }, object: nil, timeout: 30)
+        // Stop the owned simulator's face before an assertion can end this test, including a late refusal.
+        _ = try await home("face-away")
+        try await requireConfirmationNotRefused()
+        guard confirmationEnded == .completed else {
+            throw NSError(domain: "PhoneSecretsConfirmation", code: 2, userInfo: [NSLocalizedDescriptionKey:
+                "The phone did not finish its confirmation: \(app.debugDescription)"])
+        }
+        XCTAssertTrue(cardHeading(title).waitForAbsence(timeout: 30), app.debugDescription)
+        picture("secrets-allowed")
+        var state = try await home("secrets-state", method: "GET")
+        let enrolled = try XCTUnwrap(devices.first?["device"] as? String)
+        let allowed = try XCTUnwrap((state["history"] as? [[String: Any]])?.first { $0["request"] as? String == first["request"] as? String })
+        XCTAssertEqual(allowed["state"] as? String, "completed")
+        XCTAssertEqual(allowed["approval"] as? String, "remote")
+        XCTAssertEqual(allowed["device"] as? String, enrolled)
+        XCTAssertEqual(state["sent"] as? [Bool], [true], "The calendar received the entry once")
+        XCTAssertEqual(state["confirmed"] as? Int, asked, "An Allow from this phone asks for no confirmation on the computer")
+
+        // Deny needs no Face ID and runs nothing.
+        let second = try await home("secrets-request")
+        showCard(title)
+        let deny = app.buttons["approval-deny"]
+        XCTAssertTrue(deny.waitForPresence(timeout: 20), app.debugDescription)
+        // A press while the body still lays out could land beside a moving choice; it waits for the reveal gate.
+        waitUntilEnabled(deny)
+        reveal(deny); tapOnPhone(deny, repeatDiscarded: false)
+        XCTAssertTrue(cardHeading(title).waitForAbsence(timeout: 20), app.debugDescription)
+        state = try await home("secrets-state", method: "GET")
+        let denied = try XCTUnwrap((state["history"] as? [[String: Any]])?.first { $0["request"] as? String == second["request"] as? String })
+        XCTAssertEqual(denied["state"] as? String, "denied")
+        XCTAssertEqual(state["sent"] as? [Bool], [true], "A refusal sends nothing")
+        XCTAssertEqual((state["cards"] as? [Any])?.count, 0)
+
+        // The phone's record is damaged by the next launch: Settings says so, and Set up approvals offers nothing.
+        app.launchEnvironment["INFINITARY_DAMAGED_APPROVAL"] = "1"
+        try await launchPhoneApp(app)
+        app.launchEnvironment.removeValue(forKey: "INFINITARY_DAMAGED_APPROVAL")
+        reach("In reach", timeout: 20)
+        openSettings()
+        let again = app.buttons["approval-set-up"]
+        XCTAssertTrue(again.waitForPresence(timeout: 20), app.debugDescription)
+        // The same setup control must finish entering in its damaged-record state too; presence is not readiness.
+        waitForSteadyTarget(again)
+        picture("secrets-settings-damaged")
+        XCTAssertEqual(again.label, "Set up approvals again")
+        XCTAssertTrue(again.isHittable, "The choice shows at the sheet's medium height, with no scrolling")
+        XCTAssertTrue(app.staticTexts["approval-damaged"].exists, app.debugDescription)
+        XCTAssertFalse(app.staticTexts["approval-problem"].exists, "A damaged record does not ask to unlock the phone")
+        tapOnPhone(again, repeatDiscarded: false)
+        let replaced = app.staticTexts["approval-code"]
+        XCTAssertTrue(replaced.waitForPresence(timeout: 20), app.debugDescription)
+        let newCode = replaced.label.replacingOccurrences(of: "Code ", with: "")
+        XCTAssertNotEqual(newCode, shown, "Set up approvals again offers a new key")
+        picture("secrets-settings-damaged-code")
+        closeSettings()
+
+        // Only the computer's own confirmation enrolls the new key, and the earlier enrollment stays there.
+        let reoffered = try await home("secrets-state", method: "GET")
+        XCTAssertEqual((reoffered["devices"] as? [[String: Any]])?.map { $0["device"] as? String }, [enrolled])
+        let reconfirmed = try await home("secrets-confirm")
+        XCTAssertEqual(reconfirmed["code"] as? String, newCode, "The computer's card shows the new code this phone shows")
+        XCTAssertEqual(reconfirmed["confirmed"] as? Int, 1)
+        let both = try XCTUnwrap(reconfirmed["devices"] as? [[String: Any]])
+        XCTAssertEqual(Set(both.compactMap { $0["code"] as? String }), [shown, newCode])
+        XCTAssertFalse(both.contains { $0["code"] as? String == newCode && $0["device"] as? String == enrolled },
+                       "The new key is enrolled under a new device name")
+        openSettings()
+        XCTAssertTrue(app.staticTexts["approval-enrolled"].waitForPresence(timeout: 20), app.debugDescription)
+        picture("secrets-settings-damaged-enrolled")
+        closeSettings()
+    }
+
+
 }

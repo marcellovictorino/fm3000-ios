@@ -99,6 +99,11 @@
           "target": "working"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -247,6 +252,11 @@
           "detail": "INF-3101 must finish first. The dependency stays.",
           "disabled": true,
           "target": "working"
+        },
+        {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
         },
         {
           "separator": true
@@ -399,6 +409,11 @@
           "target": "working"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -544,6 +559,11 @@
           "target": "working"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -654,8 +674,7 @@
             "text": "Only interrupted work continues."
           },
           "drop-task": {
-            "ok": false,
-            "text": "Its parts are still open. Drop those first."
+            "ok": true
           },
           "queue-task": {
             "ok": false,
@@ -692,13 +711,18 @@
           "target": "working"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
           "id": "drop",
           "label": "Drop task",
-          "detail": "Its parts are still open. Drop those first; nothing changes.",
-          "disabled": true,
+          "detail": "Asks once",
+          "disabled": false,
           "danger": true,
           "target": "drop"
         }
@@ -725,8 +749,10 @@
           "text": "No merge card is up for it, so nothing can finish it from here."
         },
         "drop": {
-          "kind": "refused",
-          "text": "Its parts are still open. Drop those first; nothing changes."
+          "kind": "ask",
+          "op": "drop-task",
+          "sentence": "Drop INF-3105? It won't start, and there is no unfinished work to keep. Its record stays.",
+          "confirm": "Drop task"
         }
       },
       "rowStart": {
@@ -833,6 +859,11 @@
           "detail": "Its parts are already planned. Start a part, not the container.",
           "disabled": true,
           "target": "working"
+        },
+        {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
         },
         {
           "separator": true
@@ -979,6 +1010,11 @@
           "detail": "Asks once · the record's Start",
           "disabled": false,
           "target": "working"
+        },
+        {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
         },
         {
           "separator": true
@@ -1134,6 +1170,11 @@
           "target": "working"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -1287,6 +1328,11 @@
           "target": "working"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -1431,6 +1477,11 @@
           "detail": "It is already queued to start by itself. A drag cannot force a start.",
           "disabled": true,
           "target": "working"
+        },
+        {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
         },
         {
           "separator": true
@@ -1579,6 +1630,11 @@
           "detail": "INF-3110 must finish first. The dependency stays.",
           "disabled": true,
           "target": "working"
+        },
+        {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
         },
         {
           "separator": true
@@ -1733,6 +1789,11 @@
           "target": "working"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -1870,6 +1931,11 @@
           "detail": "Stops its turn, keeps its work · at once",
           "disabled": false,
           "target": "backlog"
+        },
+        {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
         },
         {
           "separator": true
@@ -2016,6 +2082,11 @@
           "target": "backlog"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -2159,6 +2230,11 @@
           "target": "backlog"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -2298,6 +2374,11 @@
           "label": "Show the card"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -2434,6 +2515,11 @@
         {
           "id": "card",
           "label": "Show the card"
+        },
+        {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
         },
         {
           "separator": true
@@ -2575,6 +2661,11 @@
           "label": "Show the card"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -2708,6 +2799,11 @@
         {
           "id": "open",
           "label": "Open record"
+        },
+        {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
         },
         {
           "separator": true
@@ -2844,6 +2940,11 @@
           "label": "Show the card"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -2975,6 +3076,11 @@
         {
           "id": "open",
           "label": "Open record"
+        },
+        {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
         },
         {
           "separator": true
@@ -3247,6 +3353,11 @@
           "label": "Open record"
         },
         {
+          "id": "pin",
+          "label": "Pin",
+          "detail": "Keeps it at the top of Tasks · at once"
+        },
+        {
           "separator": true
         },
         {
@@ -3397,8 +3508,15 @@
         "underway": []
       },
       "ask": {
-        "kind": "refused",
-        "text": "Cannot drop INF-3201 while its part is still open: INF-3207 \"Sound the channel\". Handle that work separately first."
+        "kind": "ask",
+        "sentence": "Drop INF-3201? It won't start, and there is no unfinished work to keep. Its record stays. Its part INF-3207 stays planned.",
+        "review": {
+          "parts": [
+            "INF-3207"
+          ],
+          "waiting": [],
+          "underway": []
+        }
       }
     },
     {
@@ -3421,8 +3539,16 @@
         "underway": []
       },
       "ask": {
-        "kind": "refused",
-        "text": "Cannot drop INF-3201: INF-3208 \"Mark the reef\" has started. Handle that work separately first."
+        "kind": "ask",
+        "sentence": "Drop INF-3201? It won't start, and there is no unfinished work to keep. Its record stays. Its part INF-3207 stays planned. Its part INF-3208 has started and keeps working.",
+        "review": {
+          "parts": [
+            "INF-3207",
+            "INF-3208"
+          ],
+          "waiting": [],
+          "underway": []
+        }
       }
     }
   ]

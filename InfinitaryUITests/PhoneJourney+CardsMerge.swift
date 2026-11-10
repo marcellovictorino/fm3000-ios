@@ -142,7 +142,6 @@ extension PhoneJourney {
         XCTAssertTrue(app.staticTexts["card-place"].exists)
         XCTAssertTrue(app.staticTexts["card-revised"].exists)
         XCTAssertTrue(app.buttons["put-aside-card"].exists)
-        XCTAssertEqual(app.buttons["maximize-card"].exists, UIDevice.current.userInterfaceIdiom == .pad)
         // The foot: the host's fact strip stays with the choices.
         XCTAssertTrue(app.webViews["card-facts"].staticTexts.firstMatch.waitForPresence(timeout: 20), app.debugDescription)
         // INF-3149: what happens after the merge leads the body, the captain's actions before the crew's steps.
@@ -363,7 +362,8 @@ extension PhoneJourney {
         XCTAssertEqual(answered["ready"] as? Bool, false)
     }
 
-    /// INF-1879: the record's minus hides a real filed question; only Dismiss cancels it.
+    /// INF-1879: the record's minus hides a real filed question; only its explicit ending ends it.
+    /// INF-3108: that ending is Decline, the captain's answer no to every choice, so the question closes as answered.
     /// The device gate runs this with cards-merge, on fresh disposable homes on both devices in all three rounds.
     private func verifyQuestionDismiss() async throws {
         let fixture = try await home("question-record-fixture")
@@ -393,15 +393,15 @@ extension PhoneJourney {
         _ = try await home("hold-card-action", body: #"{"channel":"inf:task:run"}"#)
         tapOnPhone(dismiss)
         _ = try await home("card-action-held")
-        XCTAssertTrue(dismiss.waitForAbsence(timeout: 10), "Dismiss shows at the tap, before the computer answers")
+        XCTAssertTrue(dismiss.waitForAbsence(timeout: 10), "Decline shows at the tap, before the computer answers")
         let pending = try await home("question-record-state", body: stateBody)
         XCTAssertEqual(pending["status"] as? String, "open", "A prediction is not the computer's recorded ending")
         picture("question-dismiss-at-tap")
         _ = try await home("release-card-action")
         let ended = try await home("question-record-state",
-            body: "{\"taskId\":\"\(taskID)\",\"cardId\":\"\(cardID)\",\"expectedStatus\":\"dropped\"}")
-        XCTAssertEqual(ended["status"] as? String, "dropped")
-        XCTAssertEqual(ended["reason"] as? String, "cancelled")
+            body: "{\"taskId\":\"\(taskID)\",\"cardId\":\"\(cardID)\",\"expectedStatus\":\"done\"}")
+        XCTAssertEqual(ended["status"] as? String, "done")
+        XCTAssertEqual(ended["reason"] as? String, "answered")
         XCTAssertEqual(ended["cardOnStack"] as? Bool, false)
         let runs = try XCTUnwrap(ended["runs"] as? [[String: Any]])
         XCTAssertEqual(runs.count, 1)

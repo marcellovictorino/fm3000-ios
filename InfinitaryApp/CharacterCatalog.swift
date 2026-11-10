@@ -28,6 +28,8 @@ struct CharacterCatalog: Decodable, Sendable {
     let captain: [String: Double]
     /// The background-wait ring (INF-676, INF-1777): banked strength, ring share, arc sweep and rate, and its dashes.
     let wait: [String: Double]
+    /// The paired arcs approved for a pending batch status, from the desktop owner.
+    let batch: [String: Double]
     struct Saturn: Decodable, Sendable {
         let q: Double; let tilt: Double; let globe: Double; let ringA: Double; let ringB: Double
         let spinA: Double; let spinB: Double; let spinBelt: Double; let streamlines: [[Double]]

@@ -357,17 +357,18 @@ public enum PhoneRecord {
 
     // MARK: Drop task
 
-    /// What pressing Drop task says first instead of asking: the record changed, or its parts are still open.
+    /// What pressing Drop task says first instead of asking: the record changed since it was read.
     public static func dropRefusal(_ task: PhoneTask, end: End) -> String? {
         guard end == .dropTask else { return nil }
-        guard let effects = task.dropEffects else { return PhoneRecordWords.dropReviewStale }
-        return effects.parts.isEmpty ? nil : dropPartsRefusal(task.key, parts: effects.parts)
+        return task.dropEffects == nil ? PhoneRecordWords.dropReviewStale : nil
     }
 
-    /// Drop task's one question: whether unfinished work is kept, then who still waits on it and what keeps working.
+    /// Drop task's one question: whether unfinished work is kept, then its parts, who still waits on it and what keeps
+    /// working.
     public static func dropQuestion(_ task: PhoneTask, end: End) -> String {
         let effects = end == .dropTask ? task.dropEffects : nil
-        return [dropLead(task.key, started: end == .stopTask), effects.flatMap { dropWaiting($0.waiting.map(\.key)) },
+        return [dropLead(task.key, started: end == .stopTask), effects.flatMap { dropParts($0.parts) },
+                effects.flatMap { dropWaiting($0.waiting.map(\.key)) },
                 effects.flatMap { dropUnderway($0.underway.map(\.key)) }].compactMap(\.self).joined(separator: " ")
     }
 
@@ -388,14 +389,19 @@ public enum PhoneRecord {
             : "\(keys.count) tasks are already working (\(keys.joined(separator: ", "))) and will not be stopped."
     }
 
-    static func dropPartsRefusal(_ key: String, parts: [PhoneTask.DropEffects.Part]) -> String {
-        let started = parts.filter { $0.started == true }
-        func named(_ list: [PhoneTask.DropEffects.Part]) -> String { list.map { "\($0.key) \"\($0.title)\"" }.joined(separator: ", ") }
-        if !started.isEmpty {
-            return "Cannot drop \(key): \(named(started)) \(started.count == 1 ? "has" : "have") started. Handle that work separately first."
+    /// What the one drop does to open parts: they stay planned, and one that started keeps working (`dropPartsLine`).
+    static func dropParts(_ parts: [PhoneTask.DropEffects.Part]) -> String? {
+        if parts.isEmpty { return nil }
+        let started = parts.filter { $0.started == true }.map(\.key)
+        let planned = parts.filter { $0.started != true }.map(\.key)
+        var lines: [String] = []
+        if planned.count == 1 { lines.append("Its part \(planned[0]) stays planned.") }
+        else if planned.count > 1 { lines.append("Its \(planned.count) parts (\(planned.joined(separator: ", "))) stay planned.") }
+        if started.count == 1 { lines.append("Its part \(started[0]) has started and keeps working.") }
+        else if started.count > 1 {
+            lines.append("Its \(started.count) parts that started (\(started.joined(separator: ", "))) keep working.")
         }
-        let which = parts.count == 1 ? "its part" : "\(parts.count) parts"
-        return "Cannot drop \(key) while \(which) \(parts.count == 1 ? "is" : "are") still open: \(named(parts)). Handle \(parts.count == 1 ? "that work" : "them") separately first."
+        return lines.joined(separator: " ")
     }
 
     // MARK: The Crewmate tab

@@ -12,7 +12,7 @@ public struct PhoneTaskFacts: Sendable {
         public let reason: String
         /// Its computer is out of reach: the mark keeps its shape in warn.
         public let outOfReach: Bool
-        /// Working that is a background wait: checks or job.
+        /// Working that is a background wait: checks, job or batch.
         public let wait: String?
         /// When the one task it stands idle on was recorded.
         public let since: Double?
@@ -143,11 +143,12 @@ public struct PhoneTaskFacts: Sendable {
         let dependency = task.workPosture?.reason == "dependency" && !waits.isEmpty
         let running = task.activity == "running" || task.activity == "starting"
         let reason = dependency ? dependencyWaitWords(waits)
-            : task.workPosture.map { postureWords[$0.reason] ?? "" }
+            : task.workPosture.map { $0.reason == "checks" && $0.batch != nil ? "Waiting for the batch check" : postureWords[$0.reason] ?? "" }
             ?? (running ? "Working" : task.activity == "interrupted" ? "Work was interrupted" : "No continuing work")
         if task.workPosture?.state == "active" || (task.workPosture == nil && running) {
             if away != nil { return awayReading("working", nil) }
             let wait = task.workPosture?.state == "active" ? task.workPosture?.reason : nil
+            if wait == "checks" && task.workPosture?.batch != nil { return reading("working", reason, wait: "batch") }
             return wait == "checks" || wait == "job" ? reading("working", reason, wait: wait) : reading("working", reason)
         }
         if task.activity == "interrupted" { return reading("interrupted", reason) }
