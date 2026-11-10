@@ -43,11 +43,13 @@ public struct PhoneIntent: Sendable, Equatable, Identifiable {
 }
 
 /// The two explicit task endings offered by the home; never inferred from a card leaving.
+/// Both close as answered: Done receipts an answer, and the question's Decline (still sent as
+/// `dismiss-question`) is the captain's answer no to every choice (INF-3108).
 public enum PhoneTaskEnding: String, Sendable, CaseIterable {
     case answerDone = "answer-done"
     case dismissQuestion = "dismiss-question"
-    public var status: String { self == .answerDone ? "done" : "dropped" }
-    public var reason: String { self == .answerDone ? "answered" : "cancelled" }
+    public var status: String { "done" }
+    public var reason: String { "answered" }
 }
 
 /// Which last turn a message was sent after: the newest round's words and the round's before it.

@@ -1,29 +1,32 @@
 import Foundation
 
 /// INF-2928 piece 1, the captain's direction A: the phone's Tasks list is the Mac's Tasks panel (src/panels/now/rows.ts),
-/// read from one board in one pass. Only groups with rows show, each in the Mac's order: priority, then oldest first, and
+/// read from one board in one pass. Pinned tasks list first, alone (INF-3127). Only groups with rows show, each in the Mac's order: priority, then oldest first, and
 /// Done newest closed first, with a part under its parent in the same group. A search keeps the groups, narrows them by
 /// title or key as the Mac's does, and adds the computer's older matches as Earlier.
 /// INF-2764: it is built only while the list shows, and sorts positions in the board rather than copies of every task.
 public struct PhoneTaskList: Sendable {
     /// Where a section comes from: one of the board's groups, or the search's older closed work.
     public enum Section: Hashable, Sendable {
+        case pinned
         case group(PhoneTaskGroup)
         case earlier
 
         public var id: String {
             switch self {
+            case .pinned: "pinned"
             case .group(let group): group.rawValue
             case .earlier: "earlier"
             }
         }
         public var title: String {
             switch self {
+            case .pinned: PhoneTaskRowWords.pinned
             case .group(let group): group.title
             case .earlier: PhoneTaskRowWords.earlier
             }
         }
-        /// The Mac's `OPEN_BY_DEFAULT`: Waiting on you, Working, Queued and Earlier always show their rows, with no count.
+        /// The Mac's `OPEN_BY_DEFAULT`: Pinned, Waiting on you, Working, Queued and Earlier always show their rows, with no count.
         public var folds: Bool { self == .group(.backlog) || self == .group(.landed) }
     }
 
@@ -39,14 +42,24 @@ public struct PhoneTaskList: Sendable {
         public let section: Section
         public let rows: [Row]
         public let aside: [PhoneCard]
+        /// Where each pinned row would list unpinned (the Mac's `home`): its wait line follows it.
+        var homes: [String: PhoneTaskGroup] = [:]
         public var id: String { section.id }
         public var count: Int { rows.count + aside.count }
         /// Crew filings here not opened yet, and starts that failed (`newFilingCount`, `failedStartCount`).
         public var new: Int { rows.filter { $0.task.filingNew == true }.count }
         public var failed: Int { rows.filter { $0.task.startNotice != nil }.count }
-        /// The home's dated wait line, under a Queued row only, as on the Mac.
+        /// The group a row lists under by its state: this section's own, or, in Pinned, where it would list unpinned.
+        public func home(of task: PhoneTask) -> PhoneTaskGroup? {
+            switch section {
+            case .group(let group): group
+            case .pinned: homes[task.id]
+            case .earlier: nil
+            }
+        }
+        /// The home's dated wait line, under a Queued row only, and under a pinned one that would list there, as on the Mac.
         public func waitLine(of task: PhoneTask) -> String? {
-            section == .group(.queued) && task.status == "open" ? task.queueWait?.line : nil
+            home(of: task) == .queued && task.status == "open" ? task.queueWait?.line : nil
         }
     }
 
@@ -78,12 +91,28 @@ public struct PhoneTaskList: Sendable {
         }
         var positions: [PhoneTaskGroup: [Int]] = [:]
         var groupOf: [String: PhoneTaskGroup] = [:]
+        // INF-3127: a pinned task lists once, in Pinned at the top, whatever its state or age, in the order it was
+        // pinned, newest last; its parts stay in their own groups unless pinned too.
+        var pinned: [Int] = []
         for (at, task) in tasks.enumerated() {
+            if task.pinnedAt != nil {
+                if matches(task.title, task.key) { pinned.append(at) }
+                continue
+            }
             guard let group = groups[task.id], matches(task.title, task.key) else { continue }
             positions[group, default: []].append(at)
             groupOf[task.id] = group
         }
         var parts: [Part] = []
+        if !pinned.isEmpty {
+            pinned.sort { a, b in
+                let (p, q) = (tasks[a].pinnedAt ?? 0, tasks[b].pinnedAt ?? 0)
+                return p != q ? p < q : a < b
+            }
+            parts.append(Part(section: .pinned, rows: pinned.map { Row(task: tasks[$0], depth: 0) }, aside: [],
+                              homes: Dictionary(pinned.compactMap { at in groups[tasks[at].id].map { (tasks[at].id, $0) } },
+                                                uniquingKeysWith: { first, _ in first })))
+        }
         for group in PhoneTaskGroup.allCases {
             var rows: [Row] = []
             if var members = positions[group] {
@@ -157,6 +186,7 @@ public struct PhoneTaskList: Sendable {
         if task.startNotice != nil { return PhoneTaskRowWords.couldNotStart }
         if task.status == "active" {
             let reading = PhoneTaskFacts.status(task)
+            if reading.wait == "batch" { return PhoneTaskRowWords.batch }
             if reading.wait == "checks" { return PhoneTaskRowWords.checks }
             if reading.waitsOn != nil { return PhoneTaskRowWords.waiting }
         }

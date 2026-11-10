@@ -316,7 +316,7 @@ struct PhoneTaskMark: View {
         let wait = status.outOfReach ? nil : status.wait
         let mark = status.mark
         let color: Color = status.outOfReach ? PhoneTheme.warning
-            : wait == "checks" ? PhoneTheme.accent
+            : wait == "checks" || wait == "batch" ? PhoneTheme.accent
             : mark == "working" ? PhoneTheme.warning
             : mark == "starting" ? PhoneTheme.accent
             : mark == "idle" ? PhoneTheme.ok
@@ -342,6 +342,15 @@ struct PhoneTaskMark: View {
                     var arc = Path()
                     arc.addArc(center: CGPoint(x: 8, y: 8), radius: 5, startAngle: .degrees(-90), endAngle: .degrees(180), clockwise: false)
                     context.stroke(arc, with: .color(PhoneTheme.accent), lineWidth: 1.5)
+                } else if wait == "batch" {
+                    let gate = CharacterCatalog.shared.batch, half = gate["arcDeg"]! * .pi / 360
+                    for center in [0.0, Double.pi] {
+                        var arc = Path()
+                        arc.addArc(center: CGPoint(x: 8, y: 8), radius: 6,
+                                   startAngle: .radians(center - half), endAngle: .radians(center + half), clockwise: false)
+                        context.stroke(arc, with: .color(PhoneTheme.accent), style: StrokeStyle(lineWidth: gate["line"]!, lineCap: .round))
+                    }
+                    context.fill(circle(3), with: .color(color))
                 } else if wait != nil {
                     context.stroke(circle(6), with: .color(PhoneTheme.accent), style: StrokeStyle(lineWidth: 1.2, dash: [2.6, 2.1]))
                     context.fill(circle(3), with: .color(color))

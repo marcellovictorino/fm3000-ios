@@ -23,7 +23,7 @@ public enum PhoneRowMoves {
 
     /// One entry of the menu: its name, what it does or why it cannot, and the move it makes.
     public struct Entry: Equatable, Sendable {
-        public enum ID: String, Sendable { case open, card, `continue`, queue, unqueue, start, drop }
+        public enum ID: String, Sendable { case open, card, pin, `continue`, queue, unqueue, start, drop }
         public let id: ID
         public let label: String
         public let detail: String?
@@ -53,7 +53,6 @@ public enum PhoneRowMoves {
 
     private static func blocked(_ task: PhoneTask) -> Bool { task.flags?.blocked == true || !task.blockedBy.isEmpty }
     private static func hasParts(_ task: PhoneTask) -> Bool { (task.children?.total ?? 0) > 0 }
-    private static func openParts(_ task: PhoneTask) -> Bool { (task.children?.total ?? 0) > (task.children?.closed ?? 0) }
     /// The task's completion card while it is up: its waiting card settles with a merge (`moveContextOf`).
     private static func completionCard(_ task: PhoneTask) -> String? {
         task.waitingCardMerges == true ? task.waitingCardId : nil
@@ -131,7 +130,6 @@ public enum PhoneRowMoves {
     /// The Drop task tray: the record's own end, as the row says it - Drop task before the work starts, its stop once it
     /// has.
     private static func dropMove(_ task: PhoneTask) -> Move {
-        if openParts(task) { return .refused("Its parts are still open. Drop those first; nothing changes.") }
         if task.moves?["drop-task"]?.ok == true {
             return .ask(op: "drop-task", sentence: PhoneRecord.dropLead(task.key, started: false), confirm: PhoneRecordWords.dropTask)
         }
@@ -141,8 +139,8 @@ public enum PhoneRowMoves {
         return .refused("This task cannot be dropped here. Open its record instead.")
     }
 
-    /// The record's own question for never-started work, from the effects its record lists (`dropAskOf`): the sentence
-    /// and the review the host checks again, or why it cannot be dropped.
+    /// The record's own question for never-started work, from the effects its record lists (`dropAskOf`): the sentence,
+    /// saying its open parts stay planned, and the review the host checks again, or that the record changed.
     public enum DropAsk: Equatable, Sendable {
         case ask(sentence: String, review: [String: [String]])
         case refused(String)
@@ -150,8 +148,8 @@ public enum PhoneRowMoves {
 
     public static func dropAsk(_ key: String, effects: PhoneTask.DropEffects?) -> DropAsk {
         guard let effects else { return .refused("\(key) changed. Look at it again before dropping it.") }
-        if !effects.parts.isEmpty { return .refused(PhoneRecord.dropPartsRefusal(key, parts: effects.parts)) }
-        let sentence = [PhoneRecord.dropLead(key, started: false), PhoneRecord.dropWaiting(effects.waiting.map(\.key)),
+        let sentence = [PhoneRecord.dropLead(key, started: false), PhoneRecord.dropParts(effects.parts),
+                        PhoneRecord.dropWaiting(effects.waiting.map(\.key)),
                         PhoneRecord.dropUnderway(effects.underway.map(\.key))].compactMap(\.self).joined(separator: " ")
         return .ask(sentence: sentence, review: ["parts": effects.parts.map(\.key).sorted(),
                                                  "waiting": effects.waiting.map(\.key).sorted(),
@@ -160,8 +158,8 @@ public enum PhoneRowMoves {
 
     /// The menu (`boardMenuOf`): Open record; Show the card while a decision waits; Continue on interrupted work; Queue it
     /// or Back to backlog and Start now on open work; Back to backlog on started work, and Start now on started work in the
-    /// backlog; then Drop task, last, in danger. An entry that cannot run stays, dim, with its reason. Done and Dropped
-    /// rows have none.
+    /// backlog; Pin or Unpin; then Drop task, last, in danger. An entry that cannot run stays, dim, with its reason. Done
+    /// and Dropped rows have none.
     public static func menu(_ task: PhoneTask, lane: Lane) -> [Item] {
         if task.key.isEmpty && task.minimizedCardId != nil {
             return [.entry(Entry(id: .card, label: cardLabel, detail: nil, disabled: false, danger: false, target: nil))]
@@ -196,6 +194,12 @@ public enum PhoneRowMoves {
             items.append(.entry(Entry(id: .start, label: PhoneRowMoveWords.startNow, detail: refusal(start) ?? "Asks once · the record's Start",
                                       disabled: refusal(start) != nil, danger: false, target: .working)))
         }
+        // INF-3127: Pin keeps the task at the top of Tasks, whatever its state; Unpin lists it under its state again. After the moves,
+        // as on the Mac, so a move stays where it was in the menu.
+        items.append(.entry(task.pinnedAt == nil
+            ? Entry(id: .pin, label: PhoneRowMoveWords.pin, detail: PhoneRowMoveWords.pinDetail, disabled: false, danger: false, target: nil)
+            : Entry(id: .pin, label: PhoneRowMoveWords.unpin, detail: PhoneRowMoveWords.unpinDetail, disabled: false, danger: false,
+                    target: nil)))
         let drop = self.move(task, from: lane, to: .drop)
         items.append(.separator)
         items.append(.entry(Entry(id: .drop, label: PhoneRecordWords.dropTask, detail: refusal(drop) ?? "Asks once",

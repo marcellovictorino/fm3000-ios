@@ -93,7 +93,18 @@ enum PhoneCrewPainter {
         if glyph.unfold < 1 { context.fill(circle(at, 2.8 * (1 - glyph.unfold)), with: .color(palette.acc.color(glyph.alpha))) }
         // The wait ring: dashed, never the beacon's full ring, with a brighter arc travelling round it; a still frame holds it whole.
         let ringK = wait * glyph.alpha * glyph.unfold
-        if ringK > 0.01 {
+        if ringK > 0.01 && glyph.batch {
+            let gate = CharacterCatalog.shared.batch
+            let half = gate["arcDeg"]! * .pi / 360
+            let turn = glyph.batchRunning && !still ? now * gate["turnRadPerS"]! : 0
+            for center in [0.0, Double.pi] {
+                var arc = Path()
+                arc.addArc(center: at, radius: glyph.size * gate["ring"]!,
+                           startAngle: .radians(center - half + turn), endAngle: .radians(center + half + turn), clockwise: false)
+                context.stroke(arc, with: .color(palette.acc.color(min(1, gate["alpha"]! * ringK * palette.boost))),
+                               style: StrokeStyle(lineWidth: gate["line"]!, lineCap: .round))
+            }
+        } else if ringK > 0.01 {
             let ringR = glyph.size * waits["ring"]!, dash = 2 * .pi * ringR / waits["dashes"]!
             context.stroke(circle(at, ringR), with: .color(palette.acc.color(min(1, (still ? 0.6 : 0.3) * ringK * palette.boost))),
                            style: StrokeStyle(lineWidth: 1, dash: [dash * waits["dashShare"]!, dash * (1 - waits["dashShare"]!)]))

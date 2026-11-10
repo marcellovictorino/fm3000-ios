@@ -95,6 +95,48 @@
             }
           },
           {
+            "id": "t-2930",
+            "key": "INF-2930",
+            "projectId": "p-har",
+            "parentId": null,
+            "kind": "work",
+            "title": "Publish the lighthouse map",
+            "goal": "Publish the lighthouse map",
+            "priority": 2,
+            "status": "active",
+            "activity": "idle",
+            "closedReason": null,
+            "startPolicy": "when-ready",
+            "flags": {
+              "blocked": false,
+              "held": false,
+              "needsYou": false,
+              "ready": false
+            },
+            "blockedBy": [],
+            "blocks": [],
+            "children": {
+              "total": 0,
+              "closed": 0
+            },
+            "assignee": "crewmate",
+            "model": null,
+            "tier": null,
+            "repo": null,
+            "delivery": null,
+            "outcomeSummary": null,
+            "waitingCardId": null,
+            "createdAt": 1793980200000,
+            "updatedAt": 1793984340000,
+            "startedAt": 1793982600000,
+            "closedAt": null,
+            "workPosture": {
+              "state": "active",
+              "reason": "checks",
+              "batch": "waiting"
+            }
+          },
+          {
             "id": "t-2903",
             "key": "INF-2903",
             "projectId": "p-har",
@@ -337,6 +379,7 @@
             "updatedAt": 1793984340000,
             "startedAt": null,
             "closedAt": null,
+            "pinnedAt": 1793983680000,
             "queueWait": {
               "line": "Waiting for a free crewmate · since Nov 6, 8:40 AM",
               "since": 1793983200000
@@ -538,7 +581,8 @@
             "createdAt": 1793978940000,
             "updatedAt": 1793984340000,
             "startedAt": null,
-            "closedAt": null
+            "closedAt": null,
+            "pinnedAt": 1793982000000
           },
           {
             "id": "t-2910",
@@ -697,7 +741,46 @@
             "createdAt": 1793979060000,
             "updatedAt": 1793984340000,
             "startedAt": 1793977200000,
-            "closedAt": 1793980800000
+            "closedAt": 1793980800000,
+            "pinnedAt": 1793982900000
+          },
+          {
+            "id": "t-2921",
+            "key": "INF-2921",
+            "projectId": "p-inf",
+            "parentId": null,
+            "kind": "work",
+            "title": "Retire the old harbour light",
+            "goal": "Retire the old harbour light",
+            "priority": 2,
+            "status": "done",
+            "activity": null,
+            "closedReason": "landed",
+            "startPolicy": "when-ready",
+            "flags": {
+              "blocked": false,
+              "held": false,
+              "needsYou": false,
+              "ready": false
+            },
+            "blockedBy": [],
+            "blocks": [],
+            "children": {
+              "total": 0,
+              "closed": 0
+            },
+            "assignee": null,
+            "model": null,
+            "tier": null,
+            "repo": null,
+            "delivery": null,
+            "outcomeSummary": null,
+            "waitingCardId": null,
+            "createdAt": 1793979660000,
+            "updatedAt": 1793984340000,
+            "startedAt": 1792904400000,
+            "closedAt": 1793444400000,
+            "pinnedAt": 1793984100000
           },
           {
             "id": "t-2912",
@@ -853,6 +936,74 @@
       "earlier": [],
       "sections": [
         {
+          "section": "pinned",
+          "folds": false,
+          "count": 4,
+          "rows": [
+            {
+              "key": "INF-2909",
+              "depth": 0,
+              "word": "held",
+              "trailing": {
+                "name": "Infinitary",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "backlog",
+              "reason": "Held",
+              "home": "backlog"
+            },
+            {
+              "key": "INF-2911",
+              "depth": 0,
+              "word": "",
+              "trailing": {
+                "name": "Infinitary",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "done",
+              "reason": "",
+              "home": "landed"
+            },
+            {
+              "key": "INF-2905",
+              "depth": 0,
+              "word": "",
+              "trailing": {
+                "name": "Infinitary",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "queued",
+              "reason": "Waiting for a free crewmate · since Nov 6, 8:40 AM",
+              "home": "queued",
+              "wait": "Waiting for a free crewmate · since Nov 6, 8:40 AM"
+            },
+            {
+              "key": "INF-2921",
+              "depth": 0,
+              "word": "",
+              "trailing": {
+                "name": "Infinitary",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "done",
+              "reason": "",
+              "home": "landed"
+            }
+          ]
+        },
+        {
           "section": "waiting",
           "folds": false,
           "count": 2,
@@ -869,7 +1020,8 @@
                 "reach": "out of reach"
               },
               "mark": "waiting",
-              "reason": "A decision card is ready"
+              "reason": "A decision card is ready",
+              "home": "waiting"
             },
             {
               "key": "INF-2920",
@@ -883,14 +1035,15 @@
                 "reach": "out of reach"
               },
               "mark": "waiting",
-              "reason": "Answer ready · waiting 1h 35m"
+              "reason": "Answer ready · waiting 1h 35m",
+              "home": "waiting"
             }
           ]
         },
         {
           "section": "working",
           "folds": false,
-          "count": 6,
+          "count": 7,
           "rows": [
             {
               "key": "INF-2903",
@@ -904,7 +1057,8 @@
                 "reach": "out of reach"
               },
               "mark": "working",
-              "reason": "Waiting for checks"
+              "reason": "Waiting for checks",
+              "home": "working"
             },
             {
               "key": "INF-2902",
@@ -918,7 +1072,8 @@
                 "reach": "out of reach"
               },
               "mark": "working",
-              "reason": "Mac mini is out of reach"
+              "reason": "Mac mini is out of reach",
+              "home": "working"
             },
             {
               "key": "INF-2904",
@@ -932,7 +1087,8 @@
                 "reach": "out of reach"
               },
               "mark": "idle",
-              "reason": "Waiting on INF-2905"
+              "reason": "Waiting on INF-2905",
+              "home": "working"
             },
             {
               "key": "INF-2914",
@@ -946,7 +1102,8 @@
                 "reach": "out of reach"
               },
               "mark": "working",
-              "reason": ""
+              "reason": "",
+              "home": "working"
             },
             {
               "key": "INF-2915",
@@ -960,7 +1117,8 @@
                 "reach": "out of reach"
               },
               "mark": "working",
-              "reason": ""
+              "reason": "",
+              "home": "working"
             },
             {
               "key": "INF-2916",
@@ -974,30 +1132,31 @@
                 "reach": "out of reach"
               },
               "mark": "working",
-              "reason": ""
+              "reason": "",
+              "home": "working"
+            },
+            {
+              "key": "INF-2930",
+              "depth": 0,
+              "word": "batch",
+              "trailing": {
+                "name": "Harbour",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "working",
+              "reason": "Waiting for the batch check",
+              "home": "working"
             }
           ]
         },
         {
           "section": "queued",
           "folds": false,
-          "count": 3,
+          "count": 2,
           "rows": [
-            {
-              "key": "INF-2905",
-              "depth": 0,
-              "word": "",
-              "trailing": {
-                "name": "Infinitary",
-                "place": "",
-                "outOfReach": false,
-                "connecting": false,
-                "reach": "out of reach"
-              },
-              "mark": "queued",
-              "reason": "Waiting for a free crewmate · since Nov 6, 8:40 AM",
-              "wait": "Waiting for a free crewmate · since Nov 6, 8:40 AM"
-            },
             {
               "key": "INF-2906",
               "depth": 0,
@@ -1010,7 +1169,8 @@
                 "reach": "out of reach"
               },
               "mark": "starting",
-              "reason": ""
+              "reason": "",
+              "home": "queued"
             },
             {
               "key": "INF-2917",
@@ -1024,14 +1184,15 @@
                 "reach": "connecting"
               },
               "mark": "queued",
-              "reason": "Studio is connecting"
+              "reason": "Studio is connecting",
+              "home": "queued"
             }
           ]
         },
         {
           "section": "backlog",
           "folds": true,
-          "count": 5,
+          "count": 4,
           "newWords": " · 1 new",
           "failedWords": " · 1 could not start",
           "rows": [
@@ -1047,7 +1208,8 @@
                 "reach": "out of reach"
               },
               "mark": "backlog",
-              "reason": "Blocked by another task"
+              "reason": "Blocked by another task",
+              "home": "backlog"
             },
             {
               "key": "INF-2907",
@@ -1061,7 +1223,8 @@
                 "reach": "out of reach"
               },
               "mark": "backlog",
-              "reason": "Starts when you press Start"
+              "reason": "Starts when you press Start",
+              "home": "backlog"
             },
             {
               "key": "INF-2908",
@@ -1075,21 +1238,8 @@
                 "reach": "out of reach"
               },
               "mark": "backlog",
-              "reason": "Could not start"
-            },
-            {
-              "key": "INF-2909",
-              "depth": 0,
-              "word": "held",
-              "trailing": {
-                "name": "Infinitary",
-                "place": "",
-                "outOfReach": false,
-                "connecting": false,
-                "reach": "out of reach"
-              },
-              "mark": "backlog",
-              "reason": "Held"
+              "reason": "Could not start",
+              "home": "backlog"
             },
             {
               "key": "INF-2918",
@@ -1103,14 +1253,15 @@
                 "reach": "out of reach"
               },
               "mark": "backlog",
-              "reason": "Started · its work waits for your Start"
+              "reason": "Started · its work waits for your Start",
+              "home": "backlog"
             }
           ]
         },
         {
           "section": "landed",
           "folds": true,
-          "count": 3,
+          "count": 2,
           "rows": [
             {
               "key": "INF-2912",
@@ -1124,7 +1275,8 @@
                 "reach": "out of reach"
               },
               "mark": "done",
-              "reason": ""
+              "reason": "",
+              "home": "landed"
             },
             {
               "key": "INF-2919",
@@ -1138,21 +1290,8 @@
                 "reach": "out of reach"
               },
               "mark": "done",
-              "reason": ""
-            },
-            {
-              "key": "INF-2911",
-              "depth": 0,
-              "word": "",
-              "trailing": {
-                "name": "Infinitary",
-                "place": "",
-                "outOfReach": false,
-                "connecting": false,
-                "reach": "out of reach"
-              },
-              "mark": "done",
-              "reason": ""
+              "reason": "",
+              "home": "landed"
             }
           ]
         }
@@ -1250,6 +1389,48 @@
               "where": "on Mac mini",
               "name": "Mac mini",
               "reach": "out-of-reach"
+            }
+          },
+          {
+            "id": "t-2930",
+            "key": "INF-2930",
+            "projectId": "p-har",
+            "parentId": null,
+            "kind": "work",
+            "title": "Publish the lighthouse map",
+            "goal": "Publish the lighthouse map",
+            "priority": 2,
+            "status": "active",
+            "activity": "idle",
+            "closedReason": null,
+            "startPolicy": "when-ready",
+            "flags": {
+              "blocked": false,
+              "held": false,
+              "needsYou": false,
+              "ready": false
+            },
+            "blockedBy": [],
+            "blocks": [],
+            "children": {
+              "total": 0,
+              "closed": 0
+            },
+            "assignee": "crewmate",
+            "model": null,
+            "tier": null,
+            "repo": null,
+            "delivery": null,
+            "outcomeSummary": null,
+            "waitingCardId": null,
+            "createdAt": 1793980200000,
+            "updatedAt": 1793984340000,
+            "startedAt": 1793982600000,
+            "closedAt": null,
+            "workPosture": {
+              "state": "active",
+              "reason": "checks",
+              "batch": "waiting"
             }
           },
           {
@@ -1495,6 +1676,7 @@
             "updatedAt": 1793984340000,
             "startedAt": null,
             "closedAt": null,
+            "pinnedAt": 1793983680000,
             "queueWait": {
               "line": "Waiting for a free crewmate · since Nov 6, 8:40 AM",
               "since": 1793983200000
@@ -1696,7 +1878,8 @@
             "createdAt": 1793978940000,
             "updatedAt": 1793984340000,
             "startedAt": null,
-            "closedAt": null
+            "closedAt": null,
+            "pinnedAt": 1793982000000
           },
           {
             "id": "t-2910",
@@ -1855,7 +2038,46 @@
             "createdAt": 1793979060000,
             "updatedAt": 1793984340000,
             "startedAt": 1793977200000,
-            "closedAt": 1793980800000
+            "closedAt": 1793980800000,
+            "pinnedAt": 1793982900000
+          },
+          {
+            "id": "t-2921",
+            "key": "INF-2921",
+            "projectId": "p-inf",
+            "parentId": null,
+            "kind": "work",
+            "title": "Retire the old harbour light",
+            "goal": "Retire the old harbour light",
+            "priority": 2,
+            "status": "done",
+            "activity": null,
+            "closedReason": "landed",
+            "startPolicy": "when-ready",
+            "flags": {
+              "blocked": false,
+              "held": false,
+              "needsYou": false,
+              "ready": false
+            },
+            "blockedBy": [],
+            "blocks": [],
+            "children": {
+              "total": 0,
+              "closed": 0
+            },
+            "assignee": null,
+            "model": null,
+            "tier": null,
+            "repo": null,
+            "delivery": null,
+            "outcomeSummary": null,
+            "waitingCardId": null,
+            "createdAt": 1793979660000,
+            "updatedAt": 1793984340000,
+            "startedAt": 1792904400000,
+            "closedAt": 1793444400000,
+            "pinnedAt": 1793984100000
           },
           {
             "id": "t-2912",
@@ -2007,6 +2229,74 @@
       "earlier": [],
       "sections": [
         {
+          "section": "pinned",
+          "folds": false,
+          "count": 4,
+          "rows": [
+            {
+              "key": "INF-2909",
+              "depth": 0,
+              "word": "held",
+              "trailing": {
+                "name": "",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "backlog",
+              "reason": "Held",
+              "home": "backlog"
+            },
+            {
+              "key": "INF-2911",
+              "depth": 0,
+              "word": "",
+              "trailing": {
+                "name": "",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "done",
+              "reason": "",
+              "home": "landed"
+            },
+            {
+              "key": "INF-2905",
+              "depth": 0,
+              "word": "",
+              "trailing": {
+                "name": "",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "queued",
+              "reason": "Waiting for a free crewmate · since Nov 6, 8:40 AM",
+              "home": "queued",
+              "wait": "Waiting for a free crewmate · since Nov 6, 8:40 AM"
+            },
+            {
+              "key": "INF-2921",
+              "depth": 0,
+              "word": "",
+              "trailing": {
+                "name": "",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "done",
+              "reason": "",
+              "home": "landed"
+            }
+          ]
+        },
+        {
           "section": "waiting",
           "folds": false,
           "count": 2,
@@ -2023,7 +2313,8 @@
                 "reach": "out of reach"
               },
               "mark": "waiting",
-              "reason": "A decision card is ready"
+              "reason": "A decision card is ready",
+              "home": "waiting"
             },
             {
               "key": "INF-2920",
@@ -2037,14 +2328,15 @@
                 "reach": "out of reach"
               },
               "mark": "waiting",
-              "reason": "Answer ready · waiting 1h 35m"
+              "reason": "Answer ready · waiting 1h 35m",
+              "home": "waiting"
             }
           ]
         },
         {
           "section": "working",
           "folds": false,
-          "count": 6,
+          "count": 7,
           "rows": [
             {
               "key": "INF-2903",
@@ -2058,7 +2350,8 @@
                 "reach": "out of reach"
               },
               "mark": "working",
-              "reason": "Waiting for checks"
+              "reason": "Waiting for checks",
+              "home": "working"
             },
             {
               "key": "INF-2902",
@@ -2072,7 +2365,8 @@
                 "reach": "out of reach"
               },
               "mark": "working",
-              "reason": "Mac mini is out of reach"
+              "reason": "Mac mini is out of reach",
+              "home": "working"
             },
             {
               "key": "INF-2904",
@@ -2086,7 +2380,8 @@
                 "reach": "out of reach"
               },
               "mark": "idle",
-              "reason": "Waiting on INF-2905"
+              "reason": "Waiting on INF-2905",
+              "home": "working"
             },
             {
               "key": "INF-2914",
@@ -2100,7 +2395,8 @@
                 "reach": "out of reach"
               },
               "mark": "working",
-              "reason": ""
+              "reason": "",
+              "home": "working"
             },
             {
               "key": "INF-2915",
@@ -2114,7 +2410,8 @@
                 "reach": "out of reach"
               },
               "mark": "working",
-              "reason": ""
+              "reason": "",
+              "home": "working"
             },
             {
               "key": "INF-2916",
@@ -2128,19 +2425,13 @@
                 "reach": "out of reach"
               },
               "mark": "working",
-              "reason": ""
-            }
-          ]
-        },
-        {
-          "section": "queued",
-          "folds": false,
-          "count": 3,
-          "rows": [
+              "reason": "",
+              "home": "working"
+            },
             {
-              "key": "INF-2905",
+              "key": "INF-2930",
               "depth": 0,
-              "word": "",
+              "word": "batch",
               "trailing": {
                 "name": "",
                 "place": "",
@@ -2148,10 +2439,17 @@
                 "connecting": false,
                 "reach": "out of reach"
               },
-              "mark": "queued",
-              "reason": "Waiting for a free crewmate · since Nov 6, 8:40 AM",
-              "wait": "Waiting for a free crewmate · since Nov 6, 8:40 AM"
-            },
+              "mark": "working",
+              "reason": "Waiting for the batch check",
+              "home": "working"
+            }
+          ]
+        },
+        {
+          "section": "queued",
+          "folds": false,
+          "count": 2,
+          "rows": [
             {
               "key": "INF-2906",
               "depth": 0,
@@ -2164,7 +2462,8 @@
                 "reach": "out of reach"
               },
               "mark": "starting",
-              "reason": ""
+              "reason": "",
+              "home": "queued"
             },
             {
               "key": "INF-2917",
@@ -2178,14 +2477,15 @@
                 "reach": "connecting"
               },
               "mark": "queued",
-              "reason": "Studio is connecting"
+              "reason": "Studio is connecting",
+              "home": "queued"
             }
           ]
         },
         {
           "section": "backlog",
           "folds": true,
-          "count": 5,
+          "count": 4,
           "newWords": " · 1 new",
           "failedWords": " · 1 could not start",
           "rows": [
@@ -2201,7 +2501,8 @@
                 "reach": "out of reach"
               },
               "mark": "backlog",
-              "reason": "Blocked by another task"
+              "reason": "Blocked by another task",
+              "home": "backlog"
             },
             {
               "key": "INF-2907",
@@ -2215,7 +2516,8 @@
                 "reach": "out of reach"
               },
               "mark": "backlog",
-              "reason": "Starts when you press Start"
+              "reason": "Starts when you press Start",
+              "home": "backlog"
             },
             {
               "key": "INF-2908",
@@ -2229,21 +2531,8 @@
                 "reach": "out of reach"
               },
               "mark": "backlog",
-              "reason": "Could not start"
-            },
-            {
-              "key": "INF-2909",
-              "depth": 0,
-              "word": "held",
-              "trailing": {
-                "name": "",
-                "place": "",
-                "outOfReach": false,
-                "connecting": false,
-                "reach": "out of reach"
-              },
-              "mark": "backlog",
-              "reason": "Held"
+              "reason": "Could not start",
+              "home": "backlog"
             },
             {
               "key": "INF-2918",
@@ -2257,14 +2546,15 @@
                 "reach": "out of reach"
               },
               "mark": "backlog",
-              "reason": "Started · its work waits for your Start"
+              "reason": "Started · its work waits for your Start",
+              "home": "backlog"
             }
           ]
         },
         {
           "section": "landed",
           "folds": true,
-          "count": 3,
+          "count": 2,
           "rows": [
             {
               "key": "INF-2912",
@@ -2278,7 +2568,8 @@
                 "reach": "out of reach"
               },
               "mark": "done",
-              "reason": ""
+              "reason": "",
+              "home": "landed"
             },
             {
               "key": "INF-2919",
@@ -2292,21 +2583,8 @@
                 "reach": "out of reach"
               },
               "mark": "done",
-              "reason": ""
-            },
-            {
-              "key": "INF-2911",
-              "depth": 0,
-              "word": "",
-              "trailing": {
-                "name": "",
-                "place": "",
-                "outOfReach": false,
-                "connecting": false,
-                "reach": "out of reach"
-              },
-              "mark": "done",
-              "reason": ""
+              "reason": "",
+              "home": "landed"
             }
           ]
         }
@@ -2404,6 +2682,48 @@
               "where": "on Mac mini",
               "name": "Mac mini",
               "reach": "out-of-reach"
+            }
+          },
+          {
+            "id": "t-2930",
+            "key": "INF-2930",
+            "projectId": "p-har",
+            "parentId": null,
+            "kind": "work",
+            "title": "Publish the lighthouse map",
+            "goal": "Publish the lighthouse map",
+            "priority": 2,
+            "status": "active",
+            "activity": "idle",
+            "closedReason": null,
+            "startPolicy": "when-ready",
+            "flags": {
+              "blocked": false,
+              "held": false,
+              "needsYou": false,
+              "ready": false
+            },
+            "blockedBy": [],
+            "blocks": [],
+            "children": {
+              "total": 0,
+              "closed": 0
+            },
+            "assignee": "crewmate",
+            "model": null,
+            "tier": null,
+            "repo": null,
+            "delivery": null,
+            "outcomeSummary": null,
+            "waitingCardId": null,
+            "createdAt": 1793980200000,
+            "updatedAt": 1793984340000,
+            "startedAt": 1793982600000,
+            "closedAt": null,
+            "workPosture": {
+              "state": "active",
+              "reason": "checks",
+              "batch": "waiting"
             }
           },
           {
@@ -2649,6 +2969,7 @@
             "updatedAt": 1793984340000,
             "startedAt": null,
             "closedAt": null,
+            "pinnedAt": 1793983680000,
             "queueWait": {
               "line": "Waiting for a free crewmate · since Nov 6, 8:40 AM",
               "since": 1793983200000
@@ -2850,7 +3171,8 @@
             "createdAt": 1793978940000,
             "updatedAt": 1793984340000,
             "startedAt": null,
-            "closedAt": null
+            "closedAt": null,
+            "pinnedAt": 1793982000000
           },
           {
             "id": "t-2910",
@@ -3009,7 +3331,46 @@
             "createdAt": 1793979060000,
             "updatedAt": 1793984340000,
             "startedAt": 1793977200000,
-            "closedAt": 1793980800000
+            "closedAt": 1793980800000,
+            "pinnedAt": 1793982900000
+          },
+          {
+            "id": "t-2921",
+            "key": "INF-2921",
+            "projectId": "p-inf",
+            "parentId": null,
+            "kind": "work",
+            "title": "Retire the old harbour light",
+            "goal": "Retire the old harbour light",
+            "priority": 2,
+            "status": "done",
+            "activity": null,
+            "closedReason": "landed",
+            "startPolicy": "when-ready",
+            "flags": {
+              "blocked": false,
+              "held": false,
+              "needsYou": false,
+              "ready": false
+            },
+            "blockedBy": [],
+            "blocks": [],
+            "children": {
+              "total": 0,
+              "closed": 0
+            },
+            "assignee": null,
+            "model": null,
+            "tier": null,
+            "repo": null,
+            "delivery": null,
+            "outcomeSummary": null,
+            "waitingCardId": null,
+            "createdAt": 1793979660000,
+            "updatedAt": 1793984340000,
+            "startedAt": 1792904400000,
+            "closedAt": 1793444400000,
+            "pinnedAt": 1793984100000
           },
           {
             "id": "t-2912",
@@ -3272,10 +3633,64 @@
           "createdAt": 1793979060000,
           "updatedAt": 1793984340000,
           "startedAt": 1793977200000,
-          "closedAt": 1793980800000
+          "closedAt": 1793980800000,
+          "pinnedAt": 1793982900000
         }
       ],
       "sections": [
+        {
+          "section": "pinned",
+          "folds": false,
+          "count": 3,
+          "rows": [
+            {
+              "key": "INF-2911",
+              "depth": 0,
+              "word": "",
+              "trailing": {
+                "name": "Infinitary",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "done",
+              "reason": "",
+              "home": "landed"
+            },
+            {
+              "key": "INF-2905",
+              "depth": 0,
+              "word": "",
+              "trailing": {
+                "name": "Infinitary",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "queued",
+              "reason": "Waiting for a free crewmate · since Nov 6, 8:40 AM",
+              "home": "queued",
+              "wait": "Waiting for a free crewmate · since Nov 6, 8:40 AM"
+            },
+            {
+              "key": "INF-2921",
+              "depth": 0,
+              "word": "",
+              "trailing": {
+                "name": "Infinitary",
+                "place": "",
+                "outOfReach": false,
+                "connecting": false,
+                "reach": "out of reach"
+              },
+              "mark": "done",
+              "reason": "",
+              "home": "landed"
+            }
+          ]
+        },
         {
           "section": "waiting",
           "folds": false,
@@ -3293,29 +3708,8 @@
                 "reach": "out of reach"
               },
               "mark": "waiting",
-              "reason": "A decision card is ready"
-            }
-          ]
-        },
-        {
-          "section": "queued",
-          "folds": false,
-          "count": 1,
-          "rows": [
-            {
-              "key": "INF-2905",
-              "depth": 0,
-              "word": "",
-              "trailing": {
-                "name": "Infinitary",
-                "place": "",
-                "outOfReach": false,
-                "connecting": false,
-                "reach": "out of reach"
-              },
-              "mark": "queued",
-              "reason": "Waiting for a free crewmate · since Nov 6, 8:40 AM",
-              "wait": "Waiting for a free crewmate · since Nov 6, 8:40 AM"
+              "reason": "A decision card is ready",
+              "home": "waiting"
             }
           ]
         },
@@ -3337,28 +3731,8 @@
                 "reach": "out of reach"
               },
               "mark": "backlog",
-              "reason": "Starts when you press Start"
-            }
-          ]
-        },
-        {
-          "section": "landed",
-          "folds": true,
-          "count": 1,
-          "rows": [
-            {
-              "key": "INF-2911",
-              "depth": 0,
-              "word": "",
-              "trailing": {
-                "name": "Infinitary",
-                "place": "",
-                "outOfReach": false,
-                "connecting": false,
-                "reach": "out of reach"
-              },
-              "mark": "done",
-              "reason": ""
+              "reason": "Starts when you press Start",
+              "home": "backlog"
             }
           ]
         },

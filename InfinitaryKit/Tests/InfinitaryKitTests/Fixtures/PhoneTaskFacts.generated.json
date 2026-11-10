@@ -1362,6 +1362,651 @@
       }
     },
     {
+      "name": "waiting for a batch",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "checks",
+          "batch": "waiting"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": "Waiting for the batch check",
+          "wait": "batch"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": null,
+        "browser": null,
+        "label": "Working · Waiting for the batch check",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "6m",
+        "planWords": {
+          "count": "2 of 4",
+          "skipped": 0,
+          "current": "Draw the sheet"
+        },
+        "planDots": [
+          {
+            "label": "Brief the work",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Port the facts",
+            "short": "Port",
+            "state": "done"
+          },
+          {
+            "label": "Draw the sheet",
+            "short": "Draw",
+            "state": "current"
+          },
+          {
+            "label": "Photograph it",
+            "short": "Photograph",
+            "state": "next"
+          }
+        ]
+      }
+    },
+    {
+      "name": "running in a batch",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "checks",
+          "batch": "in-batch"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": "Waiting for the batch check",
+          "wait": "batch"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": null,
+        "browser": null,
+        "label": "Working · Waiting for the batch check",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "6m",
+        "planWords": {
+          "count": "2 of 4",
+          "skipped": 0,
+          "current": "Draw the sheet"
+        },
+        "planDots": [
+          {
+            "label": "Brief the work",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Port the facts",
+            "short": "Port",
+            "state": "done"
+          },
+          {
+            "label": "Draw the sheet",
+            "short": "Draw",
+            "state": "current"
+          },
+          {
+            "label": "Photograph it",
+            "short": "Photograph",
+            "state": "next"
+          }
+        ]
+      }
+    },
+    {
+      "name": "paused in a batch",
+      "row": {
+        "id": "t-1887",
+        "key": "INF-1887",
+        "projectId": "p-inf",
+        "parentId": null,
+        "kind": "work",
+        "title": "Show the crewmate's checks on the phone",
+        "goal": "Show the crewmate's checks on the phone",
+        "priority": 0,
+        "status": "active",
+        "activity": "running",
+        "workPosture": {
+          "state": "active",
+          "reason": "checks",
+          "batch": "paused"
+        },
+        "closedReason": null,
+        "startPolicy": "when-ready",
+        "flags": {
+          "blocked": false,
+          "held": false,
+          "needsYou": false,
+          "ready": false
+        },
+        "blockedBy": [],
+        "blocks": [],
+        "children": {
+          "total": 0,
+          "closed": 0
+        },
+        "assignee": "crewmate",
+        "model": "openai-codex/gpt-6.1-terra",
+        "tier": "high",
+        "repo": {
+          "name": "infinitary",
+          "branch": "fm/task-1887"
+        },
+        "delivery": null,
+        "outcomeSummary": null,
+        "waitingCardId": null,
+        "createdAt": 1793287800000,
+        "updatedAt": 1793293080000,
+        "startedAt": 1793288400000,
+        "closedAt": null,
+        "activityLog": [
+          {
+            "id": 1,
+            "at": 1793288400000,
+            "kind": "dispatched",
+            "text": "The crewmate started on GPT-6.1 Terra."
+          },
+          {
+            "id": 2,
+            "at": 1793290800000,
+            "kind": "progress",
+            "text": "Read the phone's task row and the desktop's summary."
+          },
+          {
+            "id": 3,
+            "at": 1793292480000,
+            "kind": "pr_opened",
+            "text": "Opened pull request #612.",
+            "change": {
+              "url": "https://github.com/infinitary-labs/infinitary/pull/612",
+              "from": 7,
+              "to": 23
+            },
+            "actions": [
+              {
+                "at": 1793292660000,
+                "text": "Running the phone's unit tests"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "at": 1793293020000,
+            "kind": "steered",
+            "text": "You asked it to keep the scene still."
+          },
+          {
+            "id": 5,
+            "at": 1793293080000,
+            "kind": "progress",
+            "text": "Checked the waiting task's words.",
+            "from": {
+              "id": "t-1890",
+              "key": "INF-1890"
+            }
+          }
+        ],
+        "said": {
+          "at": 1793292900000,
+          "text": "Drawing the sheet's fact strip."
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        }
+      },
+      "facts": {
+        "key": "INF-1887",
+        "status": {
+          "mark": "working",
+          "word": "Working",
+          "reason": "Waiting for the batch check",
+          "wait": "batch"
+        },
+        "title": "Show the crewmate's checks on the phone",
+        "now": {
+          "text": "Drawing the sheet's fact strip.",
+          "at": 1793292900000
+        },
+        "plan": {
+          "items": [
+            {
+              "label": "Brief the work",
+              "short": "Brief",
+              "since": 1793292000000,
+              "state": "done"
+            },
+            {
+              "label": "Port the facts",
+              "short": "Port",
+              "since": 1793292300000,
+              "state": "done"
+            },
+            {
+              "label": "Draw the sheet",
+              "short": "Draw",
+              "since": 1793292600000,
+              "state": "current"
+            },
+            {
+              "label": "Photograph it",
+              "short": "Photograph",
+              "since": 1793292900000,
+              "state": "next"
+            }
+          ],
+          "at": 1793292840000
+        },
+        "model": "GPT-6.1 Terra",
+        "tier": "high",
+        "reasoning": {
+          "level": "high",
+          "lower": "quick"
+        },
+        "reason": "Reasoning one step lower for Quick care.",
+        "delivery": null,
+        "browser": null,
+        "label": "Working · Waiting for the batch check",
+        "reasoningWords": "High",
+        "nowAge": "5m",
+        "planAge": "6m",
+        "planWords": {
+          "count": "2 of 4",
+          "skipped": 0,
+          "current": "Draw the sheet"
+        },
+        "planDots": [
+          {
+            "label": "Brief the work",
+            "short": "Brief",
+            "state": "done"
+          },
+          {
+            "label": "Port the facts",
+            "short": "Port",
+            "state": "done"
+          },
+          {
+            "label": "Draw the sheet",
+            "short": "Draw",
+            "state": "current"
+          },
+          {
+            "label": "Photograph it",
+            "short": "Photograph",
+            "state": "next"
+          }
+        ]
+      }
+    },
+    {
       "name": "waiting for its checks",
       "row": {
         "id": "t-1887",

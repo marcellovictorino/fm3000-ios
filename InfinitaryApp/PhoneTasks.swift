@@ -230,7 +230,8 @@ struct PhoneTasks: View {
                 .foregroundStyle(trailing.connecting ? PhoneTheme.muted : PhoneTheme.warning)
         }
         // INF-2928 piece 3: a Backlog row's Start, which a swipe shows, says why under the row when it cannot start.
-        let start = part.section == .group(.backlog) ? PhoneRowMoves.rowStart(task) : nil
+        // A pinned backlog task keeps it, as on the Mac (INF-3127).
+        let start = part.home(of: task) == .backlog ? PhoneRowMoves.rowStart(task) : nil
         let held = swiped == task.id ? start?.reason : nil
         let lane: PhoneRowMoves.Lane? = part.section == .earlier ? .earlier : PhoneRowMoves.lane(task)
         let line = Button {
@@ -333,6 +334,7 @@ struct PhoneTasks: View {
         switch entry.id {
         case .open: openRecord(task)
         case .card: open(task)
+        case .pin: pin(task)
         case .continue: start(task, move: "continue-task")
         default:
             guard let lane, let target = entry.target else { return }
@@ -369,6 +371,18 @@ struct PhoneTasks: View {
         var args: [Any] = [ask.task.id, ask.op]
         if let review = ask.review { args.append(review) }
         run(ask.task, args: args)
+    }
+
+    /// INF-3127: Pin or Unpin, at once, as the Mac's board menu does; the row moves once the computer's board does, and a
+    /// refusal says why.
+    private func pin(_ task: PhoneTask) {
+        guard session.canChange else { return }
+        Task {
+            do {
+                let answer: PhoneAnswer = try await session.request(.pin, args: [task.id, task.pinnedAt == nil])
+                if !answer.ok { say(answer.text ?? "Your computer could not make this change.") }
+            } catch { say(error.localizedDescription) }
+        }
     }
 
     /// A move the phone draws no intent for: the list moves the row once the computer's board does, and a refusal says why.

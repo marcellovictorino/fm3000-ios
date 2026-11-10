@@ -203,6 +203,7 @@ struct PhoneSceneRoster {
     /// Its working is a background wait, as on the desktop (INF-676, INF-1777): the checks watch, or local work it left running.
     static func wait(_ task: PhoneTask) -> String? {
         guard task.workPosture?.state == "active", let reason = task.workPosture?.reason, reason == "checks" || reason == "job" else { return nil }
+        if reason == "checks", let batch = task.workPosture?.batch { return batch == "in-batch" ? "batch-running" : "batch" }
         return reason
     }
     /// Only an unreachable computer freezes its crew, as on the desktop; an unobserved posture still orbits as idle (INF-1520).
@@ -211,7 +212,7 @@ struct PhoneSceneRoster {
     }
     static func words(_ task: PhoneTask, computer: Computer) -> String {
         if unknown(task, computer: computer) || task.workPosture?.state == "unknown" { return "Activity unknown" }
-        if task.workPosture?.reason == "checks" { return "Waiting for checks" }
+        if task.workPosture?.reason == "checks" { return task.workPosture?.batch != nil ? "Waiting for the batch check" : "Waiting for checks" }
         return working(task) ? "Working" : task.state
     }
 }
@@ -230,6 +231,7 @@ final class PhoneSceneMotion: @unchecked Sendable {
         var unknown = false, programPart = false
         /// A background wait's eased blend (banked, inside the dashed wait ring) and the share of it that is local work (ember wires).
         var wait = 0.0, job = 0.0
+        var batch = false, batchRunning = false
         /// Waiting on the captain (INF-1543): its eased blend and when the wait began, the breath's phase.
         var captain = 0.0, captainSince = 0.0
         /// A warp's change of size and its light trail (CharacterWarp.ride), on the drawn frame only.
@@ -427,6 +429,7 @@ final class PhoneSceneMotion: @unchecked Sendable {
                     spin: localTime * (hot ? 1.6 : 0.35), work: hot ? 1 : 0,
                     unknown: unknown, programPart: computer.programParts.contains(task.id),
                     wait: wait == nil ? 0 : 1, job: wait == "job" ? 1 : 0,
+                    batch: wait == "batch" || wait == "batch-running", batchRunning: wait == "batch-running",
                     captain: task.group == .waiting ? 1 : 0, captainSince: now,
                     px: Glyph.px(computer: computer, programPart: computer.programParts.contains(task.id)))
             }

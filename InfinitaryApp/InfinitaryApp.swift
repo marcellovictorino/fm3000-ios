@@ -3,10 +3,25 @@ import SwiftUI
 
 @main struct InfinitaryApp: App {
     @State private var model = PhoneModel()
+    @State private var appearance = PhoneAppearance()
     @Environment(\.scenePhase) private var phase
+
+    init() {
+        #if targetEnvironment(simulator)
+        // The rest part's Secrets journey asks the disposable simulator for a damaged approval record at launch.
+        let environment = ProcessInfo.processInfo.environment
+        if environment["INFINITARY_ISOLATED_PHONE_TEST"] == "1", environment["INFINITARY_DAMAGED_APPROVAL"] == "1" {
+            ApprovalKey.damageForPhoneCheck()
+        }
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             PhoneView(model: model)
+                // This device's own Theme (PhoneAppearance), set on the window so every sheet and the keyboard follow it.
+                .background(PhoneWindowLook(look: appearance.look))
+                .environment(appearance)
                 .font(PhoneFont.body)
                 .tint(PhoneTheme.accent)
                 .foregroundStyle(PhoneTheme.text)
@@ -102,7 +117,7 @@ struct PhoneView: View {
                 }
             }
             .sheet(isPresented: $settings) {
-                if let session = model.connection { PhoneSettingsSheet(session: session) }
+                if let session = model.connection { PhoneSettingsSheet(session: session).environment(model.secrets) }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
                 keyboardVisible = true
@@ -228,6 +243,9 @@ struct PhoneView: View {
     private func connected(_ session: ReadOnlySession) -> some View {
         PhoneWorkspace(session: session, stage: PhoneCards(session: session),
             tasks: PhoneTasks(session: session), composer: MessageComposer(session: session))
+            .environment(model.secrets)
+            // The home's Secrets changed, or contact came back: what this phone may approve is read again.
+            .task(id: session.secretsRevision) { await model.secrets?.read() }
             .id(session.mac.deviceID)
             // INF-589 item 12: a soft tap when the computer comes back after it was lost.
             .sensoryFeedback(.phone, trigger: session.returns)

@@ -58,6 +58,8 @@
     </array>
     <key>NSLocalNetworkUsageDescription</key>
     <string>Infinitary finds your computer and reads its cards and Activity on your network, and lists the computers here with Remote Login on when you join by an address.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Infinitary asks for Face ID before each use of your secrets you allow from this device.</string>
     <key>NSCameraUsageDescription</key>
     <string>Infinitary scans the code you open in Devices on your computer so this phone can join it, and takes the photos you add to a reply.</string>
     <key>NSBonjourServices</key>
@@ -82,7 +84,7 @@
         <key>algorithm</key>
         <string>SHA256</string>
         <key>hash</key>
-        <string>b86c49d2e0717f72fdefba1985480529f237c361818eca66dd82601eba609b87</string>
+        <string>3855dfe5feb4a5dc1dbd243761a8d679aa203e6a6f7d6eab798922e8e4813532</string>
       </dict>
     </dict>
   </dict>
